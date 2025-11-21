@@ -1,0 +1,217 @@
+# Cursor AI Rules pour ECPS/Effinor
+
+## Project Context
+Tu travailles sur ECPS (Effinor), une plateforme de génération de leads pour projets d'efficacité énergétique avec financement CEE.
+
+Stack technique:
+- React 18 + Vite
+- Supabase (PostgreSQL + Auth)
+- Tailwind CSS + Radix UI
+- React Router v6
+
+## Code Style & Conventions
+
+### Naming
+- Components: PascalCase (ex: MiniEstimationForm)
+- Functions/variables: camelCase (ex: calculateCEEPotential)
+- Constants: UPPER_SNAKE_CASE (ex: TOTAL_STEPS)
+- Files: PascalCase pour components, camelCase pour utils
+
+### React Components Structure
+```javascript
+// 1. Imports (React, external libs, internal)
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+
+// 2. Types/Interfaces (si TypeScript)
+
+// 3. Component
+const MyComponent = ({ prop1, prop2 }) => {
+  // 3.1 Hooks (useState, useEffect, custom hooks)
+  const navigate = useNavigate()
+  const [state, setState] = useState('')
+  
+  // 3.2 Effects
+  useEffect(() => {}, [])
+  
+  // 3.3 Handlers
+  const handleClick = () => {}
+  
+  // 3.4 Render
+  return <div>...</div>
+}
+
+export default MyComponent
+```
+
+### Imports
+- Utiliser les alias `@/` pour imports (configuré dans vite.config.js)
+- Grouper: React → External libs → Internal components → Utils → Styles
+
+### Tailwind CSS
+- Toujours utiliser Tailwind utilities classes
+- Grouper logiquement: layout → spacing → colors → typography → effects
+- Utiliser les classes responsive (md:, lg:, etc)
+
+## Specific Rules
+
+### Forms & Validation
+- Toujours valider côté client ET serveur
+- Utiliser `validateFrenchPhone()` pour téléphones
+- Utiliser `validateEmail()` pour emails
+- Afficher errors avec classe `error-message`
+- Toast notifications pour feedback utilisateur
+
+### Supabase
+- Utiliser `supabase` from '@/lib/supabaseClient'
+- Toujours gérer les erreurs avec try/catch
+- Logger errors avec console.error
+- Retourner `{ success: boolean, data?, error? }`
+
+### State Management
+- localStorage pour persistance formulaire (voir formStorage.js)
+- Context API pour state global (Auth, Cart, Modal, Banner)
+- Local state pour UI components
+
+### Routing
+- React Router v6 avec Routes/Route
+- Navigate programmatically avec useNavigate()
+- Protected routes avec RequireAdmin component
+
+## Performance
+
+- Lazy load pages avec React.lazy si nécessaire
+- Optimiser images (WebP, dimensions appropriées)
+- Éviter re-renders inutiles (useMemo, useCallback si pertinent)
+- Framer Motion pour animations (déjà configuré)
+
+## Security
+
+### À TOUJOURS FAIRE:
+- Valider tous les inputs
+- Sanitizer données avant DB insert
+- Utiliser .env pour credentials (JAMAIS dans le code)
+- Vérifier auth avant actions sensibles
+
+### À NE JAMAIS FAIRE:
+- Commiter .env ou credentials
+- Logger données sensibles clients
+- Exposer API keys dans le code
+- Désactiver validation serveur
+
+## Business Logic
+
+### Lead Generation Flow
+1. Mini-form (Homepage) → Create lead in Supabase avec `formulaire_complet: false`
+2. Redirect to CEEEligibilityForm (6 steps)
+3. Update lead avec `formulaire_complet: true`, statut: 'devis_a_preparer'
+4. Calculate CEE potential avec calculateCEEPotential()
+5. Redirect to ThankYou page
+
+### Lead Statuses
+- 'nouveau' - Nouveau lead (mini-form)
+- 'devis_a_preparer' - Formulaire complet soumis
+- 'devis_envoye' - Devis envoyé au client
+- 'en_negociation' - En discussion avec client
+- 'gagne' - Lead converti ✅
+- 'perdu' - Lead perdu ❌
+
+### CEE Calculation
+Basé sur:
+- Surface totale (m²)
+- Type de bâtiment (warehouse, office, retail, etc)
+- Consommation énergétique annuelle
+- Potentiel LED + Potentiel Chauffage
+
+Voir `utils/ceeCalculations.js` pour logique complète
+
+## Testing Checklist
+
+Avant chaque commit:
+- [ ] Code compile (npm run build)
+- [ ] Pas d'erreurs ESLint
+- [ ] Formulaires testés (valid + invalid data)
+- [ ] Responsive testé (mobile/tablet/desktop)
+- [ ] Supabase inserts fonctionnent
+- [ ] Pas de console.log() oubliés
+- [ ] .env non committé
+
+## Common Tasks
+
+### Créer un nouveau composant
+```bash
+# Dans src/components/
+touch MyComponent.jsx
+```
+
+Structure de base fournie ci-dessus.
+
+### Créer une nouvelle page
+```bash
+# Dans src/pages/
+touch MyPage.jsx
+```
+
+Puis ajouter route dans App.jsx:
+```javascript
+<Route path="/my-page" element={<MyPage />} />
+```
+
+### Ajouter un champ au formulaire
+1. Ajouter au state dans CEEEligibilityForm.jsx
+2. Ajouter input dans step component approprié
+3. Ajouter validation si nécessaire
+4. Mettre à jour Supabase schema si nouveau champ DB
+
+### Intégrer un webhook N8N
+```javascript
+const response = await fetch(process.env.VITE_N8N_WEBHOOK_URL, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(data)
+})
+```
+
+## Priorities
+
+1. **Conversion optimization** - Le taux de conversion est critique (actuellement 50%)
+2. **Data integrity** - Aucun lead ne doit être perdu
+3. **User experience** - Formulaires rapides et fluides
+4. **Performance** - Site rapide (<3s load time)
+5. **Tracking** - Tout doit être mesurable (source, conversion, etc)
+
+## Helpful Commands
+
+```bash
+# Dev
+npm run dev
+
+# Build (test before commit)
+npm run build
+
+# Preview build
+npm run preview
+
+# Check for issues
+npm run lint
+```
+
+## When Writing Code
+
+- **Préférer** la clarté à la concision
+- **Commenter** la logique business complexe (surtout calcul CEE)
+- **Tester** manuellement avant de commiter
+- **Demander** si incertain (Slack #dev-ecps)
+- **Documenter** nouvelles features dans README
+
+## Auto-completion Preferences
+
+- Suggérer Tailwind classes
+- Utiliser composants existants de @/components/ui/
+- Importer depuis @/ alias (pas de chemins relatifs ../../)
+- Suivre structure de fichier établie
+
+---
+
+Remember: L'objectif est d'atteindre 1M€/mois. Chaque ligne de code doit optimiser pour la conversion et la qualité des leads! 🚀

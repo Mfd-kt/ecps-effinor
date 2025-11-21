@@ -1,0 +1,329 @@
+# 🏢 ECPS (Effinor) - Plateforme de Génération de Leads CEE
+
+Plateforme web complète pour la génération et gestion de leads pour les projets d'efficacité énergétique avec financement CEE (Certificats d'Économies d'Énergie).
+
+## 📋 Table des Matières
+
+- [Aperçu](#aperçu)
+- [Fonctionnalités](#fonctionnalités)
+- [Technologies](#technologies)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Structure du Projet](#structure-du-projet)
+- [Développement](#développement)
+- [Déploiement](#déploiement)
+- [Contribution](#contribution)
+
+## 🎯 Aperçu
+
+ECPS est une solution complète permettant de :
+- Générer des leads qualifiés via des formulaires optimisés
+- Calculer automatiquement le potentiel de primes CEE
+- Gérer les leads via un back-office complet
+- Tracker les conversions et performances marketing
+
+### Métriques Clés
+- ✅ Taux de conversion : 50%
+- 💰 Panier moyen : 7,000€
+- 📊 CA mensuel actuel : 140,000€
+- 🎯 Objectif : 1,000,000€/mois
+
+## ⚡ Fonctionnalités
+
+### Front-end Public
+- **Page d'accueil** avec mini-formulaire de qualification
+- **Formulaire CEE complet** en 6 étapes progressives
+- **Calcul automatique** du potentiel de primes CEE
+- **Design responsive** optimisé mobile-first
+- **SEO optimisé** avec React Helmet
+
+### Back-office Admin
+- Dashboard avec statistiques en temps réel
+- Gestion complète des leads (statuts, priorités, notes)
+- Suivi des conversions par source
+- Gestion des produits et utilisateurs
+- Export des données
+
+### Intégrations (À venir)
+- [ ] Webhooks N8N pour automatisation
+- [ ] Pixels de tracking (Facebook, Google, TikTok)
+- [ ] Notifications Slack temps réel
+- [ ] Synchronisation Airtable
+- [ ] Backup email automatique
+
+## 🛠️ Technologies
+
+### Front-end
+- **React 18** - Framework UI
+- **Vite** - Build tool ultra-rapide
+- **React Router v6** - Routing
+- **Tailwind CSS** - Styling
+- **Radix UI** - Components accessibles
+- **Framer Motion** - Animations
+- **Lucide React** - Icônes
+
+### Back-end & Database
+- **Supabase** - Backend as a Service (PostgreSQL + Auth + Storage)
+
+### Dev Tools
+- **ESLint** - Linting
+- **PostCSS** - CSS Processing
+- **Autoprefixer** - Compatibilité CSS
+
+## 📦 Installation
+
+### Prérequis
+- Node.js >= 18.x
+- npm ou yarn
+- Compte Supabase
+
+### Steps
+
+1. **Cloner le repository**
+```bash
+git clone https://github.com/votre-username/ecps-effinor.git
+cd ecps-effinor
+```
+
+2. **Installer les dépendances**
+```bash
+npm install
+# ou
+yarn install
+```
+
+3. **Configurer les variables d'environnement**
+```bash
+cp .env.example .env
+```
+
+Éditer `.env` avec vos credentials Supabase :
+```env
+VITE_SUPABASE_URL=https://votre-projet.supabase.co
+VITE_SUPABASE_ANON_KEY=votre_clé_anon
+```
+
+4. **Lancer le serveur de développement**
+```bash
+npm run dev
+# ou
+yarn dev
+```
+
+Le site sera accessible sur `http://localhost:3000`
+
+## ⚙️ Configuration
+
+### Supabase Setup
+
+1. **Créer un projet Supabase** sur https://supabase.com
+
+2. **Créer les tables nécessaires** :
+
+```sql
+-- Table leads
+CREATE TABLE leads (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  nom TEXT,
+  telephone TEXT,
+  email TEXT,
+  societe TEXT,
+  siret TEXT,
+  adresse TEXT,
+  type_batiment TEXT,
+  surface_m2 NUMERIC,
+  consommation_annuelle NUMERIC,
+  montant_cee_estime NUMERIC,
+  statut TEXT DEFAULT 'nouveau',
+  priorite TEXT DEFAULT 'normale',
+  source TEXT,
+  products JSONB,
+  message TEXT,
+  notes_techniques TEXT,
+  formulaire_complet BOOLEAN DEFAULT false,
+  etape_formulaire TEXT
+);
+
+-- Index pour performance
+CREATE INDEX idx_leads_statut ON leads(statut);
+CREATE INDEX idx_leads_created_at ON leads(created_at);
+CREATE INDEX idx_leads_source ON leads(source);
+```
+
+3. **Configurer RLS (Row Level Security)** selon vos besoins
+
+### Structure des Leads
+
+Un lead contient :
+- **Informations de contact** : nom, téléphone, email
+- **Informations entreprise** : société, SIRET, adresse
+- **Détails du projet** : type de bâtiment, surface, consommation
+- **Estimation CEE** : montant estimé de primes
+- **Workflow** : statut, priorité, source, étape du formulaire
+
+## 📁 Structure du Projet
+
+```
+ecps-effinor/
+├── src/
+│   ├── components/          # Composants React réutilisables
+│   │   ├── admin/          # Composants admin
+│   │   ├── cee/            # Composants formulaire CEE
+│   │   ├── modals/         # Modales
+│   │   ├── popups/         # Popups marketing
+│   │   └── ui/             # Composants UI (Radix)
+│   ├── contexts/           # Context API (Auth, Cart, etc.)
+│   ├── hooks/              # Custom React hooks
+│   ├── lib/                # Configurations (Supabase, utils)
+│   ├── pages/              # Pages de l'application
+│   │   ├── admin/          # Pages admin
+│   │   ├── Home.jsx        # Page d'accueil
+│   │   ├── CEEEligibilityForm.jsx  # Formulaire complet
+│   │   └── ...
+│   ├── styles/             # Styles globaux
+│   ├── utils/              # Fonctions utilitaires
+│   ├── App.jsx             # Composant racine
+│   └── main.jsx            # Point d'entrée
+├── public/                 # Assets statiques
+├── plugins/                # Plugins Vite custom
+├── .env.example            # Template variables d'environnement
+├── .gitignore
+├── package.json
+├── vite.config.js
+└── tailwind.config.js
+```
+
+## 🚀 Développement
+
+### Scripts disponibles
+
+```bash
+# Développement
+npm run dev          # Démarre le serveur de dev sur le port 3000
+
+# Production
+npm run build        # Build l'application pour production
+npm run preview      # Preview du build de production
+```
+
+### Conventions de Code
+
+- **Composants** : PascalCase (ex: `MiniEstimationForm.jsx`)
+- **Fonctions utilitaires** : camelCase (ex: `validateEmail()`)
+- **Constantes** : UPPER_SNAKE_CASE (ex: `TOTAL_STEPS`)
+- **CSS Classes** : kebab-case ou Tailwind utilities
+
+### Workflow Git
+
+```bash
+# Créer une branche pour une nouvelle feature
+git checkout -b feature/nom-de-la-feature
+
+# Commiter avec des messages clairs
+git commit -m "feat: ajout tracking pixels Facebook"
+
+# Pusher et créer une Pull Request
+git push origin feature/nom-de-la-feature
+```
+
+### Conventions de Commit
+
+- `feat:` - Nouvelle fonctionnalité
+- `fix:` - Correction de bug
+- `docs:` - Documentation
+- `style:` - Formatage, CSS
+- `refactor:` - Refactoring code
+- `test:` - Ajout de tests
+- `chore:` - Maintenance, dépendances
+
+## 📊 Formulaires
+
+### Mini Formulaire (Page d'accueil)
+Champs : Nom, Téléphone, Type de bâtiment, Surface, Email
+- Validation française du téléphone
+- Enregistrement dans `leads` avec `source: 'hero_formulaire_accueil'`
+- Redirection vers formulaire complet
+
+### Formulaire CEE Complet (6 étapes)
+1. **Infos entreprise** : Nom société, SIRET, Adresse
+2. **Contact principal** : Prénom, Nom, Poste, Contact
+3. **Dépenses énergétiques** : Consommation annuelle
+4. **Nombre de bâtiments** : 1 à 10+
+5. **Détails bâtiments** : Type, surface, hauteur, chauffage (pour chaque bâtiment)
+6. **Remarques** : Commentaires + Affichage estimation CEE
+
+**Calcul CEE** : Basé sur surface, type de bâtiment, consommation → LED + Chauffage
+
+## 🌐 Déploiement
+
+### Avec Vercel (Recommandé)
+
+```bash
+# Installer Vercel CLI
+npm i -g vercel
+
+# Déployer
+vercel
+```
+
+### Variables d'environnement Production
+Configurer sur votre plateforme de déploiement :
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+## 🤝 Contribution
+
+### Membres de l'équipe
+- **Moufdi** - Director General / Product Owner
+- **Aimen** - Ads Manager (Facebook/Instagram/TikTok)
+- **[Ton Nom]** - Developer
+
+### Process de contribution
+
+1. **Fork** le projet
+2. Créer une **branche feature** (`git checkout -b feature/AmazingFeature`)
+3. **Commit** les changements (`git commit -m 'feat: Add AmazingFeature'`)
+4. **Push** sur la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une **Pull Request**
+
+### Code Review
+- Toutes les PR doivent être reviewées avant merge
+- Tests automatiques doivent passer
+- Documentation mise à jour si nécessaire
+
+## 📝 TODO / Roadmap
+
+### Court terme (Sprint actuel)
+- [ ] Intégration webhooks N8N
+- [ ] Pixels de tracking Facebook/Google
+- [ ] Notifications Slack automatiques
+- [ ] Backup email des leads
+
+### Moyen terme
+- [ ] Dashboard analytics avancé
+- [ ] A/B Testing sur formulaires
+- [ ] Intégration VSL (Video Sales Letter)
+- [ ] Automatisation devis PDF
+
+### Long terme
+- [ ] Mobile app (React Native)
+- [ ] IA pour qualification automatique des leads
+- [ ] CRM intégré complet
+- [ ] API publique pour partenaires
+
+## 📞 Support
+
+Pour toute question :
+- **Email** : contact@ecps.fr
+- **Slack** : #dev-ecps
+- **GitHub Issues** : [Issues Page](https://github.com/votre-username/ecps-effinor/issues)
+
+## 📄 License
+
+Propriétaire - ECPS (Groupe Effinor)
+Tous droits réservés © 2024
+
+---
+
+**Développé avec ❤️ pour révolutionner l'efficacité énergétique en France** 🇫🇷
