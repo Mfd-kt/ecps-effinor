@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
+import { sanitizeFormData } from '@/utils/sanitize';
 
 /**
  * Validates a French phone number.
@@ -30,9 +32,12 @@ export const validateEmail = (email) => {
  */
 export const handleFormSubmission = async (formData) => {
   try {
+    // Sanitize data before insertion to prevent XSS attacks
+    const sanitizedData = sanitizeFormData(formData);
+    
     const { data, error } = await supabase
       .from('leads')
-      .insert([formData])
+      .insert([sanitizedData])
       .select()
       .single();
 
@@ -42,7 +47,7 @@ export const handleFormSubmission = async (formData) => {
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error submitting form to Supabase:', error);
+    logger.error('Error submitting form to Supabase:', error);
     return { success: false, error };
   }
 };

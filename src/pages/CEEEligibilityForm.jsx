@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { loadFormData, clearFormData, saveFormData } from '@/utils/formStorage';
 import { calculateCEEPotential } from '@/utils/ceeCalculations';
+import { logger } from '@/utils/logger';
+import { sanitizeFormData } from '@/utils/sanitize';
 import ProgressBar from '@/components/cee/ProgressBar';
 import FormNavigation from '@/components/cee/FormNavigation';
 import Step1CompanyInfo from '@/components/cee/steps/Step1CompanyInfo';
@@ -145,7 +147,10 @@ const CEEEligibilityForm = () => {
         statut: 'devis_a_preparer',
       };
 
-      const { error } = await supabase.from('leads').update(updateData).eq('id', leadId);
+      // Sanitize data before update to prevent XSS attacks
+      const sanitizedUpdateData = sanitizeFormData(updateData);
+
+      const { error } = await supabase.from('leads').update(sanitizedUpdateData).eq('id', leadId);
       if (error) throw error;
 
       clearFormData();
@@ -153,7 +158,7 @@ const CEEEligibilityForm = () => {
       toast({ title: "✅ Demande complète envoyée !", description: "Notre équipe vous recontactera." });
       navigate('/merci', { state: { leadId, ceePotential, companyName: formData.step1.companyName } });
     } catch (error) {
-      console.error('Error updating lead:', error);
+      logger.error('Error updating lead:', error);
       toast({ title: "Erreur", description: "Une erreur est survenue.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -180,7 +185,7 @@ const CEEEligibilityForm = () => {
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 py-12 pt-32">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto">
           <div className="max-w-4xl mx-auto">
             <div className="card">
               <ProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />

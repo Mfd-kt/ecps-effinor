@@ -3,6 +3,8 @@ import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast.js';
 import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
+import { sanitizeFormData } from '@/utils/sanitize';
 import { Button } from '@/components/ui/button.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Textarea } from '@/components/ui/textarea.jsx';
@@ -120,7 +122,7 @@ const AdminProductForm = () => {
     if (!id) return;
     setLoading(true);
     try {
-      console.log('📦 Chargement du produit ID:', id);
+      logger.log('📦 Chargement du produit ID:', id);
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -129,14 +131,14 @@ const AdminProductForm = () => {
       
       if (error) throw error;
       
-      console.log('✅ Produit chargé:', data);
+      logger.log('✅ Produit chargé:', data);
       setFormData(prev => ({ ...prev, ...data }));
       
       if (data.slug) {
         setIsSlugManuallyEdited(true);
       }
     } catch (error) {
-      console.error('❌ Erreur chargement:', error);
+      logger.error('❌ Erreur chargement:', error);
       toast({ 
         title: "Erreur", 
         description: `Impossible de charger le produit: ${error.message}`, 
@@ -180,13 +182,13 @@ const AdminProductForm = () => {
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (files.length > 0) {
-      console.log(`📁 Fichier sélectionné pour ${name}:`, files[0].name);
+      logger.log(`📁 Fichier sélectionné pour ${name}:`, files[0].name);
       setFileUploads(prev => ({ ...prev, [name]: files[0] }));
     }
   };
 
   const handleRemoveFile = useCallback((fieldName, fileUrl) => {
-    console.log(`🗑️ Préparation pour suppression de ${fieldName}:`, fileUrl);
+    logger.log(`🗑️ Préparation pour suppression de ${fieldName}:`, fileUrl);
     
     setFormData(prev => ({ ...prev, [fieldName]: null }));
     
@@ -195,11 +197,11 @@ const AdminProductForm = () => {
             const url = new URL(fileUrl);
             const path = url.pathname.split('/products/')[1];
             if (path) {
-                console.log(`📝 Ajout à la liste de suppression:`, path);
+                logger.log(`📝 Ajout à la liste de suppression:`, path);
                 setFilesToRemove(prev => [...prev, { path: path, url: fileUrl }]);
             }
         } catch (e) {
-            console.warn("URL de fichier invalide pour la suppression:", fileUrl);
+            logger.warn("URL de fichier invalide pour la suppression:", fileUrl);
         }
     }
     
@@ -217,8 +219,8 @@ const AdminProductForm = () => {
     const filePath = `${path}/${fileName}`;
     const bucket = 'products';
     
-    console.log(`📤 Upload vers bucket: ${bucket}, path: ${filePath}`);
-    console.log(`📊 Taille du fichier: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    logger.log(`📤 Upload vers bucket: ${bucket}, path: ${filePath}`);
+    logger.log(`📊 Taille du fichier: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
     
     try {
       const { error: uploadError } = await supabase.storage
@@ -226,7 +228,7 @@ const AdminProductForm = () => {
         .upload(filePath, file, { upsert: true });
       
       if (uploadError) {
-        console.error('❌ Erreur upload:', uploadError);
+        logger.error('❌ Erreur upload:', uploadError);
         throw uploadError;
       }
       
@@ -234,11 +236,11 @@ const AdminProductForm = () => {
         .from(bucket)
         .getPublicUrl(filePath);
       
-      console.log(`✅ Fichier uploadé: ${urlData.publicUrl}`);
+      logger.log(`✅ Fichier uploadé: ${urlData.publicUrl}`);
       return urlData.publicUrl;
       
     } catch (error) {
-      console.error('❌ Erreur lors de l\'upload:', error);
+      logger.error('❌ Erreur lors de l\'upload:', error);
       throw error;
     }
   };
@@ -246,7 +248,7 @@ const AdminProductForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('📝 Soumission du formulaire');
+    logger.log('📝 Soumission du formulaire');
     
     if (!formData.nom || !formData.categorie || !formData.slug) {
       toast({ 
@@ -262,36 +264,36 @@ const AdminProductForm = () => {
     
     try {
       if (filesToRemove.length > 0) {
-        console.log('🗑️ Suppression de', filesToRemove.length, 'fichiers');
+        logger.log('🗑️ Suppression de', filesToRemove.length, 'fichiers');
         const pathsToDelete = filesToRemove.map(f => f.path);
         const { error: deleteError } = await supabase.storage.from('products').remove(pathsToDelete);
         if (deleteError) {
-            console.warn(`⚠️ Erreur lors de la suppression de certains fichiers:`, deleteError);
+            logger.warn(`⚠️ Erreur lors de la suppression de certains fichiers:`, deleteError);
         } else {
-            console.log(`✅ Fichiers supprimés:`, pathsToDelete);
+            logger.log(`✅ Fichiers supprimés:`, pathsToDelete);
         }
         setFilesToRemove([]);
       }
 
       const uploadPath = `produits/${slugify(formData.slug || 'new-product')}`;
-      console.log(`📤 Chemin d'upload: ${uploadPath}`);
+      logger.log(`📤 Chemin d'upload: ${uploadPath}`);
       
       const uploadPromises = Object.keys(fileUploads).map(async key => {
         const file = fileUploads[key];
         if (file) {
           try {
-            console.log(`⏳ Upload de ${key}...`);
+            logger.log(`⏳ Upload de ${key}...`);
             const url = await uploadFile(file, uploadPath);
             updatedData[key] = url;
             
             if (key === 'image_1') {
               updatedData.image_url = url;
-              console.log(`🔗 image_url défini à: ${url}`);
+              logger.log(`🔗 image_url défini à: ${url}`);
             }
             
-            console.log(`✅ ${key} uploadé: ${url}`);
+            logger.log(`✅ ${key} uploadé: ${url}`);
           } catch (error) {
-            console.error(`❌ Erreur upload ${key}:`, error);
+            logger.error(`❌ Erreur upload ${key}:`, error);
             throw error; // Rethrow to stop the process
           }
         }
@@ -307,33 +309,36 @@ const AdminProductForm = () => {
       
       if (!dataToSave.image_url && dataToSave.image_1) {
         dataToSave.image_url = dataToSave.image_1;
-        console.log(`🔗 image_url défini depuis image_1 existante: ${dataToSave.image_url}`);
+        logger.log(`🔗 image_url défini depuis image_1 existante: ${dataToSave.image_url}`);
       }
 
-      console.log('💾 Données à sauvegarder:', dataToSave);
+      // Sanitize data before save to prevent XSS attacks
+      const sanitizedDataToSave = sanitizeFormData(dataToSave);
+
+      logger.log('💾 Données à sauvegarder:', sanitizedDataToSave);
 
       let savedData, error;
 
       if (isEditing) {
-        console.log('💾 Mise à jour du produit ID:', id);
+        logger.log('💾 Mise à jour du produit ID:', id);
         ({ data: savedData, error } = await supabase
           .from('products')
-          .update(dataToSave)
+          .update(sanitizedDataToSave)
           .eq('id', id)
           .select()
           .single());
       } else {
-        console.log('✨ Création d\'un nouveau produit');
+        logger.log('✨ Création d\'un nouveau produit');
         ({ data: savedData, error } = await supabase
           .from('products')
-          .insert([dataToSave])
+          .insert([sanitizedDataToSave])
           .select()
           .single());
       }
 
       if (error) throw error;
 
-      console.log('✅ Produit sauvegardé:', savedData);
+      logger.log('✅ Produit sauvegardé:', savedData);
       
       toast({ 
         title: "Succès !", 
@@ -348,7 +353,7 @@ const AdminProductForm = () => {
       }
 
     } catch (error) {
-      console.error("❌ Erreur de sauvegarde:", error);
+      logger.error("❌ Erreur de sauvegarde:", error);
       toast({ 
         title: "Erreur de sauvegarde", 
         description: `La sauvegarde a échoué: ${error.message}`, 
@@ -565,7 +570,7 @@ const AdminProductForm = () => {
                     href={formData.fiche_technique} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="text-blue-600 hover:underline"
+                    className="text-secondary-600 hover:underline"
                   >
                     ✅ Voir le fichier actuel
                   </a>

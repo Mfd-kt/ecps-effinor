@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/utils/logger';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import UserTableRow from '@/components/admin/UserTableRow';
@@ -20,7 +21,7 @@ const AdminUsers = () => {
   const { toast } = useToast();
 
   const loadUsers = useCallback(async () => {
-    console.log("Chargement des utilisateurs...");
+    logger.log("Chargement des utilisateurs...");
     setLoading(true);
     setError(null);
     try {
@@ -31,10 +32,10 @@ const AdminUsers = () => {
 
       if (supabaseError) throw supabaseError;
 
-      console.log(`Utilisateurs chargés: ${data.length}`);
+      logger.log(`Utilisateurs chargés: ${data.length}`);
       setAllUsers(data || []);
     } catch (err) {
-      console.error("Erreur lors du chargement des utilisateurs:", err);
+      logger.error("Erreur lors du chargement des utilisateurs:", err);
       setError("Impossible de charger la liste des utilisateurs. Veuillez réessayer.");
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
@@ -64,7 +65,7 @@ const AdminUsers = () => {
         description: `L'utilisateur ${userToDelete.name} n'a pas pu être supprimé.`,
         variant: "destructive",
       });
-      console.error("Erreur de suppression:", deleteError);
+      logger.error("Erreur de suppression:", deleteError);
     } else {
       toast({
         title: "Utilisateur supprimé",

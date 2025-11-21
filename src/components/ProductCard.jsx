@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { logger } from '@/utils/logger';
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ const ProductCard = ({ product }) => {
   const handleRequestQuote = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log(`Requesting quote for product ID: ${product.id}`);
+    logger.log(`Requesting quote for product ID: ${product.id}`);
     localStorage.setItem('devis_product', JSON.stringify(product));
     localStorage.setItem('devis_product_id', product.id);
     navigate(`/formulaire-complet?type=devis&product=${product.slug}`);

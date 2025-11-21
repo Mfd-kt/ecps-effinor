@@ -3,6 +3,8 @@ import { Helmet } from 'react-helmet';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/utils/logger';
+import { sanitizeFormData } from '@/utils/sanitize';
 import { Button } from '@/components/ui/button.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
@@ -54,7 +56,7 @@ const AdminUserForm = () => {
           .single();
         
         if (error || !data) {
-            console.error('Erreur:', error);
+            logger.error('Erreur:', error);
             throw new Error("Impossible de charger l'utilisateur.");
         }
 
@@ -105,8 +107,8 @@ const AdminUserForm = () => {
   
   const handleInviteUser = async () => {
     setLoading(true);
-    console.log('=== CRÉATION PROFIL UTILISATEUR ===');
-    console.log('Données:', formData);
+    logger.log('=== CRÉATION PROFIL UTILISATEUR ===');
+    logger.log('Données:', formData);
     
     try {
       if (!formData.prenom || !formData.nom || !formData.email || !formData.role) {
@@ -114,7 +116,7 @@ const AdminUserForm = () => {
           return;
       }
       
-      console.log('Vérification email existant...');
+      logger.log('Vérification email existant...');
       const { data: existing, error: checkError } = await supabase
           .from('profiles')
           .select('email')
@@ -128,31 +130,36 @@ const AdminUserForm = () => {
           return;
       }
 
-      console.log('Création du profil...');
+      logger.log('Création du profil...');
+      
+      // Prepare and sanitize data before insertion
+      const profileData = {
+        email: formData.email,
+        prenom: formData.prenom,
+        nom: formData.nom,
+        full_name: `${formData.prenom} ${formData.nom}`,
+        role: formData.role,
+        active: formData.active
+      };
+      const sanitizedProfileData = sanitizeFormData(profileData);
+      
       const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .insert({
-              email: formData.email,
-              prenom: formData.prenom,
-              nom: formData.nom,
-              full_name: `${formData.prenom} ${formData.nom}`,
-              role: formData.role,
-              active: formData.active
-          })
+          .insert(sanitizedProfileData)
           .select()
           .single();
       
       if (profileError) throw profileError;
       
-      console.log('✅ Profil créé:', profile);
+      logger.log('✅ Profil créé:', profile);
 
       alert(`✅ Profil créé avec succès !\n\nNom : ${formData.prenom} ${formData.nom}\nEmail : ${formData.email}\nRôle : ${formData.role}\n\n📧 IMPORTANT : Envoyez un email à l'utilisateur avec ces instructions :\n\n1. Aller sur : ${window.location.origin}/signup\n2. S'inscrire avec l'email : ${formData.email}\n3. Créer un mot de passe\n\nUne fois inscrit, l'utilisateur pourra se connecter au dashboard.`);
 
-      console.log('=== FIN CRÉATION ===');
+      logger.log('=== FIN CRÉATION ===');
       navigate('/admin/users');
 
     } catch (error) {
-      console.error('❌ Erreur inattendue:', error);
+      logger.error('❌ Erreur inattendue:', error);
       alert('Erreur : ' + error.message);
     } finally {
         setLoading(false);
@@ -163,14 +170,18 @@ const AdminUserForm = () => {
       e.preventDefault();
       setLoading(true);
       try {
-          const { error } = await supabase.from('profiles').update({
+          // Prepare and sanitize data before update
+          const updateData = {
               prenom: formData.prenom,
               nom: formData.nom,
               full_name: `${formData.prenom} ${formData.nom}`,
               avatar_url: formData.photo_profil_url,
               role: formData.role,
               active: formData.active,
-          }).eq('id', id);
+          };
+          const sanitizedUpdateData = sanitizeFormData(updateData);
+          
+          const { error } = await supabase.from('profiles').update(sanitizedUpdateData).eq('id', id);
           if (error) throw error;
           toast({ title: "Succès", description: "Utilisateur mis à jour." });
           fetchUser();
@@ -191,7 +202,7 @@ const AdminUserForm = () => {
   };
 
   if (pageLoading) {
-    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-[#116BAD]" /></div>;
+    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-secondary-600" /></div>;
   }
 
   const isFormDirty = isEditing && JSON.stringify(formData) !== JSON.stringify(initialData);
@@ -272,11 +283,11 @@ const AdminUserForm = () => {
 
                  <div className="flex justify-end pt-2">
                     {isEditing ? (
-                        <Button type="submit" disabled={loading || !isFormDirty} className="bg-[#116BAD] hover:bg-[#0E4C8A]">
+                        <Button type="submit" disabled={loading || !isFormDirty} className="bg-secondary-600 hover:bg-secondary-700">
                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Enregistrer
                         </Button>
                     ) : (
-                        <Button type="submit" disabled={loading || !isEmailValid || !formData.prenom || !formData.nom} className="bg-[#116BAD] hover:bg-[#0E4C8A]">
+                        <Button type="submit" disabled={loading || !isEmailValid || !formData.prenom || !formData.nom} className="bg-secondary-600 hover:bg-secondary-700">
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Créer le profil
                         </Button>
                     )}

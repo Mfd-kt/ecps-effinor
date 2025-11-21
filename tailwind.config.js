@@ -10,9 +10,17 @@ module.exports = {
 	theme: {
 		container: {
 			center: true,
-			padding: '2rem',
+			padding: {
+				DEFAULT: '1rem',
+				sm: '1.5rem',
+				lg: '2rem',
+			},
 			screens: {
-				'2xl': '1400px',
+				sm: '640px',
+				md: '768px',
+				lg: '1024px',
+				xl: '1280px',
+				'2xl': '1440px',
 			},
 		},
 		extend: {
@@ -25,10 +33,44 @@ module.exports = {
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))',
+					50: 'var(--primary-50)',
+					100: 'var(--primary-100)',
+					200: 'var(--primary-200)',
+					300: 'var(--primary-300)',
+					400: 'var(--primary-400)',
+					500: 'var(--primary-500)',
+					600: 'var(--primary-600)',
+					700: 'var(--primary-700)',
+					800: 'var(--primary-800)',
+					900: 'var(--primary-900)',
 				},
 				secondary: {
-					DEFAULT: 'hsl(var(--secondary))',
+					DEFAULT: 'var(--secondary-500)',
 					foreground: 'hsl(var(--secondary-foreground))',
+					50: 'var(--secondary-50)',
+					100: 'var(--secondary-100)',
+					200: 'var(--secondary-200)',
+					300: 'var(--secondary-300)',
+					400: 'var(--secondary-400)',
+					500: 'var(--secondary-500)',
+					600: 'var(--secondary-600)',
+					700: 'var(--secondary-700)',
+					800: 'var(--secondary-800)',
+					900: 'var(--secondary-900)',
+				},
+				accent: {
+					DEFAULT: 'var(--accent-500)',
+					foreground: 'hsl(var(--accent-foreground))',
+					50: 'var(--accent-50)',
+					100: 'var(--accent-100)',
+					200: 'var(--accent-200)',
+					300: 'var(--accent-300)',
+					400: 'var(--accent-400)',
+					500: 'var(--accent-500)',
+					600: 'var(--accent-600)',
+					700: 'var(--accent-700)',
+					800: 'var(--accent-800)',
+					900: 'var(--accent-900)',
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
@@ -37,10 +79,6 @@ module.exports = {
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
 					foreground: 'hsl(var(--muted-foreground))',
-				},
-				accent: {
-					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))',
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',

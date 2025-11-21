@@ -5,6 +5,7 @@ import { ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianG
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { logger } from '@/utils/logger';
 
 const StatCard = ({ title, value, icon, color }) => (
   <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
@@ -86,7 +87,7 @@ const AdminDashboard = () => {
         setChartData(Array.from(monthMap.values()));
 
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        logger.error('Error fetching dashboard data:', error);
         toast({
           title: "Erreur de chargement",
           description: `Impossible de charger les données du tableau de bord : ${error.message}`,
@@ -123,7 +124,7 @@ const AdminDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard title="Total Produits" value={productCount} icon={<Package className="h-6 w-6 text-white" />} color="bg-blue-500" />
-          <StatCard title="Total Commandes" value={orderCount} icon={<ShoppingCart className="h-6 w-6 text-white" />} color="bg-green-500" />
+          <StatCard title="Total Commandes" value={orderCount} icon={<ShoppingCart className="h-6 w-6 text-white" />} color="bg-secondary-500" />
           <StatCard title="Total Leads" value={leadCount} icon={<FileText className="h-6 w-6 text-white" />} color="bg-indigo-500" />
           <StatCard title="Demandes en attente" value={pendingOrderCount} icon={<AlertTriangle className="h-6 w-6 text-white" />} color="bg-yellow-500" />
         </div>

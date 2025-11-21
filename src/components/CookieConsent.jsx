@@ -35,17 +35,17 @@ const CookieConsent = () => {
           className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 shadow-lg z-[101] flex items-center justify-between flex-wrap"
         >
           <div className="flex items-center mb-4 sm:mb-0">
-            <Cookie className="h-6 w-6 mr-3 text-[#FFBA0B]" />
+            <Cookie className="h-6 w-6 mr-3 text-accent-400" />
             <p className="text-sm">
               Nous utilisons des cookies pour améliorer votre expérience et pour le suivi. 
-              <a href="/mentions-legales" className="underline hover:text-[#FFBA0B] ml-1">En savoir plus</a>.
+              <a href="/mentions-legales" className="underline hover:text-accent-400 ml-1">En savoir plus</a>.
             </p>
           </div>
           <div className="flex gap-4">
             <Button onClick={handleDecline} variant="outline" className="text-white border-white hover:bg-white/10">
               Refuser
             </Button>
-            <Button onClick={handleAccept} className="bg-[#116BAD] hover:bg-[#0d5489]">
+            <Button onClick={handleAccept} className="bg-secondary-600 hover:bg-secondary-700">
               Accepter
             </Button>
           </div>

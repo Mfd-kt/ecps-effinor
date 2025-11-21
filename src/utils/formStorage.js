@@ -1,3 +1,5 @@
+import { logger } from '@/utils/logger';
+
 const FORM_STORAGE_KEY = 'cee_eligibility_form_data';
 
 /**
@@ -13,7 +15,7 @@ export const saveFormData = (data) => {
     }
     return false;
   } catch (error) {
-    console.error('Error saving form data to localStorage:', error);
+    logger.error('Error saving form data to localStorage:', error);
     return false;
   }
 };
@@ -30,7 +32,7 @@ export const loadFormData = () => {
     }
     return null;
   } catch (error) {
-    console.error('Error loading form data from localStorage:', error);
+    logger.error('Error loading form data from localStorage:', error);
     return null;
   }
 };
@@ -47,7 +49,7 @@ export const clearFormData = () => {
     }
     return false;
   } catch (error) {
-    console.error('Error clearing form data from localStorage:', error);
+    logger.error('Error clearing form data from localStorage:', error);
     return false;
   }
 };

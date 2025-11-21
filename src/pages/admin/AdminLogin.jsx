@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/utils/logger';
 import { Loader2 } from 'lucide-react';
 
 const errorMessages = {
@@ -28,7 +29,7 @@ const AdminLogin = () => {
   const displayError = (messageKey) => {
     const message = errorMessages[messageKey] || errorMessages['generic_error'];
     setErrorMsg(message);
-    console.error('Login Error:', message);
+    logger.error('Login Error:', message);
   };
 
   const handleLogin = async (e) => {
@@ -95,7 +96,7 @@ const AdminLogin = () => {
       }
 
       // 6. Success and Redirect
-      console.log(`Login successful for ${profile.full_name || profile.email}`);
+      logger.log(`Login successful for ${profile.full_name || profile.email}`);
       toast({ title: 'Connexion réussie !', description: `Bienvenue, ${profile.full_name || profile.email}` });
       
       // Optional: Store user info

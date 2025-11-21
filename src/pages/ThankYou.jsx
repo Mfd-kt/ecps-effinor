@@ -30,8 +30,8 @@ const ThankYou = () => {
         <meta name="description" content="Votre demande d'éligibilité CEE a été envoyée avec succès. Notre équipe vous contactera sous 24h." />
       </Helmet>
 
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12">
-        <div className="container mx-auto px-4">
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto">
           <div className="max-w-3xl mx-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -60,20 +60,20 @@ const ThankYou = () => {
               </div>
 
               {ceePotential && (
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-200 rounded-lg p-6 mb-8">
+                <div className="bg-gradient-to-r from-secondary-50 to-green-50 border-2 border-secondary-200 rounded-lg p-6 mb-8">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4 text-center">
                     Estimation de votre potentiel CEE
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg p-4 shadow-sm text-center">
                       <p className="text-sm text-gray-600 mb-2">Potentiel LED</p>
-                      <p className="text-2xl font-bold text-[#116BAD]">
+                      <p className="text-2xl font-bold text-secondary-600">
                         {ceePotential.ledPotential.toLocaleString('fr-FR')} €
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-4 shadow-sm text-center">
                       <p className="text-sm text-gray-600 mb-2">Potentiel Chauffage</p>
-                      <p className="text-2xl font-bold text-[#116BAD]">
+                      <p className="text-2xl font-bold text-secondary-600">
                         {ceePotential.heatingPotential.toLocaleString('fr-FR')} €
                       </p>
                     </div>
@@ -116,14 +116,14 @@ const ThankYou = () => {
                 <h3 className="font-semibold text-gray-900 mb-4">Besoin d'aide ?</h3>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-gray-700">
-                    <Mail className="h-5 w-5 text-[#116BAD]" />
-                    <a href="mailto:contact@effinor.fr" className="hover:text-[#116BAD] transition-colors">
+                    <Mail className="h-5 w-5 text-secondary-600" />
+                    <a href="mailto:contact@effinor.fr" className="hover:text-secondary-600 transition-colors">
                       contact@effinor.fr
                     </a>
                   </div>
                   <div className="flex items-center gap-3 text-gray-700">
-                    <Phone className="h-5 w-5 text-[#116BAD]" />
-                    <a href="tel:+33123456789" className="hover:text-[#116BAD] transition-colors">
+                    <Phone className="h-5 w-5 text-secondary-600" />
+                    <a href="tel:+33123456789" className="hover:text-secondary-600 transition-colors">
                       +33 1 23 45 67 89
                     </a>
                   </div>
@@ -138,7 +138,7 @@ const ThankYou = () => {
                   </Button>
                 </Link>
                 <Link to="/prime-cee/eligibilite">
-                  <Button size="lg" className="w-full sm:w-auto bg-[#116BAD] hover:bg-[#0d5489]">
+                  <Button size="lg" className="w-full sm:w-auto bg-secondary-600 hover:bg-secondary-700">
                     <FileText className="mr-2 h-5 w-5" />
                     Nouvelle demande
                   </Button>

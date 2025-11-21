@@ -5,15 +5,15 @@ import { ArrowRight, Phone } from 'lucide-react';
 
 const FinalCTA = () => {
   return (
-    <section className="bg-gradient-to-r from-[var(--primary-800)] to-[var(--primary-900)] py-20 text-white">
-      <div className="container mx-auto px-4 text-center">
+    <section className="bg-primary-900 py-20 text-white">
+      <div className="container mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
             🚀 Prêt à réduire vos factures ?
           </h2>
           <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto">

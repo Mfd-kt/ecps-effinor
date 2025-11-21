@@ -11,7 +11,7 @@ const Step6AdditionalRemarks = ({ data, onChange, ceePotential }) => {
       </div>
 
       {ceePotential && (
-        <div className="card p-6 bg-gradient-to-r from-green-50 to-blue-50">
+        <div className="card p-6 bg-secondary-50">
           <div className="flex items-start gap-3">
             <Zap className="h-8 w-8 text-success flex-shrink-0" />
             <div className="flex-1">

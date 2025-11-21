@@ -44,15 +44,36 @@ const AdminLeads = () => {
 
     try {
       // First delete related notes
-      await supabase.from('leads_notes').delete().eq('lead_id', leadId);
+      const { error: notesError } = await supabase
+        .from('leads_notes')
+        .delete()
+        .eq('lead_id', leadId);
+      
+      // Check if notes deletion failed
+      if (notesError) {
+        throw new Error(`Erreur lors de la suppression des notes: ${notesError.message}`);
+      }
+      
       // Then delete the lead
-      const { error } = await supabase.from('leads').delete().eq('id', leadId);
-      if (error) throw error;
+      const { error: leadError } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', leadId);
+      
+      // Check if lead deletion failed
+      if (leadError) {
+        throw new Error(`Erreur lors de la suppression du lead: ${leadError.message}`);
+      }
 
       setLeads(prev => prev.filter(lead => lead.id !== leadId));
       toast({ title: "Succès", description: "Lead supprimé." });
     } catch (error) {
-      toast({ title: "Erreur", description: `Impossible de supprimer le lead: ${error.message}`, variant: "destructive" });
+      logger.error('Error deleting lead:', error);
+      toast({ 
+        title: "Erreur", 
+        description: `Impossible de supprimer le lead: ${error.message}`, 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -62,7 +83,7 @@ const AdminLeads = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Gestion des Leads</h1>
         <div className="bg-white p-6 rounded-lg shadow-md">
-          {loading ? <div className="text-center py-12"><Loader2 className="h-8 w-8 animate-spin inline-block text-[#116BAD]" /></div> : (
+          {loading ? <div className="text-center py-12"><Loader2 className="h-8 w-8 animate-spin inline-block text-secondary-600" /></div> : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">

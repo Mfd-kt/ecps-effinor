@@ -5,7 +5,9 @@ import { motion } from 'framer-motion';
 import { Trash2, Plus, Minus, ShoppingBag, Send, Loader2 } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
+import { sanitizeFormData } from '@/utils/sanitize';
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, clearCart, getTotalPrice } = useCart();
@@ -51,17 +53,21 @@ const Cart = () => {
 
     setIsSubmitting(true);
     try {
+      // Sanitize form data before insertion
+      const orderDataToInsert = {
+        nom_client: formData.name,
+        email: formData.email,
+        telephone: formData.phone,
+        societe: formData.company,
+        commentaire: formData.message,
+        produits: cart.map(item => ({ id: item.id, nom: item.nom, quantite: item.quantity })),
+        statut: 'Nouveau Devis'
+      };
+      const sanitizedOrderData = sanitizeFormData(orderDataToInsert);
+      
       const { data: orderData, error: orderError } = await supabase
         .from('commandes')
-        .insert([{
-          nom_client: formData.name,
-          email: formData.email,
-          telephone: formData.phone,
-          societe: formData.company,
-          commentaire: formData.message,
-          produits: cart.map(item => ({ id: item.id, nom: item.nom, quantite: item.quantity })),
-          statut: 'Nouveau Devis'
-        }])
+        .insert([sanitizedOrderData])
         .select('id')
         .single();
       
@@ -73,7 +79,7 @@ const Cart = () => {
       setFormData({ name: '', email: '', phone: '', company: '', message: '' });
 
     } catch (error) {
-      console.error('Error submitting order:', error);
+      logger.error('Error submitting order:', error);
       toast({ title: "Erreur lors de l'envoi", description: `Une erreur est survenue : ${error.message}`, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -84,7 +90,7 @@ const Cart = () => {
     return (
       <>
         <Helmet><title>Mon Panier | EFFINOR</title></Helmet>
-        <div className="container mx-auto px-4 py-12 pt-32 text-center">
+        <div className="container mx-auto py-12 pt-32 text-center">
             <ShoppingBag className="h-24 w-24 text-gray-300 mx-auto mb-6" />
             <h1 className="text-3xl font-bold mb-4">Votre panier est vide</h1>
             <p className="text-gray-600 mb-8">Découvrez nos solutions LED professionnelles</p>
@@ -97,13 +103,15 @@ const Cart = () => {
   return (
     <>
       <Helmet><title>Mon Panier | EFFINOR</title></Helmet>
-      <div className="bg-primary-800 text-white py-12 pt-32">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Mon Panier</h1>
-          <p className="text-xl text-primary-300">Finalisez votre demande de devis</p>
+      {/* Hero Section - Full Width Background */}
+      <div className="w-full bg-primary-900 text-white py-12 pt-32">
+        <div className="container mx-auto">
+          <h1 className="text-4xl sm:text-5xl md:text-5xl font-bold mb-4 text-white">Mon Panier</h1>
+          <p className="text-xl text-white/90">Finalisez votre demande de devis</p>
         </div>
       </div>
-      <div className="container mx-auto px-4 py-12">
+      {/* Main Content */}
+      <div className="container mx-auto py-12">
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="card p-6">

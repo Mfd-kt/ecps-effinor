@@ -27,7 +27,7 @@ const Shop = () => {
       </Helmet>
 
       <div className="bg-gray-50 py-12">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -41,7 +41,7 @@ const Shop = () => {
             <Button
               variant={selectedCategory === 'all' ? 'default' : 'outline'}
               onClick={() => setSelectedCategory('all')}
-              className={selectedCategory === 'all' ? 'bg-[#116BAD]' : ''}
+              className={selectedCategory === 'all' ? 'bg-secondary-600' : ''}
             >
               Tous les produits
             </Button>
@@ -50,14 +50,14 @@ const Shop = () => {
                 key={cat.id}
                 variant={selectedCategory === cat.id ? 'default' : 'outline'}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={selectedCategory === cat.id ? 'bg-[#116BAD]' : ''}
+                className={selectedCategory === cat.id ? 'bg-secondary-600' : ''}
               >
                 {cat.name}
               </Button>
             ))}
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {filteredProducts.map((product, index) => (
               <motion.div
                 key={product.id}
@@ -70,7 +70,7 @@ const Shop = () => {
                     <div className="aspect-video bg-gray-100 relative overflow-hidden">
                       <img className="w-full h-full object-cover" alt={product.name} src="https://images.unsplash.com/photo-1671376354106-d8d21e55dddd" />
                       {product.ceeEligible && (
-                        <Badge className="absolute top-3 right-3 bg-[#FFBA0B] text-black">
+                        <Badge className="absolute top-3 right-3 bg-accent-400 text-black">
                           Éligible CEE
                         </Badge>
                       )}
@@ -79,8 +79,8 @@ const Shop = () => {
                       <h3 className="text-lg font-bold text-gray-900 mb-2">{product.name}</h3>
                       <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold text-[#116BAD]">{product.price}</span>
-                        <Button className="bg-[#116BAD] hover:bg-[#0d5489]">
+                        <span className="text-xl font-bold text-secondary-600">{product.price}</span>
+                        <Button className="bg-secondary-600 hover:bg-secondary-700">
                           Voir détails
                         </Button>
                       </div>

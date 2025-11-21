@@ -21,14 +21,14 @@ export default function CGV() {
         <meta name="description" content="Conditions générales de vente de EFFINOR" />
       </Helmet>
 
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <div className="container mx-auto py-12 max-w-4xl">
         <h1 className="text-4xl font-bold mb-2">Conditions Générales de Vente</h1>
         <p className="text-gray-600 mb-8">Mise à jour: {formattedDate}</p>
 
         {/* Company Info */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-6">Informations sur l'Entreprise</h2>
-          <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500 space-y-2">
+          <div className="bg-secondary-50 p-6 rounded-lg border-l-4 border-secondary-500 space-y-2">
             <p><strong>Entreprise:</strong> ECPS</p>
             <p><strong>Nom commercial:</strong> EFFINOR Air-Energie-Lighting</p>
             <p><strong>RCS:</strong> 907 547 665 R.C.S. Créteil</p>
@@ -226,7 +226,7 @@ export default function CGV() {
           <div className="bg-gray-50 p-6 rounded-lg space-y-4">
             <p>
               Le traitement de vos données personnelles est régi par notre 
-              <Link to="/politique-confidentialite" className="text-blue-600 hover:underline"> Politique de Confidentialité</Link>.
+              <Link to="/politique-confidentialite" className="text-secondary-600 hover:underline"> Politique de Confidentialité</Link>.
             </p>
             <p>
               Nous vous recommandons de la consulter pour comprendre comment nous collectons, 
@@ -291,7 +291,7 @@ export default function CGV() {
         {/* Article 13 */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-6">13. Contact et Support</h2>
-          <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500 space-y-4">
+          <div className="bg-secondary-50 p-6 rounded-lg border-l-4 border-secondary-500 space-y-4">
             <p className="font-semibold">Pour toute question ou réclamation:</p>
             <div className="space-y-2">
               <p><strong>Email:</strong> contact@effinor.fr</p>

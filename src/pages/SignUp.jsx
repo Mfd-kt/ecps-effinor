@@ -130,13 +130,13 @@ const SignUp = () => {
               )}
 
               <div>
-                <Button type="submit" className="w-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-base py-3" disabled={loading}>
+                <Button type="submit" className="w-full bg-secondary-600 hover:bg-secondary-700 text-base py-3" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Créer mon compte'}
                 </Button>
               </div>
             </form>
             <div className="text-sm text-center mt-6">
-                <Link to="/admin/login" className="font-medium text-[#1E40AF] hover:underline">
+                <Link to="/admin/login" className="font-medium text-secondary-600 hover:underline">
                   Déjà un compte ? Se connecter
                 </Link>
               </div>

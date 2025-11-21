@@ -12,24 +12,26 @@ const PrimeCEE = () => {
         <meta name="description" content="Bénéficiez des Certificats d'Économies d'Énergie (CEE) pour financer vos luminaires LED. Notre équipe vous accompagne dans votre dossier." />
       </Helmet>
 
-      <div className="bg-primary-700 text-white py-12 pt-32">
-        <div className="container mx-auto px-4">
+      {/* Hero Section - Full Width Background */}
+      <div className="w-full bg-primary-900 text-white py-12 pt-32">
+        <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <Award className="h-16 w-16 mx-auto mb-4 text-secondary-400" />
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Prime Énergie CEE</h1>
-            <p className="text-xl text-primary-100 max-w-3xl mx-auto">
+            <Award className="h-16 w-16 mx-auto mb-4 text-secondary-500" />
+            <h1 className="text-4xl sm:text-5xl md:text-5xl font-bold mb-4 text-white">Prime Énergie CEE</h1>
+            <p className="text-xl text-white/90 max-w-3xl mx-auto">
               Financez jusqu'à 100% de votre installation LED grâce aux Certificats d'Économies d'Énergie
             </p>
           </motion.div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
+      {/* Main Content */}
+      <div className="container mx-auto py-12">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -57,7 +59,7 @@ const PrimeCEE = () => {
 
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Avantages de la Prime CEE</h3>
               
-              <div className="grid md:grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 {[
                   'Financement jusqu\'à 100% de votre projet',
                   'Réduction immédiate de vos factures d\'énergie',
@@ -67,7 +69,7 @@ const PrimeCEE = () => {
                   'Engagement environnemental reconnu'
                 ].map((benefit, index) => (
                   <div key={index} className="flex items-start gap-3">
-                    <CheckCircle className="h-6 w-6 text-primary-600 flex-shrink-0 mt-1" />
+                    <CheckCircle className="h-6 w-6 text-secondary-500 flex-shrink-0 mt-1" />
                     <span className="text-gray-700">{benefit}</span>
                   </div>
                 ))}
@@ -80,11 +82,11 @@ const PrimeCEE = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="bg-primary-700 rounded-lg shadow-xl p-8 text-center text-white"
+            className="bg-primary-900 rounded-lg shadow-xl p-8 text-center text-white"
           >
             <FileText className="h-16 w-16 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-4">Vérifiez votre éligibilité</h2>
-            <p className="text-xl mb-8 text-primary-100">
+            <h2 className="text-3xl font-bold mb-4 text-white">Vérifiez votre éligibilité</h2>
+            <p className="text-xl mb-8 text-white/90">
               Remplissez notre formulaire détaillé et obtenez une estimation personnalisée de vos aides CEE
             </p>
             <Link to="/formulaire-complet" className="btn-primary">

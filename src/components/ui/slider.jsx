@@ -13,13 +13,13 @@ const Slider = React.forwardRef(({ className, ...props }, ref) => (
     {...props}>
     <SliderPrimitive.Track
       className="relative h-2 w-full grow overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-      <SliderPrimitive.Range className="absolute h-full bg-[#116BAD] dark:bg-slate-50" />
+      <SliderPrimitive.Range className="absolute h-full bg-secondary-600 dark:bg-slate-50" />
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb
-      className="block h-5 w-5 rounded-full border-2 border-[#116BAD] bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-50 dark:bg-slate-950 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300" />
+      className="block h-5 w-5 rounded-full border-2 border-secondary-600 bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-50 dark:bg-slate-950 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300" />
     {props.defaultValue.length > 1 && (
       <SliderPrimitive.Thumb
-        className="block h-5 w-5 rounded-full border-2 border-[#116BAD] bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-50 dark:bg-slate-950 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300" />
+        className="block h-5 w-5 rounded-full border-2 border-secondary-600 bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:border-slate-50 dark:bg-slate-950 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300" />
     )}
   </SliderPrimitive.Root>
 ))

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Loader2, RefreshCw } from 'lucide-react';
+import { logger } from '@/utils/logger';
 import ProductCard from '@/components/ProductCard';
 
 const categoryFilters = [
@@ -23,7 +24,7 @@ const Boutique = () => {
   const loadProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
-    console.log("Attempting to connect to Supabase and load products...");
+    logger.log("Attempting to connect to Supabase and load products...");
 
     try {
       const { data, error: supabaseError } = await supabase
@@ -34,7 +35,7 @@ const Boutique = () => {
 
       if (supabaseError) throw supabaseError;
 
-      console.log(`Successfully loaded ${data.length} products.`);
+      logger.log(`Successfully loaded ${data.length} products.`);
       setAllProducts(data || []);
       // Initially display all products
       if (currentCategory === 'all') {
@@ -43,7 +44,7 @@ const Boutique = () => {
          setFilteredProducts(data.filter(p => p.categorie === currentCategory));
       }
     } catch (err) {
-      console.error("Error loading products:", err.message);
+      logger.error("Error loading products:", err.message);
       setError("Une erreur est survenue lors du chargement des produits.");
     } finally {
       setLoading(false);
@@ -51,20 +52,20 @@ const Boutique = () => {
   }, [currentCategory]);
 
   useEffect(() => {
-     console.log("Boutique component mounted. Supabase client is defined:", !!supabase);
+     logger.log("Boutique component mounted. Supabase client is defined:", !!supabase);
     loadProducts();
   }, [loadProducts]);
 
   const handleFilterCategory = (category) => {
-    console.log(`Filtering by category: ${category}`);
+    logger.log(`Filtering by category: ${category}`);
     setCurrentCategory(category);
     if (category === 'all') {
       setFilteredProducts(allProducts);
-      console.log(`Displaying all ${allProducts.length} products.`);
+      logger.log(`Displaying all ${allProducts.length} products.`);
     } else {
       const filtered = allProducts.filter(p => p.categorie === category);
       setFilteredProducts(filtered);
-      console.log(`Found ${filtered.length} products in category '${category}'.`);
+      logger.log(`Found ${filtered.length} products in category '${category}'.`);
     }
   };
 
@@ -99,7 +100,7 @@ const Boutique = () => {
       );
     }
     
-    console.log(`Displaying ${filteredProducts.length} products.`);
+    logger.log(`Displaying ${filteredProducts.length} products.`);
     return (
       <div className="products-grid">
         {filteredProducts.map((product) => (
@@ -117,7 +118,7 @@ const Boutique = () => {
       </Helmet>
 
       <section className="catalog-section">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1>Notre Catalogue</h1>
             <p className="subtitle">Solutions LED professionnelles haute performance</p>

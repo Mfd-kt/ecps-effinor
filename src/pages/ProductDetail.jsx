@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
 import { Loader2, Award, ShieldCheck, Phone, ArrowLeft, ShoppingCart, Download } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -55,7 +56,7 @@ const ProductDetail = () => {
         return;
       }
 
-      console.log(`Fetching product with slug: ${slug}`);
+      logger.log(`Fetching product with slug: ${slug}`);
       setLoading(true);
       setError(null);
 
@@ -74,11 +75,11 @@ const ProductDetail = () => {
           throw supabaseError;
         }
         
-        console.log("Product loaded successfully:", data);
+        logger.log("Product loaded successfully:", data);
         setProduct(data);
         setMainImage(data.image_1 || data.image_url);
       } catch (err) {
-        console.error("Error loading product:", err);
+        logger.error("Error loading product:", err);
         setError(err.message || "Une erreur est survenue lors du chargement du produit.");
       } finally {
         setLoading(false);

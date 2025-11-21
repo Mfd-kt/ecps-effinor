@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/utils/logger';
 import { Activity, Clock, Link as LinkIcon, Monitor, Globe, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -22,7 +23,7 @@ const AdminVisitors = () => {
       if (error) throw error;
       setVisitors(data);
     } catch (error) {
-      console.error('Error fetching visitors:', error);
+      logger.error('Error fetching visitors:', error);
       toast({
         title: "Erreur",
         description: `Impossible de charger les visiteurs: ${error.message}`,
@@ -47,7 +48,7 @@ const AdminVisitors = () => {
       )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') {
-          console.error('Failed to subscribe to visitors channel');
+          logger.error('Failed to subscribe to visitors channel');
         }
       });
 
@@ -66,8 +67,8 @@ const AdminVisitors = () => {
   const getStatusProps = (status) => {
     if (status === 'active') {
       return {
-        icon: <UserCheck className="h-5 w-5 text-green-500" />,
-        badge: <Badge className="bg-green-500 hover:bg-green-600">Actif</Badge>
+        icon: <UserCheck className="h-5 w-5 text-secondary-500" />,
+        badge: <Badge className="bg-secondary-500 hover:bg-secondary-600">Actif</Badge>
       };
     }
     return {
@@ -84,7 +85,7 @@ const AdminVisitors = () => {
       <div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Suivi des Visiteurs en Temps Réel</h1>
-          <div className="flex items-center gap-2 text-green-600 font-semibold">
+          <div className="flex items-center gap-2 text-secondary-600 font-semibold">
               <Activity className="h-5 w-5 animate-pulse" />
               <span>{visitors.filter(v => v.statut === 'active').length} en ligne</span>
           </div>

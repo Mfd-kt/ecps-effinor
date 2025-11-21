@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Helmet } from 'react-helmet';
+import { logger } from '@/utils/logger';
 
 const LoginDirect = () => {
   const [email, setEmail] = useState('koutmoufdi.pro@gmail.com');
@@ -11,7 +12,7 @@ const LoginDirect = () => {
   const navigate = useNavigate();
 
   const displayDebugInfo = useCallback(async () => {
-    console.log('Updating debug info...');
+    logger.log('Updating debug info...');
     const { data: { session } } = await supabase.auth.getSession();
     let lsData = {};
     try {
@@ -22,7 +23,7 @@ const LoginDirect = () => {
         user_name: localStorage.getItem('user_name'),
       };
     } catch (e) {
-      console.error("Could not access localStorage:", e);
+      logger.error("Could not access localStorage:", e);
     }
     
     const info = `
@@ -39,7 +40,7 @@ ${JSON.stringify(lsData, null, 2)}
   }, []);
 
   useEffect(() => {
-    console.log("LoginDirect page loaded.");
+    logger.log("LoginDirect page loaded.");
     displayDebugInfo();
     const interval = setInterval(displayDebugInfo, 5000);
     return () => clearInterval(interval);
@@ -62,7 +63,7 @@ ${JSON.stringify(lsData, null, 2)}
     }
 
     setResult({ type: 'loading', message: 'Tentative de connexion en cours...' });
-    console.log(`Login attempt with email: ${email}`);
+    logger.log(`Login attempt with email: ${email}`);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -71,12 +72,12 @@ ${JSON.stringify(lsData, null, 2)}
       });
 
       if (error) {
-        console.error('Authentication error:', error);
+        logger.error('Authentication error:', error);
         setResult({ type: 'error', message: `Erreur: ${error.message}` });
         return;
       }
 
-      console.log('Authentication response:', data);
+      logger.log('Authentication response:', data);
       const successMessage = `
         <p>✅ Connexion réussie !</p>
         <p><strong>User ID:</strong> ${data.user.id}</p>
@@ -98,7 +99,7 @@ ${JSON.stringify(lsData, null, 2)}
       }, 2000);
 
     } catch (e) {
-      console.error('Generic error:', e);
+      logger.error('Generic error:', e);
       setResult({ type: 'error', message: `Une erreur générique est survenue: ${e.message}` });
     }
   };

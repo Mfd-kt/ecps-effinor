@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '@/utils/logger';
 
 function getStorageValue(key, defaultValue) {
   if (typeof window !== "undefined") {
@@ -7,7 +8,7 @@ function getStorageValue(key, defaultValue) {
       const initial = saved !== null ? JSON.parse(saved) : defaultValue;
       return initial;
     } catch (error) {
-      console.error("Error parsing JSON from localStorage", error);
+      logger.error("Error parsing JSON from localStorage", error);
       return defaultValue;
     }
   }
@@ -23,7 +24,7 @@ export const useLocalStorage = (key, defaultValue) => {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
-      console.error("Error setting item to localStorage", error);
+      logger.error("Error setting item to localStorage", error);
     }
   }, [key, value]);
 

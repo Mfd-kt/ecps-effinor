@@ -34,23 +34,25 @@ const About = () => {
         <meta name="description" content="Découvrez EFFINOR, spécialiste des solutions LED industrielles et du financement CEE. Qualité, performance et accompagnement expert." />
       </Helmet>
 
-      <div className="bg-gradient-to-br from-[#116BAD] to-[#0a4d7a] text-white py-12">
-        <div className="container mx-auto px-4">
+      {/* Hero Section - Full Width Background */}
+      <div className="w-full bg-primary-900 text-white py-12 pt-32">
+        <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">À propos d'EFFINOR</h1>
-            <p className="text-xl text-blue-100 max-w-3xl mx-auto">
+            <h1 className="text-4xl sm:text-5xl md:text-5xl font-bold mb-4 text-white">À propos d'EFFINOR</h1>
+            <p className="text-xl text-white/90 max-w-3xl mx-auto">
               Votre partenaire de confiance pour l'éclairage LED professionnel
             </p>
           </motion.div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
+      {/* Main Content */}
+      <div className="container mx-auto py-12">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -88,7 +90,7 @@ const About = () => {
           >
             <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Nos valeurs</h2>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {values.map((value, index) => (
                 <motion.div
                   key={index}
@@ -98,7 +100,7 @@ const About = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow"
                 >
-                  <div className="w-12 h-12 bg-[#116BAD] rounded-lg flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 bg-secondary-600 rounded-lg flex items-center justify-center mb-4">
                     <value.icon className="h-6 w-6 text-white" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">{value.title}</h3>
@@ -133,7 +135,7 @@ const About = () => {
                 dimensionner précisément vos besoins et optimiser votre installation.
               </p>
 
-              <div className="bg-[#FFBA0B] bg-opacity-10 border-2 border-[#FFBA0B] rounded-lg p-6 mt-6">
+              <div className="bg-accent-400 bg-opacity-10 border-2 border-accent-400 rounded-lg p-6 mt-6">
                 <p className="font-semibold text-gray-900">
                   📍 Localisation : France / Europe
                 </p>

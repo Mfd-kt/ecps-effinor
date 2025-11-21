@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlusCircle, Edit, Trash2, Loader2, Copy, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
+import { sanitizeFormData } from '@/utils/sanitize';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,7 +111,7 @@ const AdminProducts = () => {
   const [filters, setFilters] = useState({ search: '', category: 'all', status: 'all' });
 
   const fetchProducts = useCallback(async () => {
-    console.log("Starting to load products...");
+    logger.log("Starting to load products...");
     setLoading(true);
     setError(null);
     try {
@@ -121,19 +123,19 @@ const AdminProducts = () => {
       if (dbError) throw dbError;
 
       setAllProducts(data || []);
-      console.log(`Successfully loaded ${data.length} products.`);
+      logger.log(`Successfully loaded ${data.length} products.`);
     } catch (err) {
       const errorMessage = `Chargement des produits échoué: ${err.message}`;
       setError(errorMessage);
       toast({ title: "Erreur de chargement", description: errorMessage, variant: "destructive" });
-      console.error(errorMessage);
+      logger.error(errorMessage);
     } finally {
       setLoading(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    console.log("AdminProducts component mounted.");
+    logger.log("AdminProducts component mounted.");
     fetchProducts();
   }, [fetchProducts]);
 
@@ -155,17 +157,17 @@ const AdminProducts = () => {
   }, [allProducts, filters]);
 
   const handleFilterChange = (filterName, value) => {
-    console.log(`Filter changed: ${filterName}=${value}`);
+    logger.log(`Filter changed: ${filterName}=${value}`);
     setFilters(prev => ({ ...prev, [filterName]: value }));
   };
 
   const handleEdit = (productId) => {
-    console.log(`Editing product ${productId}`);
+    logger.log(`Editing product ${productId}`);
     navigate(`/admin/products/${productId}/edit`);
   };
   
   const handleDuplicateProduct = async (productId) => {
-    console.log(`Duplicating product ${productId}`);
+    logger.log(`Duplicating product ${productId}`);
     const productToDuplicate = allProducts.find(p => p.id === productId);
     if (!productToDuplicate) return;
 
@@ -177,7 +179,9 @@ const AdminProducts = () => {
     newProductData.ordre = null;
 
     try {
-      const { error } = await supabase.from('products').insert([newProductData]);
+      // Sanitize data before insertion
+      const sanitizedProductData = sanitizeFormData(newProductData);
+      const { error } = await supabase.from('products').insert([sanitizedProductData]);
       if (error) throw error;
       toast({ title: "Produit dupliqué", description: `Le produit "${newProductData.nom}" a été créé.` });
       fetchProducts();
@@ -187,7 +191,7 @@ const AdminProducts = () => {
   };
 
   const handleToggleStatus = async (productId, currentStatus) => {
-    console.log(`Toggling status for product ${productId} from ${currentStatus}`);
+    logger.log(`Toggling status for product ${productId} from ${currentStatus}`);
     try {
       const { error } = await supabase.from('products').update({ actif: !currentStatus }).eq('id', productId);
       if (error) throw error;
@@ -199,7 +203,7 @@ const AdminProducts = () => {
   };
 
   const handleDelete = async (productId) => {
-    console.log(`Deleting product ${productId}`);
+    logger.log(`Deleting product ${productId}`);
     try {
       const { error } = await supabase.from('products').delete().eq('id', productId);
       if (error) throw error;
@@ -214,7 +218,7 @@ const AdminProducts = () => {
     if (loading) {
       return (
         <div className="loading-state flex flex-col items-center justify-center py-20 col-span-full text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
+            <Loader2 className="h-12 w-12 animate-spin text-secondary-600 mb-4" />
             <p className="text-gray-600">Chargement des produits...</p>
         </div>
       );

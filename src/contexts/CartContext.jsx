@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { logger } from '@/utils/logger';
 
 const CartContext = createContext();
 
@@ -20,7 +21,7 @@ export const CartProvider = ({ children }) => {
         setCart(JSON.parse(savedCart));
       }
     } catch (error) {
-      console.error("Could not parse cart from localStorage", error);
+      logger.error("Could not parse cart from localStorage", error);
       setCart([]);
     }
   }, []);

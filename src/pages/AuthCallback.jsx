@@ -105,7 +105,7 @@ export default function AuthCallback() {
   if (phase === 'exchanging') {
     return (
         <div className="flex flex-col items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-[#116BAD] mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-secondary-600 mb-4" />
           <p className="text-gray-600">Finalisation de la connexion...</p>
         </div>
     );
@@ -134,7 +134,7 @@ export default function AuthCallback() {
               required
             />
             {error && <p className="text-red-600 text-sm">{error}</p>}
-            <button className="w-full bg-[#116BAD] text-white rounded-lg px-4 py-3 font-semibold hover:bg-[#0E4C8A] transition-colors">
+            <button className="w-full bg-secondary-600 text-white rounded-lg px-4 py-3 font-semibold hover:bg-secondary-700 transition-colors">
                 Valider et me connecter
             </button>
           </form>
@@ -149,7 +149,7 @@ export default function AuthCallback() {
         <div className="max-w-md w-full mx-auto p-8 bg-white rounded-2xl shadow-xl text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Lien invalide ou expiré</h1>
           <p className="mb-6 text-gray-700">{error}</p>
-          <a className="text-[#116BAD] underline font-semibold" href="/admin/login">
+          <a className="text-secondary-600 underline font-semibold" href="/admin/login">
             Retour à la connexion
           </a>
         </div>
@@ -159,7 +159,7 @@ export default function AuthCallback() {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen">
-      <Loader2 className="h-8 w-8 animate-spin text-[#116BAD] mb-4" />
+      <Loader2 className="h-8 w-8 animate-spin text-secondary-600 mb-4" />
       <p className="text-gray-600">Redirection...</p>
     </div>
   );

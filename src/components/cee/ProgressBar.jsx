@@ -11,13 +11,13 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
         <span className="text-sm font-medium text-gray-700">
           Étape {currentStep} sur {totalSteps}
         </span>
-        <span className="text-sm font-medium text-primary-600">
+        <span className="text-sm font-medium text-secondary-600">
           {Math.round(progress)}%
         </span>
       </div>
       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
         <motion.div
-          className="bg-primary-600 h-full rounded-full"
+          className="bg-secondary-500 h-full rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -31,7 +31,7 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
                 step < currentStep
                   ? 'bg-success text-white'
                   : step === currentStep
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-secondary-500 text-white'
                   : 'bg-gray-300 text-gray-600'
               }`}
             >

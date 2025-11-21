@@ -20,7 +20,7 @@ export default function PolitiqueConfidentialite() {
         <meta name="description" content="Politique de confidentialité et protection des données personnelles de EFFINOR" />
       </Helmet>
 
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <div className="container mx-auto py-12 max-w-4xl">
         <h1 className="text-4xl font-bold mb-2">Politique de Confidentialité</h1>
         <p className="text-gray-600 mb-8">Mise à jour: {formattedDate}</p>
 
@@ -39,7 +39,7 @@ export default function PolitiqueConfidentialite() {
               Général sur la Protection des Données (RGPD) et à la loi française relative à 
               la protection des données personnelles.
             </p>
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mt-4">
+            <div className="bg-secondary-50 border-l-4 border-secondary-500 p-4 mt-4">
               <p className="font-semibold">Responsable du traitement des données:</p>
               <p>ECPS - EFFINOR Air-Energie-Lighting</p>
               <p>1 Avenue de l'Europe 94320 Thiais Tour europa</p>
@@ -289,7 +289,7 @@ export default function PolitiqueConfidentialite() {
         {/* Contact */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-6">14. Nous Contacter</h2>
-          <div className="bg-blue-50 p-6 rounded-lg space-y-4 border-l-4 border-blue-500">
+          <div className="bg-secondary-50 p-6 rounded-lg space-y-4 border-l-4 border-secondary-500">
             <p className="font-semibold">Pour toute question concernant cette politique:</p>
             <div className="space-y-2">
               <p><strong>Email:</strong> contact@effinor.fr</p>

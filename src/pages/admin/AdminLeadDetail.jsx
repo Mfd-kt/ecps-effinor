@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient'; // Changed import
+import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button.jsx';
 import { Input } from '@/components/ui/input.jsx';
@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
 import { Loader2, ArrowLeft, Trash2, User, Mail, Phone, Building, Save, Info, MessageSquare, Clock, Edit2 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { logger } from '@/utils/logger';
+import { sanitizeFormData } from '@/utils/sanitize';
 
 const statusConfig = {
   'Nouveau': { variant: 'default', color: 'bg-blue-500' },
@@ -146,7 +148,10 @@ const AdminLeadDetail = () => {
         updated_by: user?.id ?? null
       };
 
-      const { error } = await supabase.from('leads').update(updatePayload).eq('id', id).select().single();
+      // Sanitize data before update
+      const sanitizedUpdatePayload = sanitizeFormData(updatePayload);
+
+      const { error } = await supabase.from('leads').update(sanitizedUpdatePayload).eq('id', id).select().single();
       if (error) throw error;
       toast({ title: "Mise à jour", description: `Le champ '${name}' a été mis à jour.` });
       fetchData(); // Refetch all data to update timeline
@@ -165,7 +170,10 @@ const AdminLeadDetail = () => {
             updated_by: user?.id ?? null
         };
 
-        const { error } = await supabase.from('leads').update(updatePayload).eq('id', id);
+        // Sanitize data before update
+        const sanitizedUpdatePayload = sanitizeFormData(updatePayload);
+
+        const { error } = await supabase.from('leads').update(sanitizedUpdatePayload).eq('id', id);
         if (error) throw error;
         toast({ title: "Sauvegardé", description: `Le champ a été mis à jour.`});
         fetchData();
@@ -188,7 +196,7 @@ const AdminLeadDetail = () => {
       toast({ title: 'Note ajoutée !' });
       fetchData();
     } catch (error) {
-      console.error('addNote error:', error);
+      logger.error('addNote error:', error);
       toast({ title: "Erreur", description: `Impossible d'ajouter la note: ${error.message}`, variant: "destructive" });
     }
   };
@@ -196,21 +204,46 @@ const AdminLeadDetail = () => {
   const handleDeleteLead = async () => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce lead ? Cette action est irréversible.")) return;
     try {
-        await supabase.from('leads_notes').delete().eq('lead_id', id);
-        await supabase.from('leads').delete().eq('id', id);
-        toast({ title: "Lead supprimé" });
+        // First delete related notes
+        const { error: notesError } = await supabase
+          .from('leads_notes')
+          .delete()
+          .eq('lead_id', id);
+        
+        // Check if notes deletion failed
+        if (notesError) {
+          throw new Error(`Erreur lors de la suppression des notes: ${notesError.message}`);
+        }
+        
+        // Then delete the lead
+        const { error: leadError } = await supabase
+          .from('leads')
+          .delete()
+          .eq('id', id);
+        
+        // Check if lead deletion failed
+        if (leadError) {
+          throw new Error(`Erreur lors de la suppression du lead: ${leadError.message}`);
+        }
+        
+        toast({ title: "Lead supprimé", description: "Le lead a été supprimé avec succès." });
         navigate('/admin/leads');
     } catch(error) {
-        toast({ title: "Erreur", description: "Impossible de supprimer le lead.", variant: "destructive" });
+        logger.error('Error deleting lead:', error);
+        toast({ 
+          title: "Erreur", 
+          description: `Impossible de supprimer le lead: ${error.message}`, 
+          variant: "destructive" 
+        });
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-[#116BAD]" /></div>;
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-secondary-600" /></div>;
   }
   
   if (!lead) {
-    return <div className="text-center p-10">Lead non trouvé. <Link to="/admin/leads" className="text-blue-600">Retour à la liste</Link></div>;
+    return <div className="text-center p-10">Lead non trouvé. <Link to="/admin/leads" className="text-secondary-600">Retour à la liste</Link></div>;
   }
 
   return (
@@ -312,7 +345,7 @@ const AdminLeadDetail = () => {
             <h2 className="text-xl font-semibold mb-4">Ajouter une note de suivi</h2>
             <div className="space-y-4">
                 <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Ajouter une nouvelle note..." />
-                <Button onClick={handleAddNote} disabled={!newNote.trim()} className="w-full bg-[#0E4C8A] hover:bg-[#0b3a6d]">Ajouter la note</Button>
+                <Button onClick={handleAddNote} disabled={!newNote.trim()} className="w-full bg-secondary-600 hover:bg-secondary-700">Ajouter la note</Button>
             </div>
         </div>
       </div>

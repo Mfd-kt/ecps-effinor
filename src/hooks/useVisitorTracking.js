@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext'; // Utiliser le contexte d'authentification
+import { logger } from '@/utils/logger';
 
 let sessionStartTime = null;
 let visitorId = null; // Store the visitor ID for the session
@@ -19,7 +20,7 @@ export const useVisitorTracking = () => {
       const data = await response.json();
       return data.ip;
     } catch (error) {
-      console.error("Could not fetch IP address:", error);
+      logger.error("Could not fetch IP address:", error);
       return null;
     }
   };
@@ -44,7 +45,7 @@ export const useVisitorTracking = () => {
       .single();
 
     if (error) {
-      console.error("Error starting visitor session:", error);
+      logger.error("Error starting visitor session:", error);
     } else if (data) {
       visitorId = data.id;
     }
@@ -66,7 +67,7 @@ export const useVisitorTracking = () => {
       .eq('id', visitorId);
 
     if (error) {
-      console.error("Error updating visitor session:", error);
+      logger.error("Error updating visitor session:", error);
     }
     isTrackingRef.current = false;
   };

@@ -77,7 +77,7 @@ const Home = () => {
       </section>
 
       <motion.section variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl mb-4 text-gray-800">Nos Solutions CEE</h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
@@ -106,7 +106,7 @@ const Home = () => {
       </motion.section>
 
       <motion.section variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} className="py-20 bg-white">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl mb-4 text-gray-800">Pourquoi choisir EFFINOR ?</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
