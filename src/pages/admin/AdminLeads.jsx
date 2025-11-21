@@ -41,7 +41,11 @@ const AdminLeads = () => {
       setTotalCount(count || 0);
     } catch (error) {
       logger.error('Error fetching leads:', error);
-      toast({ title: "Erreur", description: `Chargement des leads échoué: ${error.message}`, variant: "destructive" });
+      toast({ 
+        title: "Impossible de charger les leads", 
+        description: "Vérifiez votre connexion internet et réessayez. Si le problème persiste, contactez le support technique.",
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
@@ -61,7 +65,7 @@ const AdminLeads = () => {
     try {
       // First delete related notes
       const { error: notesError } = await supabase
-        .from('leads_notes')
+        .from('notes_internes')
         .delete()
         .eq('lead_id', leadId);
       
@@ -87,8 +91,8 @@ const AdminLeads = () => {
     } catch (error) {
       logger.error('Error deleting lead:', error);
       toast({ 
-        title: "Erreur", 
-        description: `Impossible de supprimer le lead: ${error.message}`, 
+        title: "Impossible de supprimer le lead", 
+        description: "Une erreur est survenue lors de la suppression. Veuillez réessayer. Si le problème persiste, contactez le support technique.",
         variant: "destructive" 
       });
     }

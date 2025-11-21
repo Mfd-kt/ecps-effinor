@@ -1,10 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { Award, CheckCircle, Send, FileText } from 'lucide-react';
+import { Award, CheckCircle, Send, FileText, Loader2, Link as LinkIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
+import { logger } from '@/utils/logger';
+import { Badge } from '@/components/ui/badge';
 
 const PrimeCEE = () => {
+  const [fiches, setFiches] = useState([]);
+  const [secteurFilter, setSecteurFilter] = useState('Tous');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+  // Construct file URL helper
+  const getFileUrl = (filePath) => {
+    if (!filePath) return null;
+    if (filePath.startsWith('http')) return filePath;
+    if (filePath.startsWith('/')) return filePath;
+    if (supabaseUrl) {
+      return `${supabaseUrl}/storage/v1/object/public/effinor-assets/${filePath}`;
+    }
+    return filePath;
+  };
+
+  useEffect(() => {
+    const fetchFiches = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        logger.log('📦 Chargement des fiches CEE...');
+        
+        let query = supabase
+          .from('fiches_cee')
+          .select('*')
+          .eq('actif', true)
+          .order('ordre', { ascending: true });
+
+        if (secteurFilter !== 'Tous' && secteurFilter !== 'Tous secteurs') {
+          query = query.eq('secteur', secteurFilter);
+        }
+
+        const { data, error: fetchError } = await query;
+
+        if (fetchError) {
+          // If table doesn't exist, show empty state
+          if (fetchError.message?.includes('relation') || fetchError.message?.includes('does not exist')) {
+            logger.warn('⚠️ Table fiches_cee n\'existe pas encore');
+            setFiches([]);
+            setLoading(false);
+            return;
+          }
+          throw fetchError;
+        }
+
+        logger.log(`✅ ${data.length} fiches CEE chargées`);
+        setFiches(data || []);
+
+      } catch (err) {
+        logger.error('❌ Erreur chargement fiches CEE:', err);
+        setError(err.message);
+        setFiches([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFiches();
+  }, [secteurFilter]);
+
+  const secteurs = ['Tous', 'Tertiaire', 'Industrie', 'Résidentiel', 'Agriculture'];
+
   return (
     <>
       <Helmet>
@@ -96,6 +165,119 @@ const PrimeCEE = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Fiches CEE Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              Nos Fiches CEE Disponibles
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Découvrez toutes les opérations éligibles aux Certificats d'Économies d'Énergie
+            </p>
+          </motion.div>
+
+          {/* Filter */}
+          <div className="flex justify-center mb-8">
+            <select
+              value={secteurFilter}
+              onChange={(e) => setSecteurFilter(e.target.value)}
+              className="px-6 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-all"
+            >
+              {secteurs.map(secteur => (
+                <option key={secteur} value={secteur === 'Tous' ? 'Tous' : secteur}>
+                  {secteur === 'Tous' ? 'Tous les secteurs' : secteur}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="h-12 w-12 animate-spin text-secondary-500" />
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !loading && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center max-w-2xl mx-auto">
+              <p className="text-yellow-800">
+                ⚠️ Impossible de charger les fiches CEE pour le moment. Veuillez réessayer plus tard.
+              </p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && fiches.length === 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center max-w-2xl mx-auto">
+              <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune fiche CEE disponible</h3>
+              <p className="text-gray-600">
+                Les fiches CEE seront bientôt disponibles. Consultez régulièrement cette page pour découvrir les nouvelles fiches.
+              </p>
+            </div>
+          )}
+
+          {/* Grid of fiches */}
+          {!loading && fiches.length > 0 && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {fiches.map((fiche) => (
+                <motion.div
+                  key={fiche.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Link
+                    to={`/prime-cee/${fiche.slug}`}
+                    className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 block h-full"
+                  >
+                    {fiche.image && (
+                      <div className="h-48 overflow-hidden">
+                        <img
+                          src={getFileUrl(fiche.image)}
+                          alt={fiche.titre}
+                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          onError={(e) => {
+                            logger.warn(`Failed to load image for fiche ${fiche.id}:`, fiche.image);
+                            e.target.src = 'https://via.placeholder.com/400x300?text=Image+non+disponible';
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="p-6">
+                      <Badge className="bg-secondary-100 text-secondary-700 text-xs font-mono mb-3">
+                        {fiche.numero}
+                      </Badge>
+                      <h3 className="text-xl font-semibold mb-2 text-gray-900 line-clamp-2">{fiche.titre}</h3>
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{fiche.description}</p>
+                      <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <Badge variant="outline" className="text-xs">
+                          {fiche.secteur}
+                        </Badge>
+                        {fiche.montant_cee && (
+                          <span className="text-secondary-600 font-bold text-lg">
+                            {fiche.montant_cee} {fiche.unite || '€/unité'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </>
   );
 };

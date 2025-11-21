@@ -74,7 +74,12 @@ const AdminUserForm = () => {
         setFormData(userData);
         setInitialData(userData);
     } catch (error) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+        logger.error('Error fetching user:', error);
+        toast({ 
+          title: "Impossible de charger l'utilisateur", 
+          description: "Une erreur est survenue lors du chargement des données. Veuillez réessayer ou contacter le support technique.",
+          variant: "destructive" 
+        });
         navigate('/admin/users');
     } finally {
         setPageLoading(false);
@@ -173,8 +178,8 @@ const AdminUserForm = () => {
     } catch (error) {
       logger.error('❌ Erreur inattendue:', error);
       toast({ 
-        title: "Erreur", 
-        description: `Une erreur est survenue : ${error.message}`, 
+        title: "Impossible de créer le profil", 
+        description: "Une erreur est survenue lors de la création du profil. Vérifiez que tous les champs sont correctement remplis et réessayez. Si le problème persiste, contactez le support technique.",
         variant: "destructive" 
       });
     } finally {
@@ -202,7 +207,12 @@ const AdminUserForm = () => {
           toast({ title: "Succès", description: "Utilisateur mis à jour." });
           fetchUser();
       } catch (error) {
-          toast({ title: "Erreur", description: error.message, variant: "destructive" });
+          logger.error('Error updating user:', error);
+          toast({ 
+            title: "Impossible de mettre à jour l'utilisateur", 
+            description: "Une erreur est survenue lors de la mise à jour. Vérifiez que tous les champs sont correctement remplis et réessayez.",
+            variant: "destructive" 
+          });
       } finally {
           setLoading(false);
       }

@@ -35,8 +35,30 @@ const ProductCard = ({ product }) => {
     >
       <div className="product-image">
         <img 
-          src={product.image_url || "https://placehold.co/600x400/e2e8f0/e2e8f0?text=Image"} 
-          alt={`Image pour ${product.nom}`} 
+          src={(() => {
+            // Try multiple image sources
+            let imageUrl = product.image_url || product.image_1;
+            
+            // If image_1 is just a filename, construct full URL
+            if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+              const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+              if (supabaseUrl) {
+                imageUrl = `${supabaseUrl}/storage/v1/object/public/effinor-assets/${imageUrl}`;
+              }
+            }
+            
+            // Log for debugging
+            if (process.env.NODE_ENV === 'development') {
+              logger.log(`Product ${product.id} (${product.nom}) image URL:`, imageUrl || 'NO IMAGE');
+            }
+            
+            return imageUrl || "https://placehold.co/600x400/e2e8f0/e2e8f0?text=Image";
+          })()} 
+          alt={`Image pour ${product.nom}`}
+          onError={(e) => {
+            logger.warn(`Failed to load image for product ${product.id}:`, product.image_url || product.image_1);
+            e.target.src = "https://placehold.co/600x400/e2e8f0/e2e8f0?text=Image";
+          }}
         />
         {product.prime_cee && <div className="badge-prime">Prime CEE</div>}
       </div>

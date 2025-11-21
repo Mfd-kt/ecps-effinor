@@ -12,6 +12,7 @@ import { Loader2, ArrowLeft, Trash2, User, Mail, Phone, Building, Save, Info, Me
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { logger } from '@/utils/logger';
 import { sanitizeFormData } from '@/utils/sanitize';
+import NotesTimeline from '@/components/NotesTimeline';
 
 const statusConfig = {
   'Nouveau': { variant: 'default', color: 'bg-blue-500' },
@@ -183,12 +184,18 @@ const AdminLeadDetail = () => {
   };
 
 
+  // Note: handleAddNote is deprecated - NotesTimeline component handles notes now
+  // Keeping for backward compatibility but should not be used
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     try {
       const { data, error } = await supabase
-        .from('leads_notes')
-        .insert([{ lead_id: id, note: newNote.trim(), utilisateur_id: authUser?.id }])
+        .from('notes_internes')
+        .insert([{ 
+          lead_id: id, 
+          note: newNote.trim(), 
+          auteur: profile?.full_name || profile?.email || authUser?.email || 'Admin'
+        }])
         .select()
         .single();
       if (error) throw error;
@@ -206,7 +213,7 @@ const AdminLeadDetail = () => {
     try {
         // First delete related notes
         const { error: notesError } = await supabase
-          .from('leads_notes')
+          .from('notes_internes')
           .delete()
           .eq('lead_id', id);
         
@@ -340,14 +347,16 @@ const AdminLeadDetail = () => {
             </div>
         </div>
 
-        {/* Suivi Commercial (Notes input) - Full Width at bottom */}
-        <div className="bg-white p-6 rounded-lg shadow mt-6">
-            <h2 className="text-xl font-semibold mb-4">Ajouter une note de suivi</h2>
-            <div className="space-y-4">
-                <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Ajouter une nouvelle note..." />
-                <Button onClick={handleAddNote} disabled={!newNote.trim()} className="w-full bg-secondary-600 hover:bg-secondary-700">Ajouter la note</Button>
-            </div>
-        </div>
+        {/* Notes Timeline Section - Full Width at bottom */}
+        {lead && (
+          <div className="mt-6">
+            <NotesTimeline 
+              leadId={lead.id}
+              currentUser={profile?.full_name || profile?.email || user?.email || 'Admin'}
+              title="Notes Internes"
+            />
+          </div>
+        )}
       </div>
     </>
   );

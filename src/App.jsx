@@ -8,6 +8,7 @@ import Boutique from '@/pages/Boutique';
 import ProductDetail from '@/pages/ProductDetail';
 import Cart from '@/pages/Cart';
 import PrimeCEE from '@/pages/PrimeCEE';
+import FicheCEEDetail from '@/pages/FicheCEEDetail';
 import CEEEligibilityForm from '@/pages/CEEEligibilityForm';
 import ThankYou from '@/pages/ThankYou';
 import About from '@/pages/About';
@@ -21,7 +22,10 @@ import AdminLogin from '@/pages/admin/AdminLogin';
 import AdminProducts from '@/pages/admin/AdminProducts';
 import AdminProductNew from '@/pages/admin/AdminProductNew';
 import AdminProductEdit from '@/pages/admin/AdminProductEdit';
+import AdminCategories from '@/pages/admin/AdminCategories';
+import AdminFichesCEE from '@/pages/admin/AdminFichesCEE';
 import AdminOrders from '@/pages/admin/AdminOrders';
+import AdminOrderDetail from '@/pages/admin/AdminOrderDetail';
 import AdminUsers from '@/pages/admin/AdminUsers';
 import AdminUserForm from '@/pages/admin/AdminUserForm';
 import AdminVisitors from '@/pages/admin/AdminVisitors';
@@ -89,7 +93,10 @@ function App() {
                   <Route path="/products" element={<AdminProducts />} />
                   <Route path="/products/new" element={<AdminProductNew />} />
                   <Route path="/products/:id/edit" element={<AdminProductEdit />} />
+                  <Route path="/categories" element={<AdminCategories />} />
+                  <Route path="/fiches-cee" element={<AdminFichesCEE />} />
                   <Route path="/orders" element={<AdminOrders />} />
+                  <Route path="/orders/:id" element={<AdminOrderDetail />} />
                   <Route path="/users" element={<AdminUsers />} />
                   <Route path="/users/new" element={<AdminUserForm />} />
                   <Route path="/users/:id" element={<AdminUserForm />} />
@@ -111,6 +118,7 @@ function App() {
                 <Route path="/produit/:slug" element={<ProductDetail />} />
                 <Route path="/panier" element={<Cart />} />
                 <Route path="/prime-cee" element={<PrimeCEE />} />
+                <Route path="/prime-cee/:slug" element={<FicheCEEDetail />} />
                 <Route path="/formulaire-complet" element={<CEEEligibilityForm />} />
                 <Route path="/merci" element={<ThankYou />} />
                 <Route path="/a-propos" element={<About />} />

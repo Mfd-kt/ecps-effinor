@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Package, ShoppingCart, Users, LogOut, Activity, FileText } from 'lucide-react';
+import { Home, Package, ShoppingCart, Users, LogOut, Activity, FileText, FolderOpen, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +37,8 @@ const AdminSidebar = () => {
   const navLinks = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: Home },
     { href: '/admin/products', label: 'Produits', icon: Package },
+    { href: '/admin/categories', label: 'Catégories', icon: FolderOpen },
+    { href: '/admin/fiches-cee', label: 'Fiches CEE', icon: FileCheck },
     { href: '/admin/orders', label: 'Commandes', icon: ShoppingCart },
     { href: '/admin/leads', label: 'Leads', icon: FileText },
     { href: '/admin/users', label: 'Utilisateurs', icon: Users },

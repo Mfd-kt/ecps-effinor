@@ -6,20 +6,57 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { logger } from '@/utils/logger';
 import ProductCard from '@/components/ProductCard';
 
-const categoryFilters = [
-  { id: 'all', name: 'Tous les produits' },
-  { id: 'luminaires_industriels', name: 'Luminaires industriels' },
-  { id: 'eclairage_exterieur', name: 'Éclairage extérieur' },
-  { id: 'eclairage_etanche', name: 'Éclairage étanche' },
-  { id: 'accessoires', name: 'Accessoires' },
-];
-
 const Boutique = () => {
   const [allProducts, setAllProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [currentCategory, setCurrentCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Load categories from database
+  const loadCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    try {
+      logger.log('📦 Chargement des catégories...');
+      const { data, error: categoriesError } = await supabase
+        .from('categories')
+        .select('id, nom, slug, ordre')
+        .eq('actif', true)
+        .order('ordre', { ascending: true });
+
+      if (categoriesError) {
+        // If categories table doesn't exist, use fallback
+        if (categoriesError.message?.includes('relation') || categoriesError.message?.includes('does not exist')) {
+          logger.warn('Table categories n\'existe pas. Utilisation du fallback.');
+          // Fallback to hardcoded categories
+          setCategories([
+            { id: 'luminaires_industriels', nom: 'Luminaires industriels', slug: 'luminaires_industriels', ordre: 0 },
+            { id: 'eclairage_exterieur', nom: 'Éclairage extérieur', slug: 'eclairage_exterieur', ordre: 1 },
+            { id: 'eclairage_etanche', nom: 'Éclairage étanche', slug: 'eclairage_etanche', ordre: 2 },
+            { id: 'accessoires', nom: 'Accessoires', slug: 'accessoires', ordre: 3 },
+          ]);
+        } else {
+          throw categoriesError;
+        }
+      } else {
+        logger.log(`✅ ${data.length} catégories chargées`);
+        setCategories(data || []);
+      }
+    } catch (err) {
+      logger.error('❌ Erreur chargement catégories:', err);
+      // Fallback to hardcoded categories on error
+      setCategories([
+        { id: 'luminaires_industriels', nom: 'Luminaires industriels', slug: 'luminaires_industriels', ordre: 0 },
+        { id: 'eclairage_exterieur', nom: 'Éclairage extérieur', slug: 'eclairage_exterieur', ordre: 1 },
+        { id: 'eclairage_etanche', nom: 'Éclairage étanche', slug: 'eclairage_etanche', ordre: 2 },
+        { id: 'accessoires', nom: 'Accessoires', slug: 'accessoires', ordre: 3 },
+      ]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -29,44 +66,81 @@ const Boutique = () => {
     try {
       const { data, error: supabaseError } = await supabase
         .from('products')
-        .select('id, nom, description, prix, prix_promo, image_1, slug, actif, categorie, ordre')
+        .select('id, nom, description, prix, image_1, image_url, slug, actif, categorie, categorie_id, ordre')
         .eq('actif', true)
         .order('ordre', { ascending: true });
 
       if (supabaseError) throw supabaseError;
 
       logger.log(`Successfully loaded ${data.length} products.`);
-      setAllProducts(data || []);
-      // Initially display all products
-      if (currentCategory === 'all') {
-         setFilteredProducts(data || []);
-      } else {
-         setFilteredProducts(data.filter(p => p.categorie === currentCategory));
+      
+      // Log image URLs for debugging
+      if (data && data.length > 0) {
+        logger.log('Sample product images:', data.slice(0, 3).map(p => ({
+          id: p.id,
+          nom: p.nom,
+          image_url: p.image_url,
+          image_1: p.image_1
+        })));
       }
+      
+      setAllProducts(data || []);
     } catch (err) {
       logger.error("Error loading products:", err.message);
       setError("Une erreur est survenue lors du chargement des produits.");
     } finally {
       setLoading(false);
     }
-  }, [currentCategory]);
+  }, []);
+
+  // Apply category filter to products
+  const applyCategoryFilter = useCallback((products, category) => {
+    if (category === 'all') {
+      setFilteredProducts(products);
+      logger.log(`Displaying all ${products.length} products.`);
+    } else {
+      // Filter by categorie_id (UUID) or categorie (slug) for backward compatibility
+      const filtered = products.filter(p => {
+        // Try to match by categorie_id first (new system - UUID)
+        if (p.categorie_id && category && typeof category === 'string') {
+          // Check if category is a UUID (36 chars) - new system
+          if (category.length === 36) {
+            return p.categorie_id === category;
+          }
+        }
+        // Fallback to categorie slug (old system)
+        // Also check if category matches slug in categories array
+        const categoryObj = categories.find(c => c.id === category || c.slug === category);
+        if (categoryObj) {
+          // If we have categorie_id, match by it, otherwise match by slug
+          if (p.categorie_id) {
+            return p.categorie_id === categoryObj.id;
+          }
+          return p.categorie === categoryObj.slug || p.categorie === category;
+        }
+        return p.categorie === category;
+      });
+      setFilteredProducts(filtered);
+      logger.log(`Found ${filtered.length} products in category '${category}'.`);
+    }
+  }, [categories]);
 
   useEffect(() => {
-     logger.log("Boutique component mounted. Supabase client is defined:", !!supabase);
+    logger.log("Boutique component mounted. Supabase client is defined:", !!supabase);
+    loadCategories();
     loadProducts();
-  }, [loadProducts]);
+  }, [loadCategories, loadProducts]);
+
+  // Apply filter when products or category changes
+  useEffect(() => {
+    if (allProducts.length > 0) {
+      applyCategoryFilter(allProducts, currentCategory);
+    }
+  }, [currentCategory, allProducts, applyCategoryFilter]);
 
   const handleFilterCategory = (category) => {
     logger.log(`Filtering by category: ${category}`);
     setCurrentCategory(category);
-    if (category === 'all') {
-      setFilteredProducts(allProducts);
-      logger.log(`Displaying all ${allProducts.length} products.`);
-    } else {
-      const filtered = allProducts.filter(p => p.categorie === category);
-      setFilteredProducts(filtered);
-      logger.log(`Found ${filtered.length} products in category '${category}'.`);
-    }
   };
 
   const renderContent = () => {
@@ -125,15 +199,28 @@ const Boutique = () => {
           </motion.div>
           
           <div className="category-filters">
-            {categoryFilters.map(filter => (
+            <button 
+              key="all"
+              className={`category-btn ${currentCategory === 'all' ? 'active' : ''}`}
+              onClick={() => handleFilterCategory('all')}
+            >
+              Tous les produits
+            </button>
+            {!categoriesLoading && categories.map(category => (
               <button 
-                key={filter.id}
-                className={`category-btn ${currentCategory === filter.id ? 'active' : ''}`}
-                onClick={() => handleFilterCategory(filter.id)}
+                key={category.id}
+                className={`category-btn ${currentCategory === category.id || currentCategory === category.slug ? 'active' : ''}`}
+                onClick={() => handleFilterCategory(category.id)}
               >
-                {filter.name}
+                {category.nom}
               </button>
             ))}
+            {categoriesLoading && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Chargement des catégories...</span>
+              </div>
+            )}
           </div>
           
           <div id="products-container">

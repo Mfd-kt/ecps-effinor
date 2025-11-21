@@ -2,6 +2,10 @@
 
 Plateforme web complète pour la génération et gestion de leads pour les projets d'efficacité énergétique avec financement CEE (Certificats d'Économies d'Énergie).
 
+## Description
+
+Plateforme de génération de leads pour solutions d'efficacité énergétique avec financement CEE. Système complet incluant formulaires multi-étapes, calcul automatique de primes CEE, dashboard admin, et gestion de catalogue produits.
+
 ## 📋 Table des Matières
 
 - [Aperçu](#aperçu)
@@ -51,24 +55,33 @@ ECPS est une solution complète permettant de :
 - [ ] Synchronisation Airtable
 - [ ] Backup email automatique
 
-## 🛠️ Technologies
+## 🛠️ Tech Stack
 
-### Front-end
-- **React 18** - Framework UI
+### Frontend
+- **React 18** - Framework UI moderne
 - **Vite** - Build tool ultra-rapide
-- **React Router v6** - Routing
-- **Tailwind CSS** - Styling
-- **Radix UI** - Components accessibles
-- **Framer Motion** - Animations
-- **Lucide React** - Icônes
+- **React Router v6** - Client-side routing
+- **Tailwind CSS** - Utility-first CSS framework
+- **Radix UI** - Accessible component primitives
+- **Framer Motion** - Animation library
+- **Lucide React** - Icon library
 
-### Back-end & Database
-- **Supabase** - Backend as a Service (PostgreSQL + Auth + Storage)
+### Backend & Database
+- **Supabase** - Backend as a Service
+  - PostgreSQL - Base de données relationnelle
+  - Supabase Auth - Authentification
+  - Supabase Storage - Stockage de fichiers
+
+### Architecture
+- **Frontend**: React SPA (Single Page Application)
+- **Backend**: Supabase (PostgreSQL + Auth + Storage)
+- **Auth**: Supabase Auth avec Row Level Security (RLS)
+- **Storage**: Supabase Storage pour images produits
 
 ### Dev Tools
-- **ESLint** - Linting
-- **PostCSS** - CSS Processing
-- **Autoprefixer** - Compatibilité CSS
+- **ESLint** - Code linting
+- **PostCSS** - CSS processing
+- **Autoprefixer** - CSS vendor prefixes
 
 ## 📦 Installation
 
@@ -291,6 +304,76 @@ Configurer sur votre plateforme de déploiement :
 - Toutes les PR doivent être reviewées avant merge
 - Tests automatiques doivent passer
 - Documentation mise à jour si nécessaire
+
+## 🔒 Security Features
+
+- **Data Sanitization**: Protection XSS avec `sanitizeFormData()` avant tous les INSERT/UPDATE
+- **Row Level Security (RLS)**: Politiques de sécurité au niveau base de données
+- **Environment Variables**: Credentials stockés dans `.env` (jamais commitées)
+- **Conditional Logging**: Logs uniquement en développement (sauf erreurs)
+- **Input Validation**: Validation côté client et serveur
+- **Unified Supabase Client**: Un seul client Supabase pour cohérence
+
+## 📊 Database Schema
+
+### Tables Principales
+
+- **leads**: Données des prospects/leads
+  - Informations contact, entreprise, projet
+  - Estimation CEE, statut, priorité
+  - Workflow et historique
+
+- **products**: Catalogue produits
+  - Informations produits, prix, images
+  - Catégories, statut actif/inactif
+  - Ordre d'affichage
+
+- **commandes**: Commandes clients
+  - Informations client, statut
+  - Date création, total
+
+- **commandes_lignes**: Lignes de commande
+  - Produits commandés, quantités, prix
+
+- **visiteurs**: Tracking des visiteurs
+  - IP, page actuelle, referer
+  - Statut (active/left), temps session
+
+- **utilisateurs / profiles**: Gestion utilisateurs
+  - Authentification, rôles
+  - Profils admin
+
+- **leads_notes**: Notes sur les leads
+  - Timeline, historique
+  - Notes utilisateurs
+
+Voir `DATABASE_ANALYSIS_REPORT.md` pour le schéma complet.
+
+## 📈 Recent Improvements
+
+### Phase 1: Security (✅ Completed)
+- Unification des clients Supabase
+- Ajout sanitization des données (XSS protection)
+- Correction DELETE en cascade avec vérification d'erreur
+
+### Phase 2: Performance (✅ Completed)
+- Pagination sur toutes les pages admin
+- Optimisation des requêtes (select spécifiques)
+- Création des lignes de commande dans `commandes_lignes`
+- Standardisation des messages d'erreur
+
+### Phase 3: Polish (✅ Completed)
+- Filtres côté serveur pour AdminProducts
+- Messages d'erreur améliorés et actionnables
+- Documentation complète (indexes, RLS, README)
+
+## 📚 Documentation
+
+- **CODE_ANALYSIS.md**: Rapport d'audit du code complet
+- **DATABASE_ANALYSIS_REPORT.md**: Analyse détaillée de l'intégration base de données
+- **DATABASE_FIXES_PLAN.md**: Plan d'implémentation des corrections
+- **DATABASE_INDEXES.md**: Index recommandés pour performance
+- **SUPABASE_RLS_GUIDE.md**: Guide de configuration Row Level Security
 
 ## 📝 TODO / Roadmap
 

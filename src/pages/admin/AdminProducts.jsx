@@ -35,8 +35,12 @@ const AdminProductCard = ({ product, onDuplicate, onDelete, onToggleStatus, onEd
     <div className="product-card" data-product-id={product.id}>
       <div className="product-image">
         <img 
-          src={product.image_url || `https://via.placeholder.com/400x300/F0F0F0/AAAAAA?text=${encodeURIComponent(product.nom)}`} 
-          alt={product.nom} 
+          src={product.image_url || product.image_1 || `https://via.placeholder.com/400x300/F0F0F0/AAAAAA?text=${encodeURIComponent(product.nom)}`} 
+          alt={product.nom}
+          onError={(e) => {
+            e.target.src = `https://via.placeholder.com/400x300/F0F0F0/AAAAAA?text=${encodeURIComponent(product.nom)}`;
+            logger.warn(`Erreur de chargement d'image pour produit ${product.id}:`, product.image_url || product.image_1);
+          }}
         />
         {product.prime_cee && (
           <div className="badge-cee">CEE</div>
@@ -61,10 +65,12 @@ const AdminProductCard = ({ product, onDuplicate, onDelete, onToggleStatus, onEd
       </div>
       <div className="product-footer">
         <div className="product-price">
-          {product.sur_devis ? (
+          {product.sur_devis || !product.prix || product.prix === '' || product.prix === null ? (
             <span className="price-label">Sur devis</span>
           ) : (
-            <span className="price">{product.prix ? `${product.prix} €` : 'N/A'}</span>
+            <span className="price">
+              {product.prix ? `${parseFloat(product.prix).toFixed(2)}€` : 'N/A'}
+            </span>
           )}
         </div>
         <div className="product-actions">
@@ -118,9 +124,24 @@ const AdminProducts = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: dbError, count } = await supabase
+      // Build query with server-side filters
+      let query = supabase
         .from('products')
-        .select('id, nom, description, prix, prix_promo, actif, categorie, slug, image_1, ordre', { count: 'exact' })
+        .select('id, nom, description, prix, actif, categorie, slug, image_1, ordre', { count: 'exact' });
+      
+      // Apply category filter (server-side)
+      if (filters.category && filters.category !== 'all') {
+        query = query.eq('categorie', filters.category);
+      }
+      
+      // Apply status filter (server-side)
+      if (filters.status && filters.status !== 'all') {
+        const isActif = filters.status === 'actif';
+        query = query.eq('actif', isActif);
+      }
+      
+      // Apply ordering and pagination
+      const { data, error: dbError, count } = await query
         .order('ordre', { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
         
@@ -128,47 +149,48 @@ const AdminProducts = () => {
 
       setAllProducts(data || []);
       setTotalCount(count || 0);
-      logger.log(`Successfully loaded ${data?.length || 0} products (page ${page + 1}).`);
+      logger.log(`Successfully loaded ${data?.length || 0} products (page ${page + 1}) with filters: category=${filters.category}, status=${filters.status}.`);
     } catch (err) {
       const errorMessage = `Chargement des produits échoué: ${err.message}`;
       setError(errorMessage);
-      toast({ title: "Erreur de chargement", description: errorMessage, variant: "destructive" });
+      toast({ 
+        title: "Erreur de chargement", 
+        description: "Impossible de charger les produits. Vérifiez votre connexion internet et réessayez. Si le problème persiste, contactez le support technique.",
+        variant: "destructive" 
+      });
       logger.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [toast, page, pageSize]);
+  }, [toast, page, pageSize, filters.category, filters.status]);
 
   useEffect(() => {
     logger.log("AdminProducts component mounted.");
     fetchProducts();
   }, [fetchProducts]);
   
-  // Reset to page 0 when filters change
+  // Reset to page 0 when server-side filters change (not search)
   useEffect(() => {
     setPage(0);
-  }, [filters.search, filters.category, filters.status]);
+  }, [filters.category, filters.status]);
   
   const totalPages = Math.ceil(totalCount / pageSize);
   const canGoPrevious = page > 0;
   const canGoNext = page < totalPages - 1;
 
+  // Client-side search filter (applied to already filtered server results)
   const filteredProducts = useMemo(() => {
+    if (!filters.search || filters.search.trim() === '') {
+      return allProducts;
+    }
+    
+    const searchLower = filters.search.toLowerCase();
     return allProducts.filter(product => {
-      const searchMatch = filters.search.toLowerCase() === '' ||
-        product.nom.toLowerCase().includes(filters.search.toLowerCase()) ||
-        (product.description && product.description.toLowerCase().includes(filters.search.toLowerCase())) ||
-        (product.categorie && formatCategory(product.categorie).toLowerCase().includes(filters.search.toLowerCase()));
-      
-      const categoryMatch = filters.category === 'all' || product.categorie === filters.category;
-      
-      const statusMatch = filters.status === 'all' ||
-        (filters.status === 'actif' && product.actif) ||
-        (filters.status === 'inactif' && !product.actif);
-
-      return searchMatch && categoryMatch && statusMatch;
+      return product.nom.toLowerCase().includes(searchLower) ||
+        (product.description && product.description.toLowerCase().includes(searchLower)) ||
+        (product.categorie && formatCategory(product.categorie).toLowerCase().includes(searchLower));
     });
-  }, [allProducts, filters]);
+  }, [allProducts, filters.search]);
 
   const handleFilterChange = (filterName, value) => {
     logger.log(`Filter changed: ${filterName}=${value}`);
@@ -287,7 +309,7 @@ const AdminProducts = () => {
         <div className="page-header">
           <div>
             <h1>📦 Gestion des Produits</h1>
-            <p><span id="product-count">{allProducts.length}</span> produits au catalogue</p>
+            <p><span id="product-count">{totalCount}</span> produits au catalogue{filters.category !== 'all' || filters.status !== 'all' ? ' (filtrés)' : ''}</p>
           </div>
           <Link to="/admin/products/new">
             <Button className="btn-primary">
