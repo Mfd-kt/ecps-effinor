@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Edit, Trash2, Loader2, Copy, Eye, EyeOff } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Copy, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
@@ -109,21 +109,26 @@ const AdminProducts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ search: '', category: 'all', status: 'all' });
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
 
   const fetchProducts = useCallback(async () => {
     logger.log("Starting to load products...");
     setLoading(true);
     setError(null);
     try {
-      const { data, error: dbError } = await supabase
+      const { data, error: dbError, count } = await supabase
         .from('products')
-        .select('*')
-        .order('ordre', { ascending: true });
+        .select('id, nom, description, prix, prix_promo, actif, categorie, slug, image_1, ordre', { count: 'exact' })
+        .order('ordre', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
         
       if (dbError) throw dbError;
 
       setAllProducts(data || []);
-      logger.log(`Successfully loaded ${data.length} products.`);
+      setTotalCount(count || 0);
+      logger.log(`Successfully loaded ${data?.length || 0} products (page ${page + 1}).`);
     } catch (err) {
       const errorMessage = `Chargement des produits échoué: ${err.message}`;
       setError(errorMessage);
@@ -132,12 +137,21 @@ const AdminProducts = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, page, pageSize]);
 
   useEffect(() => {
     logger.log("AdminProducts component mounted.");
     fetchProducts();
   }, [fetchProducts]);
+  
+  // Reset to page 0 when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [filters.search, filters.category, filters.status]);
+  
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const canGoPrevious = page > 0;
+  const canGoNext = page < totalPages - 1;
 
   const filteredProducts = useMemo(() => {
     return allProducts.filter(product => {
@@ -320,6 +334,60 @@ const AdminProducts = () => {
         <div id="products-container" className="products-grid">
           {renderContent()}
         </div>
+        
+        {/* Pagination */}
+        {totalCount > 0 && filteredProducts.length > 0 && (
+          <div className="mt-6 flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
+            <div className="flex flex-1 justify-between sm:hidden">
+              <Button
+                variant="outline"
+                onClick={() => setPage(prev => Math.max(0, prev - 1))}
+                disabled={!canGoPrevious}
+              >
+                Précédent
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
+                disabled={!canGoNext}
+              >
+                Suivant
+              </Button>
+            </div>
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Affichage de <span className="font-medium">{allProducts.length > 0 ? page * pageSize + 1 : 0}</span> à{' '}
+                  <span className="font-medium">{Math.min((page + 1) * pageSize, totalCount)}</span> sur{' '}
+                  <span className="font-medium">{totalCount}</span> résultats
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(prev => Math.max(0, prev - 1))}
+                  disabled={!canGoPrevious}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Précédent
+                </Button>
+                <span className="text-sm text-gray-700">
+                  Page {page + 1} sur {totalPages || 1}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
+                  disabled={!canGoNext}
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

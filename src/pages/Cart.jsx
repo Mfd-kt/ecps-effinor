@@ -73,6 +73,27 @@ const Cart = () => {
       
       if (orderError) throw orderError;
       
+      // Create order lines in commandes_lignes table
+      if (orderData && orderData.id) {
+        const lines = cart.map(item => ({
+          commande_id: orderData.id,
+          produit_id: item.id,
+          quantite: item.quantity,
+          prix_unitaire: item.prix || 0,
+          nom: item.nom || ''
+        }));
+        
+        const { error: linesError } = await supabase
+          .from('commandes_lignes')
+          .insert(lines);
+        
+        if (linesError) {
+          logger.error('Error creating order lines:', linesError);
+          // Don't throw - order is created, lines are optional for now
+          // In production, consider a transaction or rollback strategy
+        }
+      }
+      
       toast({ title: "Demande de devis envoyée !", description: "Merci ! Notre équipe vous recontactera sous 24h." });
       
       clearCart();

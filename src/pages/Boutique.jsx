@@ -29,7 +29,7 @@ const Boutique = () => {
     try {
       const { data, error: supabaseError } = await supabase
         .from('products')
-        .select('*')
+        .select('id, nom, description, prix, prix_promo, image_1, slug, actif, categorie, ordre')
         .eq('actif', true)
         .order('ordre', { ascending: true });
 

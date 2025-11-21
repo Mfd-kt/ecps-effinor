@@ -112,7 +112,11 @@ const AdminUserForm = () => {
     
     try {
       if (!formData.prenom || !formData.nom || !formData.email || !formData.role) {
-          alert('Veuillez remplir tous les champs obligatoires');
+          toast({ 
+            title: "Erreur de validation", 
+            description: "Veuillez remplir tous les champs obligatoires.", 
+            variant: "destructive" 
+          });
           return;
       }
       
@@ -126,7 +130,11 @@ const AdminUserForm = () => {
       if (checkError) throw checkError;
       
       if (existing) {
-          alert('Cet email est déjà utilisé');
+          toast({ 
+            title: "Email déjà utilisé", 
+            description: "Cet email est déjà utilisé par un autre utilisateur.", 
+            variant: "destructive" 
+          });
           return;
       }
 
@@ -153,16 +161,24 @@ const AdminUserForm = () => {
       
       logger.log('✅ Profil créé:', profile);
 
-      alert(`✅ Profil créé avec succès !\n\nNom : ${formData.prenom} ${formData.nom}\nEmail : ${formData.email}\nRôle : ${formData.role}\n\n📧 IMPORTANT : Envoyez un email à l'utilisateur avec ces instructions :\n\n1. Aller sur : ${window.location.origin}/signup\n2. S'inscrire avec l'email : ${formData.email}\n3. Créer un mot de passe\n\nUne fois inscrit, l'utilisateur pourra se connecter au dashboard.`);
+      toast({ 
+        title: "✅ Profil créé avec succès !", 
+        description: `Nom : ${formData.prenom} ${formData.nom}\nEmail : ${formData.email}\nRôle : ${formData.role}\n\n📧 IMPORTANT : Envoyez un email à l'utilisateur avec ces instructions :\n\n1. Aller sur : ${window.location.origin}/signup\n2. S'inscrire avec l'email : ${formData.email}\n3. Créer un mot de passe\n\nUne fois inscrit, l'utilisateur pourra se connecter au dashboard.`,
+        duration: 10000
+      });
 
       logger.log('=== FIN CRÉATION ===');
       navigate('/admin/users');
 
     } catch (error) {
       logger.error('❌ Erreur inattendue:', error);
-      alert('Erreur : ' + error.message);
+      toast({ 
+        title: "Erreur", 
+        description: `Une erreur est survenue : ${error.message}`, 
+        variant: "destructive" 
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }
 
