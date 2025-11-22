@@ -50,4 +50,4 @@ lerna-debug.log*
 
 # Local development
 *.local
-.env.production
+# .env.production - DO NOT IGNORE (needed for production builds)
