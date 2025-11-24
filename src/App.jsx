@@ -16,6 +16,7 @@ import Contact from '@/pages/Contact';
 import LegalNotice from '@/pages/LegalNotice';
 import CGV from '@/pages/CGV';
 import PolitiqueConfidentialite from '@/pages/PolitiqueConfidentialite'; // Import new page
+import LandingDeshumidificateur from '@/pages/landing/LandingDeshumidificateur';
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminLogin from '@/pages/admin/AdminLogin';
@@ -27,10 +28,20 @@ import AdminFichesCEE from '@/pages/admin/AdminFichesCEE';
 import AdminOrders from '@/pages/admin/AdminOrders';
 import AdminOrderDetail from '@/pages/admin/AdminOrderDetail';
 import AdminUsers from '@/pages/admin/AdminUsers';
+import AdminUtilisateurs from '@/pages/admin/AdminUtilisateurs';
+import DetailUtilisateur from '@/pages/admin/DetailUtilisateur';
+import AdminRoles from '@/pages/admin/AdminRoles';
 import AdminUserForm from '@/pages/admin/AdminUserForm';
 import AdminVisitors from '@/pages/admin/AdminVisitors';
 import AdminLeads from '@/pages/admin/AdminLeads';
-import AdminLeadDetail from '@/pages/admin/AdminLeadDetail';
+import DetailLead from '@/pages/admin/DetailLead';
+import AdminOperations from '@/pages/admin/AdminOperations';
+import DetailOperation from '@/pages/admin/DetailOperation';
+import AdminOperationsNew from '@/pages/admin/AdminOperationsNew';
+import SettingsRolesPage from '@/pages/admin/settings/SettingsRolesPage';
+import SettingsLeadStatusesPage from '@/pages/admin/settings/SettingsLeadStatusesPage';
+import SettingsOperationStatusesPage from '@/pages/admin/settings/SettingsOperationStatusesPage';
+import SettingsOrderStatusesPage from '@/pages/admin/settings/SettingsOrderStatusesPage';
 import AuthCallback from '@/pages/AuthCallback';
 import SignUp from '@/pages/SignUp';
 import CookieConsent from '@/components/CookieConsent';
@@ -98,11 +109,82 @@ function App() {
                   <Route path="/orders" element={<AdminOrders />} />
                   <Route path="/orders/:id" element={<AdminOrderDetail />} />
                   <Route path="/users" element={<AdminUsers />} />
+                  <Route 
+                    path="/users/:id" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <DetailUtilisateur />
+                      </RequireAdmin>
+                    } 
+                  />
+                  <Route 
+                    path="/users/:id/edit" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <DetailUtilisateur />
+                      </RequireAdmin>
+                    } 
+                  />
+                  <Route 
+                    path="/utilisateurs" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <AdminUtilisateurs />
+                      </RequireAdmin>
+                    } 
+                  />
+                  <Route 
+                    path="/utilisateurs/:id" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <DetailUtilisateur />
+                      </RequireAdmin>
+                    } 
+                  />
+                  <Route 
+                    path="/roles" 
+                    element={<Navigate to="/admin/settings/roles" replace />}
+                  />
+                  <Route 
+                    path="/settings/roles" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <SettingsRolesPage />
+                      </RequireAdmin>
+                    } 
+                  />
+                  <Route 
+                    path="/settings/lead-statuses" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <SettingsLeadStatusesPage />
+                      </RequireAdmin>
+                    } 
+                  />
+                  <Route 
+                    path="/settings/operation-statuses" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <SettingsOperationStatusesPage />
+                      </RequireAdmin>
+                    } 
+                  />
+                  <Route 
+                    path="/settings/order-statuses" 
+                    element={
+                      <RequireAdmin roles={['super_admin', 'admin']}>
+                        <SettingsOrderStatusesPage />
+                      </RequireAdmin>
+                    } 
+                  />
                   <Route path="/users/new" element={<AdminUserForm />} />
                   <Route path="/users/:id" element={<AdminUserForm />} />
                   <Route path="/visitors" element={<AdminVisitors />} />
                   <Route path="/leads" element={<AdminLeads />} />
-                  <Route path="/leads/:id" element={<AdminLeadDetail />} />
+                  <Route path="/leads/:id" element={<DetailLead />} />
+                  <Route path="/operations" element={<AdminOperations />} />
+                  <Route path="/operations/new" element={<AdminOperationsNew />} />
+                  <Route path="/operations/:id" element={<DetailOperation />} />
                 </Routes>
               </AdminLayout>
             </RequireAdmin>
@@ -126,6 +208,7 @@ function App() {
                 <Route path="/mentions-legales" element={<LegalNotice />} />
                 <Route path="/cgv" element={<CGV />} />
                 <Route path="/politique-confidentialite" element={<PolitiqueConfidentialite />} /> {/* Add new route */}
+                <Route path="/landing/deshumidificateur" element={<LandingDeshumidificateur />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </MainLayout>

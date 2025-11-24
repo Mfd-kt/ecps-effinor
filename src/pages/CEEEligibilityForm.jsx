@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -7,6 +7,8 @@ import { loadFormData, clearFormData, saveFormData } from '@/utils/formStorage';
 import { calculateCEEPotential } from '@/utils/ceeCalculations';
 import { logger } from '@/utils/logger';
 import { sanitizeFormData } from '@/utils/sanitize';
+import { updateLead } from '@/lib/api/leads';
+import { useDebounce } from '@/hooks/useDebounce';
 import ProgressBar from '@/components/cee/ProgressBar';
 import FormNavigation from '@/components/cee/FormNavigation';
 import Step1CompanyInfo from '@/components/cee/steps/Step1CompanyInfo';
@@ -34,6 +36,120 @@ const CEEEligibilityForm = () => {
     buildings: [],
     step6: {}
   });
+
+  // Debounced form data for auto-save
+  const debouncedFormData = useDebounce(formData, 2000); // 2 secondes de délai
+  const savingRef = useRef(false);
+
+  // Fonction pour sauvegarder le progrès du formulaire
+  const saveFormProgress = useCallback(async (dataToSave = null) => {
+    const leadId = localStorage.getItem('current_lead_id');
+    if (!leadId || savingRef.current) return;
+
+    const data = dataToSave || formData;
+    savingRef.current = true;
+
+    try {
+      // Préparer formulaire_data JSONB avec toutes les données
+      const formulaireData = {
+        step1: data.step1 || {},
+        step2: data.step2 || {},
+        step3: data.step3 || {},
+        step4: data.step4 || {},
+        buildings: data.buildings || [],
+        step6: data.step6 || {},
+      };
+
+      // Si on a assez de données, calculer le potentiel CEE
+      if (data.buildings && data.buildings.length > 0) {
+        try {
+          const ceePotential = calculateCEEPotential(data);
+          formulaireData.ceePotential = ceePotential;
+        } catch (e) {
+          // Pas grave si le calcul échoue, on continue sans
+        }
+      }
+
+      // Préparer les données de mise à jour
+      const updateData = {
+        formulaire_data: JSON.stringify(formulaireData),
+        etape_formulaire: `step${currentStep}`,
+      };
+
+      // Mapper aussi vers les colonnes si données disponibles
+      if (data.step1?.companyName) {
+        updateData.societe = data.step1.companyName;
+      }
+      if (data.step1?.siret) {
+        updateData.siret = data.step1.siret;
+      }
+      if (data.step1?.address && data.step1?.postalCode && data.step1?.city) {
+        updateData.adresse = `${data.step1.address}, ${data.step1.postalCode} ${data.step1.city}`;
+        updateData.code_postal = data.step1.postalCode;
+        updateData.ville = data.step1.city;
+      }
+      if (data.step2?.firstName || data.step2?.lastName) {
+        updateData.nom = `${data.step2.firstName || ''} ${data.step2.lastName || ''}`.trim();
+        updateData.prenom = data.step2.firstName || '';
+      }
+      if (data.step2?.email) {
+        updateData.email = data.step2.email;
+      }
+      if (data.step2?.phone) {
+        updateData.telephone = data.step2.phone;
+      }
+      if (data.step2?.position) {
+        updateData.poste = data.step2.position;
+      }
+      if (data.step3?.energyExpenses) {
+        updateData.consommation_annuelle = data.step3.energyExpenses;
+      }
+      if (data.buildings && data.buildings.length > 0) {
+        updateData.type_batiment = data.buildings.map(b => b.type).filter(Boolean).join(', ');
+        const totalSurface = data.buildings.reduce((sum, b) => sum + (parseFloat(b.surface) || 0), 0);
+        if (totalSurface > 0) {
+          updateData.surface_m2 = totalSurface;
+        }
+      }
+      if (data.step6?.remarks) {
+        updateData.message = data.step6.remarks;
+      }
+
+      // Sanitize avant sauvegarde
+      const sanitizedUpdateData = sanitizeFormData(updateData);
+
+      // Sauvegarder dans la base de données
+      const result = await updateLead(leadId, sanitizedUpdateData);
+      
+      if (result.success) {
+        // Sauvegarde silencieuse - pas de toast pour éviter de déranger l'utilisateur
+        // Un indicateur visuel discret pourrait être ajouté si nécessaire
+      }
+    } catch (error) {
+      logger.error('Error saving form progress:', error);
+      // Ne pas afficher d'erreur pour la sauvegarde progressive (pour éviter de perturber l'utilisateur)
+    } finally {
+      savingRef.current = false;
+    }
+  }, [formData, currentStep]);
+
+  // Auto-save après debounce
+  useEffect(() => {
+    const leadId = localStorage.getItem('current_lead_id');
+    if (!leadId || !debouncedFormData) return;
+
+    // Vérifier si on a au moins une étape commencée
+    const hasData = Object.keys(debouncedFormData).some(key => {
+      if (key === 'buildings') {
+        return debouncedFormData.buildings && debouncedFormData.buildings.length > 0;
+      }
+      return debouncedFormData[key] && Object.keys(debouncedFormData[key]).length > 0;
+    });
+
+    if (hasData && currentStep > 1) {
+      saveFormProgress(debouncedFormData);
+    }
+  }, [debouncedFormData, currentStep, saveFormProgress]);
 
   useEffect(() => {
     const savedData = loadFormData();
@@ -84,7 +200,12 @@ const CEEEligibilityForm = () => {
     saveFormData(updatedData);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Sauvegarder avant de passer à l'étape suivante
+    if (currentStep >= 1) {
+      await saveFormProgress();
+    }
+
     if (currentStep === 4) {
       const buildingCount = formData.step4.buildingCount || 1;
       const buildings = Array.from({ length: buildingCount }, (_, i) => formData.buildings[i] || {});
@@ -127,6 +248,17 @@ const CEEEligibilityForm = () => {
 
     try {
       const ceePotential = calculateCEEPotential(formData);
+      // Préparer formulaire_data JSONB
+      const formulaireData = {
+        step1: formData.step1,
+        step2: formData.step2,
+        step3: formData.step3,
+        step4: formData.step4,
+        buildings: formData.buildings,
+        step6: formData.step6,
+        ceePotential,
+      };
+
       const updateData = {
         societe: formData.step1.companyName,
         siret: formData.step1.siret,
@@ -140,6 +272,7 @@ const CEEEligibilityForm = () => {
         surface_m2: formData.buildings.reduce((sum, b) => sum + (parseFloat(b.surface) || 0), 0),
         message: formData.step6.remarks || '',
         products: JSON.stringify({ ...formData, ceePotential }),
+        formulaire_data: JSON.stringify(formulaireData), // Sauvegarde complète dans JSONB
         montant_cee_estime: ceePotential.totalPotential,
         notes_techniques: `Potentiel LED: ${ceePotential.ledPotential}€, Potentiel Chauffage: ${ceePotential.heatingPotential}€, Classification: ${ceePotential.classification}`,
         formulaire_complet: true,

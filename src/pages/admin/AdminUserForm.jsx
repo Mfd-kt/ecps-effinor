@@ -50,7 +50,7 @@ const AdminUserForm = () => {
     setPageLoading(true);
     try {
         const { data, error } = await supabase
-          .from('profiles')
+          .from('utilisateurs')
           .select('*')
           .eq('id', id)
           .single();
@@ -65,9 +65,9 @@ const AdminUserForm = () => {
             nom: data.nom || '',
             full_name: data.full_name || '',
             email: data.email || '',
-            role: data.role || 'viewer',
-            active: data.active,
-            photo_profil_url: data.avatar_url || '',
+            role: data.role || 'lecture',
+            active: data.statut === 'actif',
+            photo_profil_url: data.photo_profil_url || '',
             created_at: data.created_at,
             updated_at: data.updated_at,
         };
@@ -127,7 +127,7 @@ const AdminUserForm = () => {
       
       logger.log('Vérification email existant...');
       const { data: existing, error: checkError } = await supabase
-          .from('profiles')
+          .from('utilisateurs')
           .select('email')
           .eq('email', formData.email)
           .maybeSingle();
@@ -146,18 +146,20 @@ const AdminUserForm = () => {
       logger.log('Création du profil...');
       
       // Prepare and sanitize data before insertion
+      // Note: Ce formulaire crée seulement un profil dans utilisateurs, pas de compte auth
+      // L'utilisateur devra s'inscrire via /signup avec cet email
       const profileData = {
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         prenom: formData.prenom,
         nom: formData.nom,
         full_name: `${formData.prenom} ${formData.nom}`,
         role: formData.role,
-        active: formData.active
+        statut: formData.active ? 'actif' : 'suspendu'
       };
       const sanitizedProfileData = sanitizeFormData(profileData);
       
       const { data: profile, error: profileError } = await supabase
-          .from('profiles')
+          .from('utilisateurs')
           .insert(sanitizedProfileData)
           .select()
           .single();
@@ -196,13 +198,13 @@ const AdminUserForm = () => {
               prenom: formData.prenom,
               nom: formData.nom,
               full_name: `${formData.prenom} ${formData.nom}`,
-              avatar_url: formData.photo_profil_url,
+              photo_profil_url: formData.photo_profil_url,
               role: formData.role,
-              active: formData.active,
+              statut: formData.active ? 'actif' : 'suspendu',
           };
           const sanitizedUpdateData = sanitizeFormData(updateData);
           
-          const { error } = await supabase.from('profiles').update(sanitizedUpdateData).eq('id', id);
+          const { error } = await supabase.from('utilisateurs').update(sanitizedUpdateData).eq('id', id);
           if (error) throw error;
           toast({ title: "Succès", description: "Utilisateur mis à jour." });
           fetchUser();
@@ -236,104 +238,185 @@ const AdminUserForm = () => {
   return (
     <>
       <Helmet><title>{isEditing ? 'Fiche Utilisateur' : 'Inviter un Utilisateur'} | Effinor Admin</title></Helmet>
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4">
-            <Link to="/admin/users"><Button variant="outline" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+      <div className="space-y-8 max-w-5xl mx-auto bg-gradient-to-br from-gray-50 to-gray-100/50 min-h-screen p-6 md:p-8">
+        <div className="flex items-center gap-4 fade-in">
+            <Link to="/admin/users">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-10 w-10 border-2 border-gray-300 hover:border-gray-400 hover:bg-white transition-all group"
+              >
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              </Button>
+            </Link>
             {isEditing ? (
-                 <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16">
+                 <div className="flex items-center gap-5">
+                    <Avatar className="h-16 w-16 ring-4 ring-white shadow-xl">
                         <AvatarImage src={formData.photo_profil_url} />
-                        <AvatarFallback>{`${(formData.prenom || '').charAt(0)}${(formData.nom || '').charAt(0)}`}</AvatarFallback>
+                        <AvatarFallback className="bg-gradient-to-br from-secondary-500 to-secondary-600 text-white font-bold text-xl">
+                          {`${(formData.prenom || '').charAt(0)}${(formData.nom || '').charAt(0)}`}
+                        </AvatarFallback>
                     </Avatar>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{formData.full_name}</h1>
-                        <p className="text-gray-500">{formData.email}</p>
+                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">{formData.full_name}</h1>
+                        <p className="text-gray-600 mt-1">{formData.email}</p>
                     </div>
                 </div>
             ) : (
-                <h1 className="text-3xl font-bold text-gray-900">Inviter un nouvel utilisateur</h1>
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Inviter un nouvel utilisateur</h1>
+                  <p className="text-gray-600 mt-2">Créez un nouveau compte utilisateur pour votre équipe</p>
+                </div>
             )}
         </div>
         <form onSubmit={handleFormSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white p-6 rounded-2xl shadow-lg space-y-6">
-                    <h2 className="text-xl font-semibold">Profil</h2>
+                <div className="enterprise-card p-8 space-y-6">
+                    <div className="pb-4 border-b border-gray-100">
+                        <h2 className="text-2xl font-bold text-gray-900">Profil</h2>
+                        <p className="text-sm text-gray-600 mt-1">Informations personnelles de l'utilisateur</p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="prenom">Prénom</Label>
-                        <Input id="prenom" name="prenom" value={formData.prenom} onChange={handleInputChange} placeholder="Jean" required />
+                        <Label htmlFor="prenom" className="text-sm font-semibold text-gray-700">Prénom *</Label>
+                        <Input 
+                          id="prenom" 
+                          name="prenom" 
+                          value={formData.prenom} 
+                          onChange={handleInputChange} 
+                          placeholder="Jean" 
+                          required
+                          className="enterprise-input h-11"
+                        />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="nom">Nom</Label>
-                        <Input id="nom" name="nom" value={formData.nom} onChange={handleInputChange} placeholder="Dupont" required />
+                        <Label htmlFor="nom" className="text-sm font-semibold text-gray-700">Nom *</Label>
+                        <Input 
+                          id="nom" 
+                          name="nom" 
+                          value={formData.nom} 
+                          onChange={handleInputChange} 
+                          placeholder="Dupont" 
+                          required
+                          className="enterprise-input h-11"
+                        />
                       </div>
                     </div>
-                    {!isEditing &&
+                    {!isEditing && (
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="jean.dupont@email.com" required/>
-                             <p className="text-sm text-gray-500">L'utilisateur devra s'inscrire avec cet email.</p>
+                            <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email *</Label>
+                            <Input 
+                              id="email" 
+                              name="email" 
+                              type="email" 
+                              value={formData.email} 
+                              onChange={handleInputChange} 
+                              placeholder="jean.dupont@email.com" 
+                              required
+                              className="enterprise-input h-11"
+                            />
+                            <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                              <span>ℹ️</span>
+                              L'utilisateur devra s'inscrire avec cet email.
+                            </p>
                         </div>
-                    }
-                     {isEditing &&
+                    )}
+                     {isEditing && (
                         <div className="space-y-2">
-                            <Label htmlFor="photo_profil_url">URL de l'avatar</Label>
-                            <Input id="photo_profil_url" name="photo_profil_url" value={formData.photo_profil_url} onChange={handleInputChange} placeholder="https://..." />
+                            <Label htmlFor="photo_profil_url" className="text-sm font-semibold text-gray-700">URL de l'avatar</Label>
+                            <Input 
+                              id="photo_profil_url" 
+                              name="photo_profil_url" 
+                              value={formData.photo_profil_url} 
+                              onChange={handleInputChange} 
+                              placeholder="https://..." 
+                              className="enterprise-input h-11"
+                            />
                         </div>
-                    }
+                    )}
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-lg space-y-6">
-                    <h2 className="text-xl font-semibold">Rôle & Statut</h2>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="enterprise-card p-8 space-y-6">
+                    <div className="pb-4 border-b border-gray-100">
+                        <h2 className="text-2xl font-bold text-gray-900">Rôle & Statut</h2>
+                        <p className="text-sm text-gray-600 mt-1">Configuration du compte et des permissions</p>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="role">Rôle</Label>
+                            <Label htmlFor="role" className="text-sm font-semibold text-gray-700">Rôle</Label>
                             <Select name="role" value={formData.role} onValueChange={(v) => handleSelectChange('role', v)}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="enterprise-input h-11"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="viewer">Viewer</SelectItem>
-                                    <SelectItem value="support">Support</SelectItem>
-                                    <SelectItem value="commercial">Commercial</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                                    <SelectItem value="viewer" className="cursor-pointer">Viewer</SelectItem>
+                                    <SelectItem value="support" className="cursor-pointer">Support</SelectItem>
+                                    <SelectItem value="commercial" className="cursor-pointer">Commercial</SelectItem>
+                                    <SelectItem value="admin" className="cursor-pointer">Admin</SelectItem>
+                                    <SelectItem value="super_admin" className="cursor-pointer">Super Admin</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex items-center space-x-2 pt-6">
-                            <Switch id="active" name="active" checked={formData.active} onCheckedChange={(c) => handleSwitchChange('active', c)} />
-                            <Label htmlFor="active">Statut : <span className="font-bold capitalize">{formData.active ? 'Actif' : 'Inactif'}</span></Label>
+                        <div className="flex items-center space-x-3 pt-8">
+                            <Switch 
+                              id="active" 
+                              name="active" 
+                              checked={formData.active} 
+                              onCheckedChange={(c) => handleSwitchChange('active', c)} 
+                              className="data-[state=checked]:bg-secondary-500"
+                            />
+                            <Label htmlFor="active" className="text-sm font-semibold text-gray-700 cursor-pointer">
+                              Statut : <span className="font-bold capitalize text-gray-900">{formData.active ? 'Actif' : 'Inactif'}</span>
+                            </Label>
                         </div>
                     </div>
                 </div>
 
-                 <div className="flex justify-end pt-2">
+                 <div className="flex justify-end pt-4">
                     {isEditing ? (
-                        <Button type="submit" disabled={loading || !isFormDirty} className="bg-secondary-600 hover:bg-secondary-700">
-                           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Enregistrer
+                        <Button 
+                          type="submit" 
+                          disabled={loading || !isFormDirty} 
+                          className="enterprise-button enterprise-button-primary h-12 px-8 shadow-lg shadow-secondary-500/30"
+                        >
+                           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+                           <span className="font-semibold">Enregistrer</span>
                         </Button>
                     ) : (
-                        <Button type="submit" disabled={loading || !isEmailValid || !formData.prenom || !formData.nom} className="bg-secondary-600 hover:bg-secondary-700">
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Créer le profil
+                        <Button 
+                          type="submit" 
+                          disabled={loading || !isEmailValid || !formData.prenom || !formData.nom} 
+                          className="enterprise-button enterprise-button-primary h-12 px-8 shadow-lg shadow-secondary-500/30"
+                        >
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+                            <span className="font-semibold">Créer le profil</span>
                         </Button>
                     )}
                  </div>
             </div>
             {isEditing && (
                 <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-lg space-y-4">
-                        <h2 className="text-xl font-semibold">Métadonnées</h2>
-                        <div className="text-sm space-y-2 text-gray-600">
-                           <p><strong>ID:</strong> <span className="font-mono text-xs break-all">{id}</span></p>
-                           <p><strong>Créé le:</strong> {formData.created_at ? new Date(formData.created_at).toLocaleString('fr-FR') : 'N/A'}</p>
-                           <p><strong>Mis à jour le:</strong> {formData.updated_at ? new Date(formData.updated_at).toLocaleString('fr-FR') : 'N/A'}</p>
+                    <div className="enterprise-card p-6 space-y-4">
+                        <h2 className="text-xl font-bold text-gray-900 border-b border-gray-100 pb-3">Métadonnées</h2>
+                        <div className="text-sm space-y-3 text-gray-600">
+                           <div>
+                             <span className="font-semibold text-gray-700">ID:</span>
+                             <p className="font-mono text-xs break-all mt-1 p-2 bg-gray-50 rounded border border-gray-200">{id}</p>
+                           </div>
+                           <div>
+                             <span className="font-semibold text-gray-700">Créé le:</span>
+                             <p className="mt-1">{formData.created_at ? new Date(formData.created_at).toLocaleString('fr-FR') : 'N/A'}</p>
+                           </div>
+                           <div>
+                             <span className="font-semibold text-gray-700">Mis à jour le:</span>
+                             <p className="mt-1">{formData.updated_at ? new Date(formData.updated_at).toLocaleString('fr-FR') : 'N/A'}</p>
+                           </div>
                         </div>
                     </div>
-                     <div className="bg-white p-6 rounded-2xl shadow-lg space-y-4">
-                        <h2 className="text-xl font-semibold text-red-600">Zone de danger</h2>
+                     <div className="enterprise-card p-6 space-y-4 border-2 border-red-200">
+                        <h2 className="text-xl font-bold text-red-600 border-b border-red-100 pb-3">Zone de danger</h2>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive" className="w-full" disabled>
+                            <Button variant="destructive" className="w-full h-11 bg-red-600 hover:bg-red-700 shadow-lg hover:shadow-xl transition-all" disabled>
                               <Trash2 className="mr-2 h-4 w-4" />Supprimer l'utilisateur
                             </Button>
                           </AlertDialogTrigger>

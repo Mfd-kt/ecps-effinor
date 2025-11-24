@@ -6,6 +6,8 @@ import { logger } from '@/utils/logger';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { sanitizeFormData } from '@/utils/sanitize';
+import UserAvatar from '@/components/ui/UserAvatar';
+import { getAllUsers } from '@/lib/api/utilisateurs';
 
 /**
  * Reusable Notes Timeline Component
@@ -30,6 +32,7 @@ export default function NotesTimeline({
 }) {
   const { toast } = useToast();
   const [notes, setNotes] = useState([]);
+  const [users, setUsers] = useState([]); // Cache des utilisateurs
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -40,10 +43,26 @@ export default function NotesTimeline({
     }
   }, [leadId, commandeId]);
 
+  // Charger tous les utilisateurs une fois pour le cache
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const result = await getAllUsers();
+        if (result.success && result.data) {
+          setUsers(result.data);
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+      }
+    };
+    loadUsers();
+  }, []);
+
   const fetchNotes = async () => {
     setLoading(true);
     try {
       // Select required columns from notes_internes table
+      // Note: La table notes_internes utilise 'auteur' (texte) et non 'user_id'
       let query = supabase
         .from('notes_internes')
         .select('id, lead_id, commande_id, auteur, note, created_at')
@@ -219,6 +238,128 @@ export default function NotesTimeline({
     }
   };
 
+  // Trouver l'utilisateur correspondant à une note
+  const getUserForNote = (note) => {
+    if (!note || !note.auteur) {
+      return {
+        nom: 'Admin',
+        prenom: '',
+        email: '',
+        full_name: 'Admin',
+        photo_profil_url: null
+      };
+    }
+
+    // Extraire auteur (peut être string, JSON string, ou objet)
+    let auteurValue = note.auteur;
+    
+    // Si auteur est un JSON string, le parser
+    if (typeof auteurValue === 'string') {
+      // Essayer de parser comme JSON
+      try {
+        const parsed = JSON.parse(auteurValue);
+        if (parsed && typeof parsed === 'object') {
+          auteurValue = parsed;
+        }
+      } catch (e) {
+        // Pas un JSON, garder comme string
+      }
+    }
+    
+    // Si auteur est maintenant un objet, extraire les infos
+    if (typeof auteurValue === 'object' && auteurValue !== null) {
+      // Si l'objet a un full_name, email, etc.
+      const fullName = auteurValue.full_name || auteurValue.fullName || auteurValue.name || '';
+      const email = auteurValue.email || '';
+      const prenom = auteurValue.prenom || auteurValue.firstName || '';
+      const nom = auteurValue.nom || auteurValue.lastName || '';
+      
+      // Chercher dans users par email
+      if (email) {
+        const userByEmail = users.find(u => u.email === email);
+        if (userByEmail) return userByEmail;
+      }
+      
+      // Chercher dans users par full_name
+      if (fullName) {
+        const userByName = users.find(u => 
+          u.full_name === fullName ||
+          `${u.prenom || ''} ${u.nom || ''}`.trim() === fullName
+        );
+        if (userByName) return userByName;
+      }
+      
+      // Créer un objet utilisateur à partir de l'objet auteur
+      if (fullName || email || prenom || nom) {
+        // Si on a full_name mais pas prenom/nom, splitter full_name
+        let finalPrenom = prenom;
+        let finalNom = nom;
+        if (!finalPrenom && !finalNom && fullName) {
+          const nameParts = fullName.trim().split(/\s+/);
+          if (nameParts.length >= 2) {
+            finalPrenom = nameParts[0];
+            finalNom = nameParts.slice(1).join(' ');
+          } else if (nameParts.length === 1) {
+            finalPrenom = nameParts[0];
+            finalNom = '';
+          }
+        }
+        
+        return {
+          prenom: finalPrenom || email?.split('@')[0] || '',
+          nom: finalNom || '',
+          email: email || '',
+          full_name: fullName || `${finalPrenom} ${finalNom}`.trim() || email || 'Utilisateur',
+          photo_profil_url: auteurValue.photo_profil_url || auteurValue.photo || null
+        };
+      }
+    }
+    
+    // Si auteur est une string, chercher dans users
+    if (typeof auteurValue === 'string') {
+      // Chercher par email
+      const userByEmail = users.find(u => u.email === auteurValue);
+      if (userByEmail) return userByEmail;
+      
+      // Chercher par nom complet
+      const userByName = users.find(u => {
+        const fullName = `${u.prenom || ''} ${u.nom || ''}`.trim();
+        return fullName === auteurValue || u.full_name === auteurValue;
+      });
+      if (userByName) return userByName;
+      
+      // Si c'est un email, extraire le nom
+      if (auteurValue.includes('@')) {
+        const namePart = auteurValue.split('@')[0];
+        return {
+          email: auteurValue,
+          prenom: namePart,
+          nom: '',
+          full_name: namePart,
+          photo_profil_url: null
+        };
+      }
+      
+      // Sinon utiliser la string comme nom
+      return {
+        prenom: auteurValue,
+        nom: '',
+        email: '',
+        full_name: auteurValue,
+        photo_profil_url: null
+      };
+    }
+    
+    // Fallback
+    return {
+      nom: 'Admin',
+      prenom: '',
+      email: '',
+      full_name: 'Admin',
+      photo_profil_url: null
+    };
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-100">
       {/* Header */}
@@ -281,26 +422,65 @@ export default function NotesTimeline({
             <p className="text-sm text-gray-400">Ajoutez la première note ci-dessus</p>
           </div>
         ) : (
-          notes.map((note) => (
-            <div 
-              key={note.id} 
-              className="flex gap-4 border-l-4 border-secondary-500 pl-4 py-2 hover:bg-gray-50 transition-colors rounded-r"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="font-semibold text-sm text-gray-900">
-                    {note.auteur || 'Admin'}
-                  </span>
-                  <span className="text-xs text-gray-500 whitespace-nowrap">
-                    {formatTimestamp(note.created_at)}
-                  </span>
+          notes.map((note) => {
+            const noteUser = getUserForNote(note);
+            
+            // Construire le nom d'affichage de manière robuste
+            let displayName = 'Admin';
+            if (noteUser.prenom && noteUser.nom) {
+              displayName = `${noteUser.prenom} ${noteUser.nom}`.trim();
+            } else if (noteUser.full_name) {
+              displayName = noteUser.full_name;
+            } else if (noteUser.prenom) {
+              displayName = noteUser.prenom;
+            } else if (noteUser.email) {
+              displayName = noteUser.email.split('@')[0];
+            } else if (note.auteur) {
+              // Essayer d'extraire quelque chose d'utile de auteur
+              try {
+                const parsed = typeof note.auteur === 'string' ? JSON.parse(note.auteur) : note.auteur;
+                if (parsed && parsed.full_name) {
+                  displayName = parsed.full_name;
+                } else {
+                  displayName = typeof note.auteur === 'string' ? note.auteur : 'Utilisateur';
+                }
+              } catch (e) {
+                displayName = typeof note.auteur === 'string' ? note.auteur : 'Utilisateur';
+              }
+            }
+            
+            return (
+              <div 
+                key={note.id} 
+                className="flex gap-4 border-l-4 border-secondary-500 pl-4 py-3 hover:bg-gray-50 transition-colors rounded-r"
+              >
+                {/* Avatar */}
+                <div className="flex-shrink-0">
+                  <UserAvatar 
+                    user={noteUser} 
+                    size="md"
+                  />
                 </div>
-                <p className="text-gray-700 whitespace-pre-wrap break-words">
-                  {note.note || '(Note vide)'}
-                </p>
+                
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-gray-900">
+                        {displayName}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                      {formatTimestamp(note.created_at)}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 whitespace-pre-wrap break-words text-sm leading-relaxed">
+                    {note.note || '(Note vide)'}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

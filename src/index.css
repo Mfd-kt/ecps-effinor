@@ -2,13 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Enterprise Design System - Only utilities, no base styles that conflict */
+@import './styles/enterprise-design-system.css';
+
 @layer base {
   body {
     @apply bg-gray-50 text-gray-800 antialiased;
     font-family: 'Inter', sans-serif;
+    direction: ltr;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Poppins', sans-serif;
     @apply font-bold text-gray-900;
+  }
+  
+  /* Simple LTR for textarea - no hacks */
+  textarea {
+    direction: ltr;
+    text-align: left;
   }
 }

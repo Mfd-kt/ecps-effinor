@@ -32,8 +32,8 @@ const UserTableRow = ({ user, onDelete }) => {
     parti: 'badge-gray',
   };
 
-  const handleView = () => navigate(`/admin/users/${user.id}`);
-  const handleEdit = () => navigate(`/admin/users/${user.id}/edit`);
+  const handleView = () => navigate(`/admin/utilisateurs/${user.id}`);
+  const handleEdit = () => navigate(`/admin/utilisateurs/${user.id}`);
   const handleDelete = () => {
     if (user.role !== 'super_admin') {
       onDelete(user.id, getFullName());
