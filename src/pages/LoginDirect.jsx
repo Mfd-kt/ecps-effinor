@@ -95,7 +95,7 @@ ${JSON.stringify(lsData, null, 2)}
       displayDebugInfo();
 
       setTimeout(() => {
-        navigate('/admin/dashboard');
+        navigate('/dashboard');
       }, 2000);
 
     } catch (e) {

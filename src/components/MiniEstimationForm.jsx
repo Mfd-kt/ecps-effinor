@@ -100,9 +100,9 @@ const MiniEstimationForm = () => {
       className="card hero-form-card w-full max-w-lg mx-auto"
     >
       <div className="card-header">
-        <div className="icon"><Zap size={48} /></div>
-        <h3>Estimation gratuite en 24h</h3>
-        <p>Combien pouvez-vous économiser avec les CEE ?</p>
+        <div className="icon"><Zap className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12" /></div>
+        <h3 className="text-lg md:text-xl lg:text-2xl">Estimation gratuite en 24h</h3>
+        <p className="text-xs md:text-sm">Obtenez un devis personnalisé pour vos luminaires LED professionnels</p>
       </div>
       
       <form onSubmit={handleSubmit}>
@@ -154,10 +154,10 @@ const MiniEstimationForm = () => {
         </div>
       </form>
 
-      <div className="text-center text-xs text-gray-500 mt-5 pt-5 border-t border-gray-200 space-y-1">
-        <p className="flex items-center justify-center gap-1.5"><Lock className="h-3 w-3" /> Vos données sont sécurisées</p>
-        <p className="flex items-center justify-center gap-1.5"><Zap className="h-3 w-3" /> Étude personnalisée sous 24h</p>
-        <p className="flex items-center justify-center gap-1.5"><Phone className="h-3 w-3" /> Sans engagement</p>
+      <div className="text-center text-[10px] md:text-xs text-gray-500 mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-200 space-y-0.5 md:space-y-1">
+        <p className="flex items-center justify-center gap-1"><Lock className="h-2.5 w-2.5 md:h-3 md:w-3" /> Vos données sont sécurisées</p>
+        <p className="flex items-center justify-center gap-1"><Zap className="h-2.5 w-2.5 md:h-3 md:w-3" /> Étude personnalisée sous 24h</p>
+        <p className="flex items-center justify-center gap-1"><Phone className="h-2.5 w-2.5 md:h-3 md:w-3" /> Sans engagement</p>
       </div>
     </motion.div>
   );

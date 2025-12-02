@@ -35,7 +35,7 @@ const UserTableRow = ({ user, onDelete }) => {
   const handleView = () => navigate(`/admin/utilisateurs/${user.id}`);
   const handleEdit = () => navigate(`/admin/utilisateurs/${user.id}`);
   const handleDelete = () => {
-    if (user.role !== 'super_admin') {
+    if (user.role?.slug !== 'super_admin') {
       onDelete(user.id, getFullName());
     }
   };
@@ -52,7 +52,7 @@ const UserTableRow = ({ user, onDelete }) => {
           </div>
         </div>
       </td>
-      <td><span className={`badge ${roleBadges[user.role] || 'badge-gray'}`}>{user.role || 'N/A'}</span></td>
+      <td><span className={`badge ${roleBadges[user.role?.slug || ''] || 'badge-gray'}`}>{user.role?.label || user.role?.nom || user.role?.slug || 'N/A'}</span></td>
       <td>{user.departement || '-'}</td>
       <td>{user.equipe || '-'}</td>
       <td>

@@ -147,6 +147,13 @@ export async function getAllLeads({
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(filters.commercial_assigne_id)) {
         query = query.eq('commercial_assigne_id', filters.commercial_assigne_id);
+        if (import.meta.env.DEV) {
+          console.log('[getAllLeads] Filtering by commercial_assigne_id:', filters.commercial_assigne_id);
+        }
+      } else {
+        if (import.meta.env.DEV) {
+          console.warn('[getAllLeads] Invalid UUID format for commercial_assigne_id:', filters.commercial_assigne_id);
+        }
       }
     }
 
@@ -1192,9 +1199,16 @@ export async function searchLeads(query, limit = 20) {
 export async function getLeadStats(filters = {}) {
   try {
     // Build base query
-    let baseQuery = supabase.from('leads').select('id, statut, priorite, montant_cee_estime, created_at', { count: 'exact' });
+    let baseQuery = supabase.from('leads').select('id, statut, priorite, montant_cee_estime, created_at, commercial_assigne_id', { count: 'exact' });
 
     // Apply filters
+    if (filters.commercial_assigne_id && filters.commercial_assigne_id !== 'all') {
+      // Basic UUID format check
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(filters.commercial_assigne_id)) {
+        baseQuery = baseQuery.eq('commercial_assigne_id', filters.commercial_assigne_id);
+      }
+    }
     if (filters.date_from) {
       baseQuery = baseQuery.gte('created_at', filters.date_from);
     }
@@ -1218,7 +1232,7 @@ export async function getLeadStats(filters = {}) {
         return created >= thisMonth && l.statut === 'nouveau';
       }).length || 0,
       qualifies: leads?.filter(l => l.statut === 'qualifie').length || 0,
-      conversion_rate: total > 0 ? ((leads?.filter(l => l.statut === 'gagne').length || 0) / total * 100).toFixed(1) : 0,
+      conversion_rate: total > 0 ? parseFloat(((leads?.filter(l => l.statut === 'gagne').length || 0) / total * 100).toFixed(1)) : 0,
       ca_potentiel: leads?.reduce((sum, l) => sum + (parseFloat(l.montant_cee_estime) || 0), 0) || 0,
       leads_chauds: leads?.filter(l => l.priorite === 'haute').length || 0,
       par_statut: LEAD_STATUSES,

@@ -40,4 +40,3 @@ CREATE INDEX IF NOT EXISTS idx_products_categorie_id ON products(categorie_id);
 -- avec l'ancien système. On pourra la supprimer plus tard une fois
 -- que tous les produits auront un categorie_id.
 -- ============================================
-

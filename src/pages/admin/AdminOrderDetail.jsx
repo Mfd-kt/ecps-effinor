@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
 import { useToast } from '@/components/ui/use-toast';
 import { sanitizeFormData } from '@/utils/sanitize';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { COMMANDE_STATUTS, COMMANDE_STATUT_LABELS, COMMANDE_STATUT_STYLES } from '@/constants/commandes';
 import NotesTimeline from '@/components/NotesTimeline';
-import { ArrowLeft, User, Mail, Building, Phone, Package, Loader2, Calendar, Edit, Trash2, Save, X, Plus, ChevronDown, ChevronUp, FileText, MapPin, Briefcase, FileCheck, Upload, MoreVertical, Copy, Euro, CheckCircle, AlertCircle, Tag, Star, Clock, Building2 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Building, Phone, Package, Loader2, Calendar, Edit, Trash2, Save, X, Plus, FileText, Upload, MoreVertical, Copy, Euro, CheckCircle, AlertCircle, Tag, Star, Clock, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,7 +37,15 @@ const AdminOrderDetail = () => {
     nom_client: '',
     email: '',
     telephone: '',
-    societe: ''
+    raison_sociale: '',
+    siret: '',
+    type_batiment: '',
+    adresse_ligne1: '',
+    adresse_ligne2: '',
+    code_postal: '',
+    ville: '',
+    pays: 'France',
+    commentaire: ''
   });
 
   // Products management state
@@ -58,44 +67,6 @@ const AdminOrderDetail = () => {
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // CEE Information state
-  const [editingCEE, setEditingCEE] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
-    siege: false,
-    travaux: false,
-    beneficiaire: false,
-    details: false
-  });
-  const [ceeData, setCeeData] = useState({
-    // Section 1: Siège Social
-    adresse_siege: '',
-    ville_siege: '',
-    code_postal_siege: '',
-    numero_siret: '',
-    siren: '',
-    // Section 2: Adresse des Travaux
-    adresse_travaux: '',
-    ville_travaux: '',
-    code_postal_travaux: '',
-    siret_site_travaux: '',
-    region: '',
-    zone_climatique: '',
-    // Section 3: Bénéficiaire de Travaux
-    raison_sociale_beneficiaire: '',
-    telephone_fixe_beneficiaire: '',
-    email_beneficiaire: '',
-    civilite_responsable: '',
-    nom_responsable: '',
-    prenom_responsable: '',
-    telephone_responsable: '',
-    // Section 4: Détails des Travaux
-    categories_travaux: [],
-    parcelle_cadastrale: '',
-    qualification: '',
-    surface_m2: '',
-    certificat_preparatoire: ''
-  });
-  const [uploadingCertificat, setUploadingCertificat] = useState(false);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL; // Optional
@@ -114,14 +85,7 @@ const AdminOrderDetail = () => {
 
   // Get status badge color
   const getStatusColor = (statut) => {
-    const statusConfig = {
-      'Nouveau Devis': 'bg-blue-100 text-blue-800',
-      'Devis envoyé': 'bg-purple-100 text-purple-800',
-      'En cours': 'bg-yellow-100 text-yellow-800',
-      'Validé': 'bg-green-100 text-green-800',
-      'Annulé': 'bg-red-100 text-red-800',
-    };
-    return statusConfig[statut] || 'bg-gray-100 text-gray-800';
+    return COMMANDE_STATUT_STYLES[statut] || 'bg-gray-100 text-gray-800';
   };
 
   useEffect(() => {
@@ -194,39 +158,18 @@ const AdminOrderDetail = () => {
         nom_client: orderData.nom_client || '',
         email: orderData.email || '',
         telephone: orderData.telephone || '',
-        societe: orderData.societe || ''
+        raison_sociale: orderData.raison_sociale || '',
+        siret: orderData.siret || '',
+        type_batiment: orderData.type_batiment || '',
+        adresse_ligne1: orderData.adresse_ligne1 || '',
+        adresse_ligne2: orderData.adresse_ligne2 || '',
+        code_postal: orderData.code_postal || '',
+        ville: orderData.ville || '',
+        pays: orderData.pays || 'France',
+        commentaire: orderData.commentaire || ''
       });
       setCommentText(orderData.commentaire || '');
 
-      // Initialize CEE data
-      setCeeData({
-        adresse_siege: orderData.adresse_siege || '',
-        ville_siege: orderData.ville_siege || '',
-        code_postal_siege: orderData.code_postal_siege || '',
-        numero_siret: orderData.numero_siret || '',
-        siren: orderData.siren || '',
-        adresse_travaux: orderData.adresse_travaux || '',
-        ville_travaux: orderData.ville_travaux || '',
-        code_postal_travaux: orderData.code_postal_travaux || '',
-        siret_site_travaux: orderData.siret_site_travaux || '',
-        region: orderData.region || '',
-        zone_climatique: orderData.zone_climatique || '',
-        raison_sociale_beneficiaire: orderData.raison_sociale_beneficiaire || '',
-        telephone_fixe_beneficiaire: orderData.telephone_fixe_beneficiaire || '',
-        email_beneficiaire: orderData.email_beneficiaire || '',
-        civilite_responsable: orderData.civilite_responsable || '',
-        nom_responsable: orderData.nom_responsable || '',
-        prenom_responsable: orderData.prenom_responsable || '',
-        telephone_responsable: orderData.telephone_responsable || '',
-        categories_travaux: Array.isArray(orderData.categories_travaux) 
-          ? orderData.categories_travaux 
-          : (orderData.categories_travaux ? JSON.parse(orderData.categories_travaux) : []),
-        parcelle_cadastrale: orderData.parcelle_cadastrale || '',
-        qualification: orderData.qualification || '',
-        surface_m2: orderData.surface_m2 || '',
-        certificat_preparatoire: orderData.certificat_preparatoire || ''
-      });
-      
       // Fetch order lines
       try {
         const { data: linesData, error: linesError } = await supabase
@@ -234,8 +177,9 @@ const AdminOrderDetail = () => {
           .select(`
             id,
             quantite,
-            prix_unitaire,
-            nom,
+            prix_unitaire_ht,
+            total_ligne_ht,
+            meta,
             produit_id,
             products (
               id,
@@ -325,7 +269,18 @@ const AdminOrderDetail = () => {
   const handleSaveCustomer = async () => {
     setUpdating(true);
     try {
-      const sanitizedData = sanitizeFormData(customerData);
+      // Prepare data for update - clean SIRET (remove spaces)
+      const dataToUpdate = { ...customerData };
+      if (dataToUpdate.siret) {
+        dataToUpdate.siret = dataToUpdate.siret.replace(/\s/g, '');
+      }
+      
+      const sanitizedData = sanitizeFormData(dataToUpdate);
+      
+      // Update commentaire separately if it changed
+      if (sanitizedData.commentaire !== commentText) {
+        setCommentText(sanitizedData.commentaire || '');
+      }
       
       const { error } = await supabase
         .from('commandes')
@@ -334,17 +289,19 @@ const AdminOrderDetail = () => {
       
       if (error) throw error;
       
-      setOrder({ ...order, ...sanitizedData });
+      // Refresh order data to get updated values
+      await fetchOrderData();
+      
       setEditingCustomer(false);
       toast({
         title: "Succès",
-        description: "Informations client mises à jour."
+        description: "Toutes les informations ont été mises à jour avec succès."
       });
     } catch (err) {
-      logger.error('❌ Erreur mise à jour client:', err);
+      logger.error('❌ Erreur mise à jour commande:', err);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour les informations.",
+        description: err.message || "Impossible de mettre à jour les informations.",
         variant: "destructive"
       });
     } finally {
@@ -371,12 +328,17 @@ const AdminOrderDetail = () => {
       }
 
       // Add to commandes_lignes
+      const unitPriceHt = product.prix || 0;
+      const lineTotalHt = unitPriceHt * quantity;
       const newLine = {
         commande_id: id,
-        produit_id: product.id,
-        nom: product.nom,
+        produit_id: product.id, // Nom de colonne dans la base de données
         quantite: quantity,
-        prix_unitaire: product.prix || 0
+        prix_unitaire_ht: unitPriceHt,
+        total_ligne_ht: lineTotalHt,
+        meta: {
+          nom: product.nom,
+        }
       };
 
       const { data, error } = await supabase
@@ -507,232 +469,6 @@ const AdminOrderDetail = () => {
     }
   };
 
-  // Validation functions for CEE fields
-  const validateSIRET = (siret) => {
-    if (!siret) return true; // Optional field
-    return /^\d{14}$/.test(siret.replace(/\s/g, ''));
-  };
-
-  const validateSIREN = (siren) => {
-    if (!siren) return true; // Optional field
-    return /^\d{9}$/.test(siren.replace(/\s/g, ''));
-  };
-
-  const validateEmail = (email) => {
-    if (!email) return true; // Optional field
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  const validatePhone = (phone) => {
-    if (!phone) return true; // Optional field
-    return /^[\d\s\+\-\(\)]+$/.test(phone);
-  };
-
-  // Feature: Save CEE information
-  const handleSaveCEE = async () => {
-    setUpdating(true);
-    try {
-      // Validate required fields
-      if (ceeData.numero_siret && !validateSIRET(ceeData.numero_siret)) {
-        toast({
-          title: "Erreur de validation",
-          description: "Le SIRET doit contenir exactement 14 chiffres.",
-          variant: "destructive"
-        });
-        setUpdating(false);
-        return;
-      }
-
-      if (ceeData.siren && !validateSIREN(ceeData.siren)) {
-        toast({
-          title: "Erreur de validation",
-          description: "Le SIREN doit contenir exactement 9 chiffres.",
-          variant: "destructive"
-        });
-        setUpdating(false);
-        return;
-      }
-
-      if (ceeData.email_beneficiaire && !validateEmail(ceeData.email_beneficiaire)) {
-        toast({
-          title: "Erreur de validation",
-          description: "L'email bénéficiaire n'est pas valide.",
-          variant: "destructive"
-        });
-        setUpdating(false);
-        return;
-      }
-
-      // Prepare data for save - convert "none" to empty string
-      const dataToSave = {
-        ...ceeData,
-        // Convert "none" values to empty strings
-        region: ceeData.region === 'none' ? '' : ceeData.region,
-        zone_climatique: ceeData.zone_climatique === 'none' ? '' : ceeData.zone_climatique,
-        civilite_responsable: ceeData.civilite_responsable === 'none' ? '' : ceeData.civilite_responsable,
-        // Handle categories_travaux - keep as array for JSONB, don't stringify
-        categories_travaux: Array.isArray(ceeData.categories_travaux) && ceeData.categories_travaux.length > 0
-          ? ceeData.categories_travaux
-          : (ceeData.categories_travaux && !Array.isArray(ceeData.categories_travaux) 
-            ? (typeof ceeData.categories_travaux === 'string' 
-              ? (ceeData.categories_travaux.trim() && ceeData.categories_travaux !== '[]'
-                ? JSON.parse(ceeData.categories_travaux)
-                : null)
-              : ceeData.categories_travaux)
-            : null)
-      };
-
-      // Sanitize data
-      const sanitizedCeeData = sanitizeFormData(dataToSave);
-
-      // Clean SIRET and SIREN (remove spaces)
-      if (sanitizedCeeData.numero_siret) {
-        sanitizedCeeData.numero_siret = sanitizedCeeData.numero_siret.replace(/\s/g, '');
-      }
-      if (sanitizedCeeData.siren) {
-        sanitizedCeeData.siren = sanitizedCeeData.siren.replace(/\s/g, '');
-      }
-      if (sanitizedCeeData.siret_site_travaux) {
-        sanitizedCeeData.siret_site_travaux = sanitizedCeeData.siret_site_travaux.replace(/\s/g, '');
-      }
-
-      // Remove empty strings and null values to avoid database errors
-      // Only send fields that have actual values to avoid errors with non-existent columns
-      const cleanData = {};
-      const fieldsToUpdate = [
-        'adresse_siege', 'ville_siege', 'code_postal_siege', 'numero_siret', 'siren',
-        'adresse_travaux', 'ville_travaux', 'code_postal_travaux', 'siret_site_travaux', 'region', 'zone_climatique',
-        'raison_sociale_beneficiaire', 'telephone_fixe_beneficiaire', 'email_beneficiaire', 'civilite_responsable',
-        'nom_responsable', 'prenom_responsable', 'telephone_responsable',
-        'categories_travaux', 'parcelle_cadastrale', 'qualification', 'surface_m2', 'certificat_preparatoire'
-      ];
-      
-      fieldsToUpdate.forEach(key => {
-        const value = sanitizedCeeData[key];
-        
-        // Special handling for categories_travaux (JSONB)
-        if (key === 'categories_travaux') {
-          // If it's an array with items, include it
-          // If it's empty array or null/undefined, set to null (don't send empty array)
-          if (Array.isArray(value) && value.length > 0) {
-            cleanData[key] = value; // Send as array for JSONB
-          } else {
-            // Don't include empty arrays or null for JSONB
-            cleanData[key] = null;
-          }
-        } else {
-          // For other fields, only include non-empty values
-          if (value !== null && value !== undefined && value !== '') {
-            cleanData[key] = value;
-          }
-        }
-      });
-
-      // Log what we're trying to update for debugging
-      logger.log('💾 Tentative de sauvegarde CEE:', {
-        orderId: id,
-        fieldsCount: Object.keys(cleanData).length,
-        fields: Object.keys(cleanData)
-      });
-
-      const { data: updatedData, error } = await supabase
-        .from('commandes')
-        .update(cleanData)
-        .eq('id', id)
-        .select();
-
-      if (error) {
-        logger.error('❌ Erreur Supabase update CEE:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          data: cleanData,
-          fieldsAttempted: Object.keys(cleanData)
-        });
-        throw error;
-      }
-
-      logger.log('✅ Données CEE sauvegardées:', updatedData);
-
-      setOrder({ ...order, ...sanitizedCeeData });
-      setEditingCEE(false);
-      toast({
-        title: "Succès",
-        description: "Informations CEE enregistrées avec succès."
-      });
-      } catch (err) {
-        logger.error('❌ Erreur sauvegarde CEE:', {
-          error: err,
-          message: err.message,
-          code: err.code,
-          details: err.details,
-          hint: err.hint,
-          ceeData: ceeData
-        });
-        
-        // More detailed error message
-        let errorMessage = "Impossible d'enregistrer les informations CEE.";
-        
-        if (err.message?.includes('column') && err.message?.includes('does not exist')) {
-          const missingColumn = err.message.match(/column "([^"]+)" does not exist/)?.[1];
-          errorMessage = `La colonne "${missingColumn}" n'existe pas dans la table 'commandes'. Veuillez exécuter le script SQL ADD_CEE_COLUMNS_TO_COMMANDES.sql dans Supabase SQL Editor.`;
-        } else if (err.message?.includes('permission denied') || err.message?.includes('RLS')) {
-          errorMessage = "Permissions insuffisantes. Vérifiez les politiques RLS dans Supabase pour permettre l'UPDATE sur la table 'commandes'.";
-        } else if (err.message) {
-          errorMessage = `Erreur: ${err.message}`;
-        }
-        
-        toast({
-          title: "Erreur",
-          description: errorMessage,
-          variant: "destructive"
-        });
-      } finally {
-        setUpdating(false);
-      }
-    };
-
-  // Handle certificat preparatoire upload
-  const handleCertificatUpload = async (file) => {
-    if (!file) return;
-
-    setUploadingCertificat(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `certificat-${id}-${Date.now()}.${fileExt}`;
-      const filePath = `certificats/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('effinor-assets')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('effinor-assets')
-        .getPublicUrl(filePath);
-
-      setCeeData({ ...ceeData, certificat_preparatoire: filePath });
-      
-      toast({
-        title: "Succès",
-        description: "Certificat téléchargé avec succès."
-      });
-    } catch (err) {
-      logger.error('❌ Erreur upload certificat:', err);
-      toast({
-        title: "Erreur",
-        description: "Impossible de télécharger le certificat.",
-        variant: "destructive"
-      });
-    } finally {
-      setUploadingCertificat(false);
-    }
-  };
 
   // Feature 4: Send quote by email
   const handleSendQuote = async () => {
@@ -749,16 +485,16 @@ const AdminOrderDetail = () => {
     try {
       // Calculate total
       const total = orderLines.reduce((sum, line) => {
-        const price = line.prix_unitaire || line.products?.prix || 0;
+        const price = line.prix_unitaire_ht ?? line.prix_unitaire ?? line.products?.prix ?? 0;
         const qty = line.quantite || 1;
         return sum + (parseFloat(price) * qty);
       }, 0);
 
       // Build HTML email content
       const productsHTML = orderLines.map(line => {
-        const productName = line.products?.nom || line.nom || 'Produit inconnu';
+        const productName = line.products?.nom || line.meta?.nom || line.nom || 'Produit inconnu';
         const qty = line.quantite || 1;
-        const unitPrice = line.prix_unitaire || line.products?.prix || 0;
+        const unitPrice = line.prix_unitaire_ht ?? line.prix_unitaire ?? line.products?.prix ?? 0;
         const lineTotal = parseFloat(unitPrice) * qty;
         
         return `
@@ -794,7 +530,7 @@ const AdminOrderDetail = () => {
             <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
               <h2 style="margin-top: 0; color: #1f2937;">Informations Client</h2>
               <p style="margin: 8px 0;"><strong>Client:</strong> ${order.nom_client || 'N/A'}</p>
-              <p style="margin: 8px 0;"><strong>Société:</strong> ${order.societe || 'N/A'}</p>
+              <p style="margin: 8px 0;"><strong>Société:</strong> ${order.raison_sociale || 'N/A'}</p>
               <p style="margin: 8px 0;"><strong>Email:</strong> ${order.email}</p>
               ${order.telephone ? `<p style="margin: 8px 0;"><strong>Téléphone:</strong> ${order.telephone}</p>` : ''}
               <p style="margin: 8px 0;"><strong>Date:</strong> ${formattedDate}</p>
@@ -829,7 +565,7 @@ const AdminOrderDetail = () => {
               </div>
             ` : ''}
             
-            ${(order.adresse_siege || order.numero_siret || order.adresse_travaux || order.raison_sociale_beneficiaire) ? `
+            ${(order.adresse_siege || order.numero_siret || order.adresse_travaux || order.raison_sociale) ? `
               <div style="margin-top: 30px; padding: 20px; background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
                 <h3 style="margin-top: 0; color: #1e40af; font-size: 18px;">Informations CEE Légales</h3>
                 
@@ -854,10 +590,10 @@ const AdminOrderDetail = () => {
                   </div>
                 ` : ''}
                 
-                ${(order.raison_sociale_beneficiaire || order.nom_responsable) ? `
+                ${(order.raison_sociale || order.nom_responsable) ? `
                   <div style="margin-bottom: 15px;">
                     <h4 style="color: #1e40af; margin-bottom: 8px; font-size: 14px; font-weight: bold;">Bénéficiaire de Travaux</h4>
-                    ${order.raison_sociale_beneficiaire ? `<p style="margin: 4px 0; color: #1f2937;"><strong>Raison Sociale:</strong> ${order.raison_sociale_beneficiaire}</p>` : ''}
+                    ${order.raison_sociale ? `<p style="margin: 4px 0; color: #1f2937;"><strong>Raison Sociale:</strong> ${order.raison_sociale}</p>` : ''}
                     ${(order.civilite_responsable || order.prenom_responsable || order.nom_responsable) ? `
                       <p style="margin: 4px 0; color: #1f2937;">
                         ${order.civilite_responsable || ''} ${order.prenom_responsable || ''} ${order.nom_responsable || ''}
@@ -915,10 +651,10 @@ const AdminOrderDetail = () => {
         // Update order status
         await supabase
           .from('commandes')
-          .update({ statut: 'Devis envoyé' })
+          .update({ statut: COMMANDE_STATUTS.DEVIS_ENVOYE })
           .eq('id', id);
 
-        setOrder({ ...order, statut: 'Devis envoyé' });
+        setOrder({ ...order, statut: COMMANDE_STATUTS.DEVIS_ENVOYE });
 
         toast({
           title: "Email envoyé",
@@ -974,7 +710,7 @@ const AdminOrderDetail = () => {
               <p className="text-red-700 mb-4">{error || 'Cette commande n\'existe pas.'}</p>
               <div className="mt-6 flex gap-3">
                 <Button 
-                  onClick={() => navigate('/admin/orders')} 
+                  onClick={() => navigate('/commandes')} 
                   className="bg-secondary-500 hover:bg-secondary-600"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" /> Retour aux commandes
@@ -990,12 +726,23 @@ const AdminOrderDetail = () => {
     );
   }
 
-  // Calculate total from order lines
-  const calculatedTotal = orderLines.reduce((sum, line) => {
-    const price = line.prix_unitaire || line.products?.prix || 0;
-    const qty = line.quantite || 1;
-    return sum + (parseFloat(price) * qty);
-  }, 0);
+  // Calculate total: use order.total_ht if available, otherwise calculate from lines
+  const calculatedTotal = order?.total_ht 
+    ? parseFloat(order.total_ht) 
+    : orderLines.reduce((sum, line) => {
+        const price = line.prix_unitaire_ht ?? line.prix_unitaire ?? line.total_ligne_ht ?? line.products?.prix ?? 0;
+        const qty = line.quantite || 1;
+        // If total_ligne_ht exists, use it directly, otherwise calculate
+        if (line.total_ligne_ht) {
+          return sum + parseFloat(line.total_ligne_ht);
+        }
+        return sum + (parseFloat(price) * qty);
+      }, 0);
+  
+  // Use order.total_ttc if available, otherwise calculate from HT
+  const calculatedTotalTTC = order?.total_ttc 
+    ? parseFloat(order.total_ttc) 
+    : (calculatedTotal > 0 ? calculatedTotal * 1.2 : 0);
 
   // Format date helper
   const formatDate = (date) => {
@@ -1044,7 +791,7 @@ const AdminOrderDetail = () => {
                     Commande #{order.id.slice(0, 8)}
                   </h1>
                   <Badge className={`${getStatusColor(order.statut)} text-sm px-3 py-1`}>
-                    {order.statut || 'Nouveau Devis'}
+                    {COMMANDE_STATUT_LABELS[order.statut] || COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.NOUVELLE]}
                   </Badge>
                 </div>
                 <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
@@ -1057,7 +804,7 @@ const AdminOrderDetail = () => {
             <div className="flex items-center gap-3">
               {/* Status Dropdown */}
               <Select
-                value={order.statut || 'Nouveau Devis'}
+                value={order.statut || COMMANDE_STATUTS.NOUVELLE}
                 onValueChange={handleStatusChange}
                 disabled={updating}
               >
@@ -1065,11 +812,13 @@ const AdminOrderDetail = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Nouveau Devis">Nouveau Devis</SelectItem>
-                  <SelectItem value="Devis envoyé">Devis envoyé</SelectItem>
-                  <SelectItem value="En cours">En cours</SelectItem>
-                  <SelectItem value="Validé">Validé</SelectItem>
-                  <SelectItem value="Annulé">Annulé</SelectItem>
+                  <SelectItem value={COMMANDE_STATUTS.NOUVELLE}>{COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.NOUVELLE]}</SelectItem>
+                  <SelectItem value={COMMANDE_STATUTS.EN_COURS}>{COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.EN_COURS]}</SelectItem>
+                  <SelectItem value={COMMANDE_STATUTS.DEVIS_ENVOYE}>{COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.DEVIS_ENVOYE]}</SelectItem>
+                  <SelectItem value={COMMANDE_STATUTS.EN_ATTENTE_CLIENT}>{COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.EN_ATTENTE_CLIENT]}</SelectItem>
+                  <SelectItem value={COMMANDE_STATUTS.ACCEPTEE}>{COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.ACCEPTEE]}</SelectItem>
+                  <SelectItem value={COMMANDE_STATUTS.REFUSEE}>{COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.REFUSEE]}</SelectItem>
+                  <SelectItem value={COMMANDE_STATUTS.ARCHIVEE}>{COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.ARCHIVEE]}</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -1102,7 +851,7 @@ const AdminOrderDetail = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-lg text-gray-900 truncate">{order.nom_client || 'Client'}</h3>
-                  {order.societe && <p className="text-sm text-gray-500 truncate">{order.societe}</p>}
+                  {order.raison_sociale && <p className="text-sm text-gray-500 truncate">{order.raison_sociale}</p>}
                 </div>
               </div>
               
@@ -1123,10 +872,10 @@ const AdminOrderDetail = () => {
                   </div>
                 )}
                 
-                {order.societe && (
+                {order.raison_sociale && (
                   <div className="flex items-center gap-3 text-sm">
                     <Building className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-600 truncate">{order.societe}</span>
+                    <span className="text-gray-600 truncate">{order.raison_sociale}</span>
                   </div>
                 )}
               </div>
@@ -1140,7 +889,15 @@ const AdminOrderDetail = () => {
                     nom_client: order.nom_client || '',
                     email: order.email || '',
                     telephone: order.telephone || '',
-                    societe: order.societe || ''
+                    raison_sociale: order.raison_sociale || '',
+                    siret: order.siret || '',
+                    type_batiment: order.type_batiment || '',
+                    adresse_ligne1: order.adresse_ligne1 || '',
+                    adresse_ligne2: order.adresse_ligne2 || '',
+                    code_postal: order.code_postal || '',
+                    ville: order.ville || '',
+                    pays: order.pays || 'France',
+                    commentaire: order.commentaire || ''
                   });
                 }}
                 className="mt-4 w-full text-sm text-secondary-600 hover:bg-secondary-50"
@@ -1159,13 +916,21 @@ const AdminOrderDetail = () => {
                     nom_client: order.nom_client || '',
                     email: order.email || '',
                     telephone: order.telephone || '',
-                    societe: order.societe || ''
+                    raison_sociale: order.raison_sociale || '',
+                    siret: order.siret || '',
+                    type_batiment: order.type_batiment || '',
+                    adresse_ligne1: order.adresse_ligne1 || '',
+                    adresse_ligne2: order.adresse_ligne2 || '',
+                    code_postal: order.code_postal || '',
+                    ville: order.ville || '',
+                    pays: order.pays || 'France',
+                    commentaire: order.commentaire || ''
                   });
                 }
               }}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                  <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-900">Modifier les informations</h2>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h2 className="text-xl font-bold text-gray-900">Modifier les informations de la commande</h2>
                     <button
                       onClick={() => {
                         setEditingCustomer(false);
@@ -1173,7 +938,15 @@ const AdminOrderDetail = () => {
                           nom_client: order.nom_client || '',
                           email: order.email || '',
                           telephone: order.telephone || '',
-                          societe: order.societe || ''
+                          raison_sociale: order.raison_sociale || '',
+                          siret: order.siret || '',
+                          type_batiment: order.type_batiment || '',
+                          adresse_ligne1: order.adresse_ligne1 || '',
+                          adresse_ligne2: order.adresse_ligne2 || '',
+                          code_postal: order.code_postal || '',
+                          ville: order.ville || '',
+                          pays: order.pays || 'France',
+                          commentaire: order.commentaire || ''
                         });
                       }}
                       className="text-gray-400 hover:text-gray-600"
@@ -1185,51 +958,170 @@ const AdminOrderDetail = () => {
                   <form onSubmit={(e) => {
                     e.preventDefault();
                     handleSaveCustomer();
-                  }} className="p-6 space-y-4">
+                  }} className="p-6 space-y-6">
+                    {/* Section Contact */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
-                      <Input
-                        value={customerData.nom_client}
-                        onChange={(e) => setCustomerData({...customerData, nom_client: e.target.value})}
-                        placeholder="Nom du client"
-                        required
-                      />
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Contact</h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet</label>
+                          <Input
+                            value={customerData.nom_client}
+                            onChange={(e) => setCustomerData({...customerData, nom_client: e.target.value})}
+                            placeholder="Nom du client"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                          <Input
+                            type="email"
+                            value={customerData.email}
+                            onChange={(e) => setCustomerData({...customerData, email: e.target.value})}
+                            placeholder="email@exemple.fr"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
+                          <Input
+                            value={customerData.telephone}
+                            onChange={(e) => setCustomerData({...customerData, telephone: e.target.value})}
+                            placeholder="06 12 34 56 78"
+                            required
+                          />
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Section Entreprise */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <Input
-                        type="email"
-                        value={customerData.email}
-                        onChange={(e) => setCustomerData({...customerData, email: e.target.value})}
-                        placeholder="email@exemple.fr"
-                        required
-                      />
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Entreprise</h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Raison sociale *</label>
+                          <Input
+                            value={customerData.raison_sociale}
+                            onChange={(e) => setCustomerData({...customerData, raison_sociale: e.target.value})}
+                            placeholder="Nom de l'entreprise"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
+                          <Input
+                            value={customerData.siret}
+                            onChange={(e) => setCustomerData({...customerData, siret: e.target.value})}
+                            placeholder="14 chiffres"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">SIRET (optionnel)</label>
+                          <Input
+                            value={customerData.siret}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 14);
+                              setCustomerData({...customerData, siret: value});
+                            }}
+                            placeholder="14 chiffres"
+                            maxLength={14}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Type de bâtiment *</label>
+                          <Select 
+                            value={customerData.type_batiment || ''} 
+                            onValueChange={(value) => setCustomerData({...customerData, type_batiment: value})}
+                            required
+                          >
+                            <SelectTrigger className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                              <SelectValue placeholder="Sélectionner un type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Industriel (usine, atelier, entrepôt)">Industriel (usine, atelier, entrepôt)</SelectItem>
+                              <SelectItem value="Tertiaire (bureaux, école, ...)">Tertiaire (bureaux, école, ...)</SelectItem>
+                              <SelectItem value="Agricole (serre, élevage, ...)">Agricole (serre, élevage, ...)</SelectItem>
+                              <SelectItem value="Logistique (entrepôt, plateforme)">Logistique (entrepôt, plateforme)</SelectItem>
+                              <SelectItem value="Commerce (magasin, showroom)">Commerce (magasin, showroom)</SelectItem>
+                              <SelectItem value="Autre">Autre</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Section Adresse */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                      <Input
-                        value={customerData.telephone}
-                        onChange={(e) => setCustomerData({...customerData, telephone: e.target.value})}
-                        placeholder="06 12 34 56 78"
-                      />
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Adresse</h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Adresse (numéro et rue) *</label>
+                          <Input
+                            value={customerData.adresse_ligne1}
+                            onChange={(e) => setCustomerData({...customerData, adresse_ligne1: e.target.value})}
+                            placeholder="10 Rue de l'Industrie"
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Complément d'adresse (optionnel)</label>
+                          <Input
+                            value={customerData.adresse_ligne2}
+                            onChange={(e) => setCustomerData({...customerData, adresse_ligne2: e.target.value})}
+                            placeholder="Bâtiment B, 2ème étage"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Code postal *</label>
+                          <Input
+                            value={customerData.code_postal}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                              setCustomerData({...customerData, code_postal: value});
+                            }}
+                            placeholder="75001"
+                            maxLength={5}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
+                          <Input
+                            value={customerData.ville}
+                            onChange={(e) => setCustomerData({...customerData, ville: e.target.value})}
+                            placeholder="Paris"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Pays</label>
+                          <Input
+                            value={customerData.pays}
+                            onChange={(e) => setCustomerData({...customerData, pays: e.target.value})}
+                            placeholder="France"
+                          />
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Section Commentaire */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Société</label>
-                      <Input
-                        value={customerData.societe}
-                        onChange={(e) => setCustomerData({...customerData, societe: e.target.value})}
-                        placeholder="Nom de la société"
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Commentaire</h3>
+                      <Textarea
+                        value={customerData.commentaire}
+                        onChange={(e) => setCustomerData({...customerData, commentaire: e.target.value})}
+                        placeholder="Commentaires ou informations complémentaires..."
+                        rows={4}
                       />
                     </div>
                     
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-4 border-t border-gray-200">
                       <Button
                         type="submit"
                         disabled={updating}
                         className="flex-1 bg-secondary-500 hover:bg-secondary-600 text-white"
                       >
                         <Save className="w-4 h-4 mr-2" />
-                        Enregistrer
+                        {updating ? 'Enregistrement...' : 'Enregistrer les modifications'}
                       </Button>
                       <Button
                         type="button"
@@ -1239,7 +1131,15 @@ const AdminOrderDetail = () => {
                             nom_client: order.nom_client || '',
                             email: order.email || '',
                             telephone: order.telephone || '',
-                            societe: order.societe || ''
+                            raison_sociale: order.raison_sociale || '',
+                            siret: order.siret || '',
+                            type_batiment: order.type_batiment || '',
+                            adresse_ligne1: order.adresse_ligne1 || '',
+                            adresse_ligne2: order.adresse_ligne2 || '',
+                            code_postal: order.code_postal || '',
+                            ville: order.ville || '',
+                            pays: order.pays || 'France',
+                            commentaire: order.commentaire || ''
                           });
                         }}
                         variant="outline"
@@ -1255,21 +1155,131 @@ const AdminOrderDetail = () => {
             
             {/* Quick Stats */}
             <div className="bg-white rounded-lg shadow-sm p-5">
-              <h4 className="font-semibold text-gray-900 mb-3">Statistiques</h4>
+              <h4 className="font-semibold text-gray-900 mb-4">Statistiques</h4>
               <div className="space-y-3">
+                {/* Référence */}
+                {order.reference && (
+                  <div className="pb-2 border-b border-gray-200">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Référence</span>
+                    <p className="text-sm font-semibold text-gray-900 mt-1">{order.reference}</p>
+                  </div>
+                )}
+                
+                {/* Nombre d'articles */}
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Nb produits</span>
-                  <span className="font-semibold text-gray-900">{orderLines.length}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total HT</span>
-                  <span className="font-semibold text-secondary-600">
-                    {calculatedTotal > 0 ? `${calculatedTotal.toFixed(2)}€` : 'Sur devis'}
+                  <span className="text-sm text-gray-600">Nb articles</span>
+                  <span className="font-semibold text-gray-900">
+                    {order.nb_articles ?? orderLines.length}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Date création</span>
-                  <span className="text-sm text-gray-900">{formatShortDate(order.date_creation || order.created_at)}</span>
+                
+                {/* Détail des articles */}
+                {orderLines.length > 0 && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Détail articles</span>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {orderLines.map((line, idx) => {
+                        const productName = line.products?.nom || line.meta?.nom || line.nom || `Produit ${idx + 1}`;
+                        const qty = line.quantite || 1;
+                        const unitPrice = line.prix_unitaire_ht ?? line.products?.prix ?? 0;
+                        const lineTotal = line.total_ligne_ht ?? (unitPrice * qty);
+                        return (
+                          <div key={line.id || idx} className="text-xs bg-gray-50 p-2 rounded">
+                            <div className="flex justify-between items-start">
+                              <span className="font-medium text-gray-700 flex-1 truncate">{productName}</span>
+                              <span className="text-gray-600 ml-2">×{qty}</span>
+                            </div>
+                            {lineTotal > 0 && (
+                              <div className="text-right text-gray-500 mt-1">
+                                {lineTotal.toFixed(2)} € HT
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Totaux */}
+                {calculatedTotal > 0 ? (
+                  <>
+                    <div className="pt-2 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700">Total HT</span>
+                        <span className="text-base font-bold text-secondary-600">
+                          {calculatedTotal.toFixed(2)} €
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-sm font-medium text-gray-700">Total TTC</span>
+                        <span className="text-base font-bold text-secondary-700">
+                          {calculatedTotalTTC.toFixed(2)} €
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="pt-2 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Total</span>
+                      <span className="font-semibold text-gray-500">Sur devis</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Informations complémentaires */}
+                <div className="pt-2 border-t border-gray-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Date création</span>
+                    <span className="text-xs text-gray-900">{formatShortDate(order.date_creation || order.created_at)}</span>
+                  </div>
+                  {order.type_batiment && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Type bâtiment</span>
+                      <span className="text-xs text-gray-900 truncate ml-2">{order.type_batiment}</span>
+                    </div>
+                  )}
+                  {order.siret && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">SIRET</span>
+                      <span className="text-xs text-gray-900 font-mono">{order.siret}</span>
+                    </div>
+                  )}
+                  {order.source && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Source</span>
+                      <span className="text-xs text-gray-900">{order.source}</span>
+                    </div>
+                  )}
+                  {order.mode_suivi && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Mode de traitement</span>
+                      {order.mode_suivi === 'paiement_en_ligne' ? (
+                        <Badge className="bg-blue-100 text-blue-800 text-xs">Paiement en ligne</Badge>
+                      ) : order.mode_suivi === 'rappel' ? (
+                        <Badge className="bg-orange-100 text-orange-800 text-xs">Rappel téléphonique</Badge>
+                      ) : (
+                        <span className="text-xs text-gray-900">{order.mode_suivi}</span>
+                      )}
+                    </div>
+                  )}
+                  {order.paiement_statut && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Statut paiement</span>
+                      <Badge className={
+                        order.paiement_statut === 'payee' ? 'bg-emerald-100 text-emerald-800' :
+                        order.paiement_statut === 'echouee' ? 'bg-red-100 text-red-800' :
+                        order.paiement_statut === 'annulee' ? 'bg-gray-100 text-gray-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }>
+                        {order.paiement_statut === 'payee' ? 'Payée' :
+                         order.paiement_statut === 'echouee' ? 'Échouée' :
+                         order.paiement_statut === 'annulee' ? 'Annulée' :
+                         'En attente'}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1335,7 +1345,7 @@ const AdminOrderDetail = () => {
                     <p className="text-xs text-gray-500">{formatShortDate(order.date_creation || order.created_at)}</p>
                   </div>
                 </div>
-                {order.statut && order.statut !== 'Nouveau Devis' && (
+                {order.statut && order.statut !== COMMANDE_STATUTS.NOUVELLE && (
                   <div className="flex gap-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
                     <div className="flex-1 min-w-0">
@@ -1353,7 +1363,7 @@ const AdminOrderDetail = () => {
             {/* Tab Navigation */}
             <div className="border-b border-gray-200 px-6 bg-white">
               <div className="flex gap-6 overflow-x-auto">
-                {['Résumé', 'Produits', 'Informations CEE', 'Notes'].map(tab => (
+                {['Résumé', 'Produits', 'Notes'].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -1378,23 +1388,51 @@ const AdminOrderDetail = () => {
                 <div className="max-w-4xl space-y-6">
                   {/* Order Summary Cards */}
                   <div className="grid md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-blue-600 mb-1">Montant total</p>
-                          <p className="text-2xl font-bold text-blue-900">
-                            {calculatedTotal > 0 ? `${calculatedTotal.toFixed(2)}€` : 'Sur devis'}
-                          </p>
+                    {calculatedTotal > 0 ? (
+                      <>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-blue-600 mb-1">Total HT</p>
+                              <p className="text-2xl font-bold text-blue-900">
+                                {calculatedTotal.toFixed(2)} €
+                              </p>
+                            </div>
+                            <Euro className="w-8 h-8 text-blue-400" />
+                          </div>
                         </div>
-                        <Euro className="w-8 h-8 text-blue-400" />
+                        
+                        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-indigo-600 mb-1">Total TTC</p>
+                              <p className="text-2xl font-bold text-indigo-900">
+                                {calculatedTotalTTC.toFixed(2)} €
+                              </p>
+                            </div>
+                            <Euro className="w-8 h-8 text-indigo-400" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-blue-600 mb-1">Montant</p>
+                            <p className="text-2xl font-bold text-blue-900">Sur devis</p>
+                          </div>
+                          <Euro className="w-8 h-8 text-blue-400" />
+                        </div>
                       </div>
-                    </div>
+                    )}
                     
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-green-600 mb-1">Produits</p>
-                          <p className="text-2xl font-bold text-green-900">{orderLines.length}</p>
+                          <p className="text-2xl font-bold text-green-900">
+                            {order.nb_articles ?? orderLines.length}
+                          </p>
                         </div>
                         <Package className="w-8 h-8 text-green-400" />
                       </div>
@@ -1404,7 +1442,9 @@ const AdminOrderDetail = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-purple-600 mb-1">Statut</p>
-                          <p className="text-lg font-semibold text-purple-900">{order.statut || 'Nouveau Devis'}</p>
+                          <p className="text-lg font-semibold text-purple-900">
+                            {COMMANDE_STATUT_LABELS[order.statut] || COMMANDE_STATUT_LABELS[COMMANDE_STATUTS.NOUVELLE]}
+                          </p>
                         </div>
                         <CheckCircle className="w-8 h-8 text-purple-400" />
                       </div>
@@ -1420,18 +1460,84 @@ const AdminOrderDetail = () => {
                         <p className="font-medium text-gray-900 mt-1">{order.nom_client || '-'}</p>
                       </div>
                       <div>
-                        <label className="text-sm text-gray-600">Société</label>
-                        <p className="font-medium text-gray-900 mt-1">{order.societe || 'N/A'}</p>
+                        <label className="text-sm text-gray-600">Raison sociale</label>
+                        <p className="font-medium text-gray-900 mt-1">{order.raison_sociale || '-'}</p>
                       </div>
                       <div>
                         <label className="text-sm text-gray-600">Email</label>
-                        <p className="font-medium text-gray-900 mt-1">{order.email || '-'}</p>
+                        <p className="font-medium text-gray-900 mt-1 break-all">{order.email || '-'}</p>
                       </div>
                       <div>
                         <label className="text-sm text-gray-600">Téléphone</label>
                         <p className="font-medium text-gray-900 mt-1">{order.telephone || 'N/A'}</p>
                       </div>
+                      {order.siret && (
+                        <div>
+                          <label className="text-sm text-gray-600">SIRET</label>
+                          <p className="font-medium text-gray-900 mt-1 font-mono">{order.siret}</p>
+                        </div>
+                      )}
+                      {order.type_batiment && (
+                        <div>
+                          <label className="text-sm text-gray-600">Type de bâtiment</label>
+                          <p className="font-medium text-gray-900 mt-1">{order.type_batiment}</p>
+                        </div>
+                      )}
+                      {order.source && (
+                        <div>
+                          <label className="text-sm text-gray-600">Source</label>
+                          <p className="font-medium text-gray-900 mt-1">
+                            <Badge className="bg-blue-100 text-blue-800 text-xs">
+                              {order.source === 'site_ecommerce' ? 'Site e-commerce' : order.source}
+                            </Badge>
+                          </p>
+                        </div>
+                      )}
+                      {order.reference && (
+                        <div>
+                          <label className="text-sm text-gray-600">Référence commande</label>
+                          <p className="font-medium text-gray-900 mt-1 font-mono">{order.reference}</p>
+                        </div>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Adresse de livraison */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-4">Adresse de livraison</h3>
+                    <div className="space-y-1 text-gray-900">
+                      <p>{order.adresse_ligne1 || 'Adresse non renseignée'}</p>
+                      {order.adresse_ligne2 && (
+                        <p>{order.adresse_ligne2}</p>
+                      )}
+                      <p>
+                        {(order.code_postal || '')} {order.ville || ''}
+                      </p>
+                      <p>{order.pays || 'France'}</p>
+                    </div>
+                  </div>
+
+                  {/* Adresse de facturation */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-4">Adresse de facturation</h3>
+                    {order.adresse_facturation_diff ? (
+                      <div className="space-y-1 text-gray-900">
+                        <p>{order.facturation_nom_client || 'Nom de facturation non renseigné'}</p>
+                        {order.facturation_raison_sociale && (
+                          <p className="text-gray-700">{order.facturation_raison_sociale}</p>
+                        )}
+                        <p>{order.facturation_adresse_ligne1 || 'Adresse non renseignée'}</p>
+                        {order.facturation_adresse_ligne2 && (
+                          <p>{order.facturation_adresse_ligne2}</p>
+                        )}
+                        <p>
+                          {(order.facturation_code_postal || '')} {order.facturation_ville || ''}
+                        </p>
+                        <p>{order.facturation_pays || 'France'}</p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">Identique à l'adresse de livraison.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1494,10 +1600,10 @@ const AdminOrderDetail = () => {
                         <div className="divide-y divide-gray-200">
                           {orderLines.map((line, index) => {
                             const product = line.products || {};
-                            const productName = product.nom || line.nom || 'Produit inconnu';
+                            const productName = product.nom || line.meta?.nom || line.nom || 'Produit inconnu';
                             const productImage = product.image_1 || product.image_url || line.image_1;
                             const qty = line.quantite || 1;
-                            const unitPrice = line.prix_unitaire || product.prix || 0;
+                            const unitPrice = line.prix_unitaire_ht ?? line.prix_unitaire ?? product.prix ?? 0;
                             const lineTotal = parseFloat(unitPrice) * qty;
                             const hasId = line.id;
                             
@@ -1580,12 +1686,18 @@ const AdminOrderDetail = () => {
                           })}
                         </div>
                         {/* Total */}
-                        {(order.total || calculatedTotal > 0) && (
-                          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        {calculatedTotal > 0 && (
+                          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 space-y-2">
                             <div className="flex justify-between items-center">
                               <span className="text-lg font-semibold text-gray-900">TOTAL HT</span>
                               <span className="text-2xl font-bold text-secondary-600">
-                                {(order.total || calculatedTotal).toFixed(2)}€
+                                {calculatedTotal.toFixed(2)} €
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-base font-medium text-gray-700">TOTAL TTC</span>
+                              <span className="text-xl font-bold text-secondary-700">
+                                {calculatedTotalTTC.toFixed(2)} €
                               </span>
                             </div>
                           </div>
@@ -1596,561 +1708,6 @@ const AdminOrderDetail = () => {
                         <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                         <p>Aucun produit trouvé dans cette commande.</p>
                         <p className="text-sm mt-2">Utilisez le formulaire ci-dessus pour ajouter des produits.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Informations CEE Tab */}
-              {activeTab === 'Informations CEE' && order && (
-                <div className="max-w-4xl">
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                          <FileCheck className="w-5 h-5 text-secondary-500" />
-                          Informations CEE Légales
-                        </h2>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Informations nécessaires pour la génération du devis CEE
-                        </p>
-                      </div>
-                      {!editingCEE ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingCEE(true)}
-                          className="text-secondary-600 hover:text-secondary-700"
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Modifier
-                        </Button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingCEE(false);
-                              setCeeData({
-                                adresse_siege: order.adresse_siege || '',
-                                ville_siege: order.ville_siege || '',
-                                code_postal_siege: order.code_postal_siege || '',
-                                numero_siret: order.numero_siret || '',
-                                siren: order.siren || '',
-                                adresse_travaux: order.adresse_travaux || '',
-                                ville_travaux: order.ville_travaux || '',
-                                code_postal_travaux: order.code_postal_travaux || '',
-                                siret_site_travaux: order.siret_site_travaux || '',
-                                region: order.region || '',
-                                zone_climatique: order.zone_climatique || '',
-                                raison_sociale_beneficiaire: order.raison_sociale_beneficiaire || '',
-                                telephone_fixe_beneficiaire: order.telephone_fixe_beneficiaire || '',
-                                email_beneficiaire: order.email_beneficiaire || '',
-                                civilite_responsable: order.civilite_responsable || '',
-                                nom_responsable: order.nom_responsable || '',
-                                prenom_responsable: order.prenom_responsable || '',
-                                telephone_responsable: order.telephone_responsable || '',
-                                categories_travaux: Array.isArray(order.categories_travaux) ? order.categories_travaux : (order.categories_travaux ? JSON.parse(order.categories_travaux) : []),
-                                parcelle_cadastrale: order.parcelle_cadastrale || '',
-                                qualification: order.qualification || '',
-                                surface_m2: order.surface_m2 || '',
-                                certificat_preparatoire: order.certificat_preparatoire || ''
-                              });
-                            }}
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            Annuler
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleSaveCEE}
-                            disabled={updating}
-                            className="bg-secondary-500 hover:bg-secondary-600 text-white"
-                          >
-                            <Save className="w-4 h-4 mr-1" />
-                            Enregistrer
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* CEE Content - Full sections */}
-                    {editingCEE ? (
-                      <div className="p-6 space-y-6">
-                        {/* Section 1: Siège Social */}
-                        <div className="border border-gray-200 rounded-lg p-4">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedSections({...expandedSections, siege: !expandedSections.siege})}
-                            className="w-full flex items-center justify-between mb-4"
-                          >
-                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                              <Building className="w-4 h-4 text-secondary-500" />
-                              Siège Social
-                            </h3>
-                            {expandedSections.siege ? (
-                              <ChevronUp className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
-                          </button>
-                          {expandedSections.siege && (
-                            <div className="grid md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-                                <Input
-                                  value={ceeData.adresse_siege}
-                                  onChange={(e) => setCeeData({...ceeData, adresse_siege: e.target.value})}
-                                  placeholder="Adresse du siège social"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-                                <Input
-                                  value={ceeData.ville_siege}
-                                  onChange={(e) => setCeeData({...ceeData, ville_siege: e.target.value})}
-                                  placeholder="Ville"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Code Postal</label>
-                                <Input
-                                  value={ceeData.code_postal_siege}
-                                  onChange={(e) => setCeeData({...ceeData, code_postal_siege: e.target.value})}
-                                  placeholder="75001"
-                                  maxLength={5}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">SIRET (14 chiffres)</label>
-                                <Input
-                                  value={ceeData.numero_siret}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '').slice(0, 14);
-                                    setCeeData({...ceeData, numero_siret: value});
-                                  }}
-                                  placeholder="12345678901234"
-                                  maxLength={14}
-                                />
-                                {ceeData.numero_siret && !validateSIRET(ceeData.numero_siret) && (
-                                  <p className="text-xs text-red-600 mt-1">Le SIRET doit contenir 14 chiffres</p>
-                                )}
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">SIREN (9 chiffres)</label>
-                                <Input
-                                  value={ceeData.siren}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '').slice(0, 9);
-                                    setCeeData({...ceeData, siren: value});
-                                  }}
-                                  placeholder="123456789"
-                                  maxLength={9}
-                                />
-                                {ceeData.siren && !validateSIREN(ceeData.siren) && (
-                                  <p className="text-xs text-red-600 mt-1">Le SIREN doit contenir 9 chiffres</p>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Section 2: Adresse des Travaux */}
-                        <div className="border border-gray-200 rounded-lg p-4">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedSections({...expandedSections, travaux: !expandedSections.travaux})}
-                            className="w-full flex items-center justify-between mb-4"
-                          >
-                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-secondary-500" />
-                              Adresse des Travaux
-                            </h3>
-                            {expandedSections.travaux ? (
-                              <ChevronUp className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
-                          </button>
-                          {expandedSections.travaux && (
-                            <div className="grid md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-                                <Input
-                                  value={ceeData.adresse_travaux}
-                                  onChange={(e) => setCeeData({...ceeData, adresse_travaux: e.target.value})}
-                                  placeholder="Adresse des travaux"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-                                <Input
-                                  value={ceeData.ville_travaux}
-                                  onChange={(e) => setCeeData({...ceeData, ville_travaux: e.target.value})}
-                                  placeholder="Ville"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Code Postal</label>
-                                <Input
-                                  value={ceeData.code_postal_travaux}
-                                  onChange={(e) => setCeeData({...ceeData, code_postal_travaux: e.target.value})}
-                                  placeholder="75001"
-                                  maxLength={5}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">SIRET Site Travaux (14 chiffres)</label>
-                                <Input
-                                  value={ceeData.siret_site_travaux}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '').slice(0, 14);
-                                    setCeeData({...ceeData, siret_site_travaux: value});
-                                  }}
-                                  placeholder="12345678901234"
-                                  maxLength={14}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Région</label>
-                                <Select
-                                  value={ceeData.region || 'none'}
-                                  onValueChange={(value) => setCeeData({...ceeData, region: value === 'none' ? '' : value})}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Sélectionner une région" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">Aucune</SelectItem>
-                                    <SelectItem value="Auvergne-Rhône-Alpes">Auvergne-Rhône-Alpes</SelectItem>
-                                    <SelectItem value="Bourgogne-Franche-Comté">Bourgogne-Franche-Comté</SelectItem>
-                                    <SelectItem value="Bretagne">Bretagne</SelectItem>
-                                    <SelectItem value="Centre-Val de Loire">Centre-Val de Loire</SelectItem>
-                                    <SelectItem value="Corse">Corse</SelectItem>
-                                    <SelectItem value="Grand Est">Grand Est</SelectItem>
-                                    <SelectItem value="Hauts-de-France">Hauts-de-France</SelectItem>
-                                    <SelectItem value="Île-de-France">Île-de-France</SelectItem>
-                                    <SelectItem value="Normandie">Normandie</SelectItem>
-                                    <SelectItem value="Nouvelle-Aquitaine">Nouvelle-Aquitaine</SelectItem>
-                                    <SelectItem value="Occitanie">Occitanie</SelectItem>
-                                    <SelectItem value="Pays de la Loire">Pays de la Loire</SelectItem>
-                                    <SelectItem value="Provence-Alpes-Côte d'Azur">Provence-Alpes-Côte d'Azur</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Zone Climatique</label>
-                                <Select
-                                  value={ceeData.zone_climatique || 'none'}
-                                  onValueChange={(value) => setCeeData({...ceeData, zone_climatique: value === 'none' ? '' : value})}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Sélectionner une zone" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">Aucune</SelectItem>
-                                    <SelectItem value="H1">H1</SelectItem>
-                                    <SelectItem value="H2">H2</SelectItem>
-                                    <SelectItem value="H3">H3</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Section 3: Bénéficiaire de Travaux */}
-                        <div className="border border-gray-200 rounded-lg p-4">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedSections({...expandedSections, beneficiaire: !expandedSections.beneficiaire})}
-                            className="w-full flex items-center justify-between mb-4"
-                          >
-                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                              <Briefcase className="w-4 h-4 text-secondary-500" />
-                              Bénéficiaire de Travaux
-                            </h3>
-                            {expandedSections.beneficiaire ? (
-                              <ChevronUp className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
-                          </button>
-                          {expandedSections.beneficiaire && (
-                            <div className="grid md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Raison Sociale</label>
-                                <Input
-                                  value={ceeData.raison_sociale_beneficiaire}
-                                  onChange={(e) => setCeeData({...ceeData, raison_sociale_beneficiaire: e.target.value})}
-                                  placeholder="Raison sociale du bénéficiaire"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone Fixe</label>
-                                <Input
-                                  value={ceeData.telephone_fixe_beneficiaire}
-                                  onChange={(e) => setCeeData({...ceeData, telephone_fixe_beneficiaire: e.target.value})}
-                                  placeholder="01 23 45 67 89"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <Input
-                                  type="email"
-                                  value={ceeData.email_beneficiaire}
-                                  onChange={(e) => setCeeData({...ceeData, email_beneficiaire: e.target.value})}
-                                  placeholder="email@exemple.fr"
-                                />
-                                {ceeData.email_beneficiaire && !validateEmail(ceeData.email_beneficiaire) && (
-                                  <p className="text-xs text-red-600 mt-1">Format d'email invalide</p>
-                                )}
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Civilité Responsable</label>
-                                <Select
-                                  value={ceeData.civilite_responsable || 'none'}
-                                  onValueChange={(value) => setCeeData({...ceeData, civilite_responsable: value === 'none' ? '' : value})}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Civilité" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">Aucune</SelectItem>
-                                    <SelectItem value="Mr">Mr</SelectItem>
-                                    <SelectItem value="Mme">Mme</SelectItem>
-                                    <SelectItem value="Mlle">Mlle</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nom Responsable</label>
-                                <Input
-                                  value={ceeData.nom_responsable}
-                                  onChange={(e) => setCeeData({...ceeData, nom_responsable: e.target.value})}
-                                  placeholder="Nom du responsable"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Prénom Responsable</label>
-                                <Input
-                                  value={ceeData.prenom_responsable}
-                                  onChange={(e) => setCeeData({...ceeData, prenom_responsable: e.target.value})}
-                                  placeholder="Prénom du responsable"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone Responsable</label>
-                                <Input
-                                  value={ceeData.telephone_responsable}
-                                  onChange={(e) => setCeeData({...ceeData, telephone_responsable: e.target.value})}
-                                  placeholder="06 12 34 56 78"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Section 4: Détails des Travaux */}
-                        <div className="border border-gray-200 rounded-lg p-4">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedSections({...expandedSections, details: !expandedSections.details})}
-                            className="w-full flex items-center justify-between mb-4"
-                          >
-                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-secondary-500" />
-                              Détails des Travaux
-                            </h3>
-                            {expandedSections.details ? (
-                              <ChevronUp className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
-                          </button>
-                          {expandedSections.details && (
-                            <div className="grid md:grid-cols-2 gap-4">
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Catégories de Travaux</label>
-                                <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-lg min-h-12">
-                                  {['Déstratificateur d\'air', 'Luminaire extérieur', 'Luminaire intérieur', 'Éclairage LED', 'Système de gestion d\'énergie', 'Isolation', 'Chauffage', 'Ventilation'].map(cat => {
-                                    const isSelected = ceeData.categories_travaux.includes(cat);
-                                    return (
-                                      <button
-                                        key={cat}
-                                        type="button"
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setCeeData({
-                                              ...ceeData,
-                                              categories_travaux: ceeData.categories_travaux.filter(c => c !== cat)
-                                            });
-                                          } else {
-                                            setCeeData({
-                                              ...ceeData,
-                                              categories_travaux: [...ceeData.categories_travaux, cat]
-                                            });
-                                          }
-                                        }}
-                                        className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                                          isSelected
-                                            ? 'bg-secondary-500 text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                      >
-                                        {cat}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Parcelle Cadastrale</label>
-                                <Input
-                                  value={ceeData.parcelle_cadastrale}
-                                  onChange={(e) => setCeeData({...ceeData, parcelle_cadastrale: e.target.value})}
-                                  placeholder="Ex: 000 AB 00123"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Qualification</label>
-                                <Input
-                                  value={ceeData.qualification}
-                                  onChange={(e) => setCeeData({...ceeData, qualification: e.target.value})}
-                                  placeholder="Ex: 3 étoiles"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Surface (m²)</label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={ceeData.surface_m2}
-                                  onChange={(e) => setCeeData({...ceeData, surface_m2: e.target.value})}
-                                  placeholder="0"
-                                />
-                              </div>
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Certificat Préparatoire</label>
-                                <div className="flex items-center gap-4">
-                                  <Input
-                                    type="file"
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    onChange={(e) => {
-                                      const file = e.target.files[0];
-                                      if (file) handleCertificatUpload(file);
-                                    }}
-                                    disabled={uploadingCertificat}
-                                    className="flex-1"
-                                  />
-                                  {ceeData.certificat_preparatoire && (
-                                    <a
-                                      href={getImageUrl(ceeData.certificat_preparatoire)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-secondary-600 hover:underline text-sm"
-                                    >
-                                      Voir le fichier
-                                    </a>
-                                  )}
-                                </div>
-                                {uploadingCertificat && (
-                                  <p className="text-xs text-gray-500 mt-1">Téléchargement en cours...</p>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-6 space-y-4">
-                        {/* Display saved CEE data */}
-                        {(order.adresse_siege || order.numero_siret) && (
-                          <div className="border-l-4 border-secondary-500 pl-4 py-2">
-                            <h3 className="font-semibold text-sm text-gray-700 mb-2">Siège Social</h3>
-                            <div className="space-y-1 text-sm text-gray-600">
-                              {order.adresse_siege && <p>{order.adresse_siege}</p>}
-                              {(order.ville_siege || order.code_postal_siege) && (
-                                <p>{order.code_postal_siege} {order.ville_siege}</p>
-                              )}
-                              {order.numero_siret && <p><strong>SIRET:</strong> {order.numero_siret}</p>}
-                              {order.siren && <p><strong>SIREN:</strong> {order.siren}</p>}
-                            </div>
-                          </div>
-                        )}
-
-                        {(order.adresse_travaux || order.region) && (
-                          <div className="border-l-4 border-secondary-500 pl-4 py-2">
-                            <h3 className="font-semibold text-sm text-gray-700 mb-2">Adresse des Travaux</h3>
-                            <div className="space-y-1 text-sm text-gray-600">
-                              {order.adresse_travaux && <p>{order.adresse_travaux}</p>}
-                              {(order.ville_travaux || order.code_postal_travaux) && (
-                                <p>{order.code_postal_travaux} {order.ville_travaux}</p>
-                              )}
-                              {order.region && <p><strong>Région:</strong> {order.region}</p>}
-                              {order.zone_climatique && <p><strong>Zone Climatique:</strong> {order.zone_climatique}</p>}
-                              {order.siret_site_travaux && <p><strong>SIRET Site:</strong> {order.siret_site_travaux}</p>}
-                            </div>
-                          </div>
-                        )}
-
-                        {(order.raison_sociale_beneficiaire || order.nom_responsable) && (
-                          <div className="border-l-4 border-secondary-500 pl-4 py-2">
-                            <h3 className="font-semibold text-sm text-gray-700 mb-2">Bénéficiaire</h3>
-                            <div className="space-y-1 text-sm text-gray-600">
-                              {order.raison_sociale_beneficiaire && <p><strong>Raison Sociale:</strong> {order.raison_sociale_beneficiaire}</p>}
-                              {(order.civilite_responsable || order.prenom_responsable || order.nom_responsable) && (
-                                <p>
-                                  {order.civilite_responsable} {order.prenom_responsable} {order.nom_responsable}
-                                </p>
-                              )}
-                              {order.email_beneficiaire && <p><strong>Email:</strong> {order.email_beneficiaire}</p>}
-                              {order.telephone_responsable && <p><strong>Tél:</strong> {order.telephone_responsable}</p>}
-                            </div>
-                          </div>
-                        )}
-
-                        {(order.surface_m2 || order.categories_travaux) && (
-                          <div className="border-l-4 border-secondary-500 pl-4 py-2">
-                            <h3 className="font-semibold text-sm text-gray-700 mb-2">Détails Travaux</h3>
-                            <div className="space-y-1 text-sm text-gray-600">
-                              {order.surface_m2 && <p><strong>Surface:</strong> {order.surface_m2} m²</p>}
-                              {order.qualification && <p><strong>Qualification:</strong> {order.qualification}</p>}
-                              {order.parcelle_cadastrale && <p><strong>Parcelle:</strong> {order.parcelle_cadastrale}</p>}
-                              {order.categories_travaux && (
-                                <div>
-                                  <strong>Catégories:</strong>
-                                  <div className="flex flex-wrap gap-2 mt-1">
-                                    {(Array.isArray(order.categories_travaux) ? order.categories_travaux : JSON.parse(order.categories_travaux || '[]')).map((cat, idx) => (
-                                      <Badge key={idx} className="bg-secondary-100 text-secondary-700">
-                                        {cat}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {order.certificat_preparatoire && (
-                                <p>
-                                  <strong>Certificat:</strong>{' '}
-                                  <a
-                                    href={getImageUrl(order.certificat_preparatoire)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-secondary-600 hover:underline"
-                                  >
-                                    Télécharger
-                                  </a>
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {!order.adresse_siege && !order.adresse_travaux && !order.raison_sociale_beneficiaire && !order.surface_m2 && (
-                          <p className="text-gray-500 text-center py-8">Aucune information CEE renseignée</p>
-                        )}
                       </div>
                     )}
                   </div>

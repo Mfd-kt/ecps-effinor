@@ -9,10 +9,12 @@ import { Textarea } from '@/components/ui/textarea.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
 import { Loader2, ArrowLeft, Trash2, User, Mail, Phone, Building, Save, Info, MessageSquare, Clock, Edit2 } from 'lucide-react';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@/contexts/UserContext';
 import { logger } from '@/utils/logger';
 import { sanitizeFormData } from '@/utils/sanitize';
 import NotesTimeline from '@/components/NotesTimeline';
+import { assignLead } from '@/lib/api/leads';
 
 const statusConfig = {
   'Nouveau': { variant: 'default', color: 'bg-blue-500' },
@@ -85,6 +87,7 @@ const AdminLeadDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user: authUser } = useAuth();
+  const { profile } = useUser();
 
   const [lead, setLead] = useState(null);
   const [notes, setNotes] = useState([]);
@@ -100,7 +103,10 @@ const AdminLeadDetail = () => {
       const leadPromise = supabase.from('leads').select('*').eq('id', id).single();
       const notesPromise = supabase.from('v_leads_notes').select('*').eq('lead_id', id).order('created_at', { ascending: false });
       const eventsPromise = supabase.from('v_leads_events').select('*').eq('lead_id', id).order('created_at', { ascending: false });
-      const usersPromise = supabase.from('utilisateurs').select('id, nom, prenom');
+      const usersPromise = supabase.from('utilisateurs').select(`
+        id, nom, prenom, email,
+        role:roles!utilisateurs_role_id_fkey(slug)
+      `);
 
       const [{ data: leadData, error: leadError }, { data: notesData, error: notesError }, { data: eventsData, error: eventsError }, { data: usersData, error: usersError }] = await Promise.all([leadPromise, notesPromise, eventsPromise, usersPromise]);
       
@@ -116,7 +122,7 @@ const AdminLeadDetail = () => {
 
     } catch (error) {
       toast({ title: "Erreur", description: `Impossible de charger les données: ${error.message}`, variant: "destructive" });
-      navigate('/admin/leads');
+      navigate('/leads');
     } finally {
       setLoading(false);
     }
@@ -234,7 +240,7 @@ const AdminLeadDetail = () => {
         }
         
         toast({ title: "Lead supprimé", description: "Le lead a été supprimé avec succès." });
-        navigate('/admin/leads');
+        navigate('/leads');
     } catch(error) {
         logger.error('Error deleting lead:', error);
         toast({ 
@@ -259,7 +265,7 @@ const AdminLeadDetail = () => {
       <div>
         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div className="flex items-center gap-4">
-            <Link to="/admin/leads"><Button variant="outline" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+            <Link to="/leads"><Button variant="outline" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
             <h1 className="text-3xl font-bold text-gray-900">{lead.nom}</h1>
             <Badge className={`${statusConfig[lead.statut]?.color || 'bg-gray-400'} text-white`}>{lead.statut || 'N/A'}</Badge>
           </div>
@@ -284,6 +290,40 @@ const AdminLeadDetail = () => {
                         <SelectContent>
                             <SelectItem value={null}>Non assigné</SelectItem>
                             {users.map(u => <SelectItem key={u.id} value={u.id}>{u.prenom} {u.nom}</SelectItem>)}
+                        </SelectContent>
+                   </Select>
+                </div>
+                <div>
+                   <label className="block text-sm font-medium text-gray-500 mb-1">Commercial assigné</label>
+                   <Select 
+                     value={lead.commercial_assigne_id || ''} 
+                     onValueChange={async (value) => {
+                       try {
+                         const { data: userResponse } = await supabase.auth.getUser();
+                         const user = userResponse.user;
+                         const result = await assignLead(id, value || null, user?.id || null);
+                         if (result.success) {
+                           setLead(prev => ({ ...prev, commercial_assigne_id: value || null }));
+                           toast({ title: "Mise à jour", description: "Commercial assigné avec succès." });
+                           fetchData();
+                         } else {
+                           throw new Error(result.error);
+                         }
+                       } catch (error) {
+                         toast({ title: "Erreur", description: `Erreur lors de l'assignation: ${error.message}`, variant: "destructive" });
+                       }
+                     }}
+                   >
+                        <SelectTrigger><SelectValue placeholder="Assigner un commercial..." /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="">Non assigné</SelectItem>
+                            {users
+                              .filter(u => u.role?.slug === 'commercial' || !u.role) // Filtrer les commerciaux
+                              .map(u => (
+                                <SelectItem key={u.id} value={u.id}>
+                                  {u.prenom} {u.nom} {u.email ? `(${u.email})` : ''}
+                                </SelectItem>
+                              ))}
                         </SelectContent>
                    </Select>
                 </div>
@@ -352,7 +392,7 @@ const AdminLeadDetail = () => {
           <div className="mt-6">
             <NotesTimeline 
               leadId={lead.id}
-              currentUser={profile?.full_name || profile?.email || user?.email || 'Admin'}
+              currentUser={profile?.full_name || profile?.email || authUser?.email || 'Admin'}
               title="Notes Internes"
             />
           </div>

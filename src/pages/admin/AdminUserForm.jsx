@@ -22,8 +22,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { getAllRoles } from '@/lib/api/roles';
 
-const AdminUserForm = () => {
+const AdminUserForm = ({ onCreated }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -33,25 +34,32 @@ const AdminUserForm = () => {
     prenom: '',
     nom: '',
     email: '',
-    role: 'viewer',
+    role_id: null,
     active: true,
     photo_profil_url: '',
   });
   const [initialData, setInitialData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(isEditing);
+  const [pageLoading, setPageLoading] = useState(false); // Toujours false au départ, sera true seulement si on édite
   const [isEmailValid, setIsEmailValid] = useState(true);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const fetchUser = useCallback(async () => {
-    if (!isEditing) {
-        setPageLoading(false);
+    // Ne charger l'utilisateur que si on est en mode édition
+    if (!isEditing || !id) {
         return;
     }
     setPageLoading(true);
     try {
         const { data, error } = await supabase
           .from('utilisateurs')
-          .select('*')
+          .select(`
+            *,
+            role:roles!utilisateurs_role_id_fkey(id, slug, label, nom)
+          `)
           .eq('id', id)
           .single();
         
@@ -65,7 +73,7 @@ const AdminUserForm = () => {
             nom: data.nom || '',
             full_name: data.full_name || '',
             email: data.email || '',
-            role: data.role || 'lecture',
+            role_id: data.role_id || null,
             active: data.statut === 'actif',
             photo_profil_url: data.photo_profil_url || '',
             created_at: data.created_at,
@@ -80,15 +88,56 @@ const AdminUserForm = () => {
           description: "Une erreur est survenue lors du chargement des données. Veuillez réessayer ou contacter le support technique.",
           variant: "destructive" 
         });
-        navigate('/admin/users');
+        navigate('/utilisateurs');
     } finally {
         setPageLoading(false);
     }
   }, [id, isEditing, navigate, toast]);
 
+  // Load roles from database
   useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
+    const loadRoles = async () => {
+      setRolesLoading(true);
+      try {
+        const { success, data, error } = await getAllRoles();
+        if (success && data) {
+          setRoles(data);
+          logger.log('✅ Rôles chargés:', data);
+        } else {
+          logger.error('Erreur chargement rôles:', error);
+          // Ne pas bloquer le rendu, juste afficher un message
+          toast({
+            title: "Avertissement",
+            description: "Impossible de charger la liste des rôles. Vous pouvez continuer, mais le rôle ne pourra pas être défini.",
+            variant: "default",
+            duration: 5000,
+          });
+          setRoles([]);
+        }
+      } catch (error) {
+        logger.error('Erreur chargement rôles:', error);
+        // Ne pas bloquer le rendu, juste afficher un message
+        toast({
+          title: "Avertissement",
+          description: "Impossible de charger la liste des rôles. Vous pouvez continuer, mais le rôle ne pourra pas être défini.",
+          variant: "default",
+          duration: 5000,
+        });
+        setRoles([]);
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+    
+    loadRoles();
+  }, [toast]);
+
+  // Charger l'utilisateur seulement si on est en mode édition
+  useEffect(() => {
+    if (isEditing && id) {
+      fetchUser();
+    }
+  }, [isEditing, id, fetchUser]);
   
   useEffect(() => {
     if (!isEditing) {
@@ -110,79 +159,152 @@ const AdminUserForm = () => {
     setFormData(prev => ({ ...prev, [name]: checked }));
   };
   
-  const handleInviteUser = async () => {
+  const handleInviteUser = async (e) => {
+    if (e) e.preventDefault();
     setLoading(true);
-    logger.log('=== CRÉATION PROFIL UTILISATEUR ===');
-    logger.log('Données:', formData);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     
+    const { prenom, nom, email, role_id } = formData;
+    
+    // Validation
+    if (!email || !prenom || !nom) {
+      setErrorMessage("Veuillez remplir tous les champs obligatoires.");
+      setLoading(false);
+      return;
+    }
+
+    // Build full_name
+    const full_name = `${prenom} ${nom}`.trim();
+    
+    // Prepare payload for Edge Function
+    const payload = {
+      email: email.toLowerCase().trim(),
+      full_name,
+      role_id: role_id || null,
+      send_email: true,
+    };
+
+    logger.log('=== INVITATION UTILISATEUR ===');
+    logger.log('Payload envoyé:', payload);
+
     try {
-      if (!formData.prenom || !formData.nom || !formData.email || !formData.role) {
-          toast({ 
-            title: "Erreur de validation", 
-            description: "Veuillez remplir tous les champs obligatoires.", 
-            variant: "destructive" 
-          });
-          return;
-      }
+      // Call Edge Function using fetch directly to have better error handling
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const functionUrl = `${supabaseUrl}/functions/v1/create-user`;
       
-      logger.log('Vérification email existant...');
-      const { data: existing, error: checkError } = await supabase
-          .from('utilisateurs')
-          .select('email')
-          .eq('email', formData.email)
-          .maybeSingle();
-
-      if (checkError) throw checkError;
+      logger.log('📤 Appel Edge Function:', functionUrl);
       
-      if (existing) {
-          toast({ 
-            title: "Email déjà utilisé", 
-            description: "Cet email est déjà utilisé par un autre utilisateur.", 
-            variant: "destructive" 
-          });
-          return;
-      }
-
-      logger.log('Création du profil...');
-      
-      // Prepare and sanitize data before insertion
-      // Note: Ce formulaire crée seulement un profil dans utilisateurs, pas de compte auth
-      // L'utilisateur devra s'inscrire via /signup avec cet email
-      const profileData = {
-        email: formData.email.toLowerCase(),
-        prenom: formData.prenom,
-        nom: formData.nom,
-        full_name: `${formData.prenom} ${formData.nom}`,
-        role: formData.role,
-        statut: formData.active ? 'actif' : 'suspendu'
-      };
-      const sanitizedProfileData = sanitizeFormData(profileData);
-      
-      const { data: profile, error: profileError } = await supabase
-          .from('utilisateurs')
-          .insert(sanitizedProfileData)
-          .select()
-          .single();
-      
-      if (profileError) throw profileError;
-      
-      logger.log('✅ Profil créé:', profile);
-
-      toast({ 
-        title: "✅ Profil créé avec succès !", 
-        description: `Nom : ${formData.prenom} ${formData.nom}\nEmail : ${formData.email}\nRôle : ${formData.role}\n\n📧 IMPORTANT : Envoyez un email à l'utilisateur avec ces instructions :\n\n1. Aller sur : ${window.location.origin}/signup\n2. S'inscrire avec l'email : ${formData.email}\n3. Créer un mot de passe\n\nUne fois inscrit, l'utilisateur pourra se connecter au dashboard.`,
-        duration: 10000
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify(payload),
       });
 
-      logger.log('=== FIN CRÉATION ===');
-      navigate('/admin/users');
+      // Parse response body
+      let responseData;
+      const responseText = await response.text();
+      
+      try {
+        responseData = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        responseData = { error: responseText || 'Erreur inconnue' };
+      }
 
+      logger.log('📥 Réponse Edge Function:', { status: response.status, data: responseData });
+
+      // Check if response is successful
+      if (!response.ok) {
+        // Extract error message from response body
+        let errorMsg = 'Une erreur est survenue lors de l\'invitation.';
+        
+        if (responseData?.error) {
+          errorMsg = typeof responseData.error === 'string' 
+            ? responseData.error 
+            : responseData.error.message || errorMsg;
+        } else if (responseText) {
+          // Try to parse as JSON if not already parsed
+          try {
+            const parsed = JSON.parse(responseText);
+            if (parsed.error) {
+              errorMsg = typeof parsed.error === 'string' ? parsed.error : parsed.error.message || errorMsg;
+            }
+          } catch {
+            errorMsg = responseText;
+          }
+        }
+        
+        logger.error('❌ Erreur Edge Function:', errorMsg);
+        
+        setErrorMessage(errorMsg);
+        toast({
+          title: "Erreur d'invitation",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Check if response indicates success
+      if (responseData?.success) {
+        logger.log('✅ Réponse Edge Function:', responseData);
+        const successMsg = `Invitation envoyée à ${email}. L'utilisateur doit finaliser son compte par email.`;
+        setSuccessMessage(successMsg);
+        toast({
+          title: "✅ Invitation envoyée",
+          description: successMsg,
+          duration: 5000,
+        });
+
+        // Reset form
+        setFormData({
+          prenom: '',
+          nom: '',
+          email: '',
+          role_id: null,
+          active: true,
+          photo_profil_url: '',
+        });
+
+        // Call onCreated callback if provided
+        if (onCreated && typeof onCreated === 'function') {
+          onCreated(responseData);
+        }
+
+        // Navigate after a short delay
+        setTimeout(() => {
+          navigate('/utilisateurs');
+        }, 2000);
+      } else {
+        // Handle case where success is false but no error thrown
+        // Extract error message from responseData
+        let errorMsg = 'L\'invitation a échoué.';
+        
+        if (responseData?.error) {
+          errorMsg = typeof responseData.error === 'string' ? responseData.error : responseData.error.message || errorMsg;
+        }
+        
+        setErrorMessage(errorMsg);
+        toast({
+          title: "Erreur d'invitation",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
     } catch (error) {
       logger.error('❌ Erreur inattendue:', error);
-      toast({ 
-        title: "Impossible de créer le profil", 
-        description: "Une erreur est survenue lors de la création du profil. Vérifiez que tous les champs sont correctement remplis et réessayez. Si le problème persiste, contactez le support technique.",
-        variant: "destructive" 
+      const errorMsg = error.message || 'Une erreur inattendue est survenue.';
+      setErrorMessage(errorMsg);
+      toast({
+        title: "Erreur",
+        description: errorMsg,
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -199,7 +321,7 @@ const AdminUserForm = () => {
               nom: formData.nom,
               full_name: `${formData.prenom} ${formData.nom}`,
               photo_profil_url: formData.photo_profil_url,
-              role: formData.role,
+              role_id: formData.role_id || null,
               statut: formData.active ? 'actif' : 'suspendu',
           };
           const sanitizedUpdateData = sanitizeFormData(updateData);
@@ -225,7 +347,7 @@ const AdminUserForm = () => {
     if (isEditing) {
       handleUpdate(e);
     } else {
-      handleInviteUser();
+      handleInviteUser(e);
     }
   };
 
@@ -240,7 +362,7 @@ const AdminUserForm = () => {
       <Helmet><title>{isEditing ? 'Fiche Utilisateur' : 'Inviter un Utilisateur'} | Effinor Admin</title></Helmet>
       <div className="space-y-8 max-w-5xl mx-auto bg-gradient-to-br from-gray-50 to-gray-100/50 min-h-screen p-6 md:p-8">
         <div className="flex items-center gap-4 fade-in">
-            <Link to="/admin/users">
+            <Link to="/utilisateurs">
               <Button 
                 variant="outline" 
                 size="icon" 
@@ -344,17 +466,40 @@ const AdminUserForm = () => {
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="role" className="text-sm font-semibold text-gray-700">Rôle</Label>
-                            <Select name="role" value={formData.role} onValueChange={(v) => handleSelectChange('role', v)}>
-                                <SelectTrigger className="enterprise-input h-11"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="viewer" className="cursor-pointer">Viewer</SelectItem>
-                                    <SelectItem value="support" className="cursor-pointer">Support</SelectItem>
-                                    <SelectItem value="commercial" className="cursor-pointer">Commercial</SelectItem>
-                                    <SelectItem value="admin" className="cursor-pointer">Admin</SelectItem>
-                                    <SelectItem value="super_admin" className="cursor-pointer">Super Admin</SelectItem>
-                                </SelectContent>
+                          <Label htmlFor="role_id" className="text-sm font-semibold text-gray-700">Rôle</Label>
+                          {rolesLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Chargement des rôles...</span>
+                            </div>
+                          ) : (
+                            <Select 
+                              name="role_id" 
+                              value={formData.role_id || ''} 
+                              onValueChange={(v) => handleSelectChange('role_id', v)}
+                            >
+                              <SelectTrigger className="enterprise-input h-11">
+                                <SelectValue placeholder="Sélectionner un rôle" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {roles.length > 0 ? (
+                                  roles.map((role) => (
+                                    <SelectItem 
+                                      key={role.id} 
+                                      value={role.id} 
+                                      className="cursor-pointer"
+                                    >
+                                      {role.nom || role.label || role.slug}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="" className="cursor-pointer" disabled>
+                                    Aucun rôle disponible
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
                             </Select>
+                          )}
                         </div>
                         <div className="flex items-center space-x-3 pt-8">
                             <Switch 
@@ -382,14 +527,28 @@ const AdminUserForm = () => {
                            <span className="font-semibold">Enregistrer</span>
                         </Button>
                     ) : (
-                        <Button 
-                          type="submit" 
-                          disabled={loading || !isEmailValid || !formData.prenom || !formData.nom} 
-                          className="enterprise-button enterprise-button-primary h-12 px-8 shadow-lg shadow-secondary-500/30"
-                        >
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-                            <span className="font-semibold">Créer le profil</span>
-                        </Button>
+                        <>
+                          {errorMessage && (
+                            <div className="text-red-600 text-sm mt-2 mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                              {errorMessage}
+                            </div>
+                          )}
+                          {successMessage && (
+                            <div className="text-emerald-600 text-sm mt-2 mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+                              {successMessage}
+                            </div>
+                          )}
+                          <Button 
+                            type="submit" 
+                            disabled={loading || !isEmailValid || !formData.prenom || !formData.nom} 
+                            className="enterprise-button enterprise-button-primary h-12 px-8 shadow-lg shadow-secondary-500/30"
+                          >
+                              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+                              <span className="font-semibold">
+                                {loading ? 'Invitation en cours...' : 'Envoyer l\'invitation'}
+                              </span>
+                          </Button>
+                        </>
                     )}
                  </div>
             </div>

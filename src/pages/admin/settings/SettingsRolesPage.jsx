@@ -21,11 +21,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getAllRoles, deleteRole } from '@/lib/api/roles';
 import ModalRole from '@/components/admin/ModalRole';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-
+import { useAuth } from '@/contexts/AuthContext';
 /**
  * Settings Roles Page
  * Gestion des rôles et permissions
+ * Note: La vérification des permissions est gérée par RequireRole dans App.jsx
  */
 const SettingsRolesPage = () => {
   const { toast } = useToast();

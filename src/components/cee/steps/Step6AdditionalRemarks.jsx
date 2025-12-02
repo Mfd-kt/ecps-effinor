@@ -15,7 +15,7 @@ const Step6AdditionalRemarks = ({ data, onChange, ceePotential }) => {
           <div className="flex items-start gap-3">
             <Zap className="h-8 w-8 text-success flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-gray-900 mb-3">Estimation de votre potentiel CEE</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-3">Estimation de votre projet</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white rounded-lg p-4 shadow-sm">
                   <p className="text-sm text-gray-600 mb-1">Potentiel Total</p>

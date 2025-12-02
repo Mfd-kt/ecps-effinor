@@ -2,9 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { logger } from '@/utils/logger';
+import { getSpecSummary } from '@/utils/productSpecs';
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
+  const specSummary = getSpecSummary(product);
 
   const formatCategory = (categorySlug) => {
     if (!categorySlug) return '';
@@ -60,21 +62,23 @@ const ProductCard = ({ product }) => {
             e.target.src = "https://placehold.co/600x400/e2e8f0/e2e8f0?text=Image";
           }}
         />
-        {product.prime_cee && <div className="badge-prime">Prime CEE</div>}
       </div>
       <div className="product-content">
         <div className="category">{formatCategory(product.categorie)}</div>
         <h3>{product.nom}</h3>
+        {(product.marque || product.reference) && (
+          <p className="text-xs text-gray-600 mb-1">
+            {product.marque && <span className="font-medium">{product.marque}</span>}
+            {product.marque && product.reference && <span className="mx-1 text-gray-400">•</span>}
+            {product.reference && <span className="text-gray-500">Réf. {product.reference}</span>}
+          </p>
+        )}
+        {specSummary && (
+          <p className="text-xs text-gray-600 mb-1">{specSummary}</p>
+        )}
         <p className="description">{product.description}</p>
         
-        {(product.puissance || product.luminosite) && (
-          <div className="specs">
-            {product.puissance && <span>{product.puissance}</span>}
-            {product.luminosite && <span>{product.luminosite}</span>}
-          </div>
-        )}
-        
-        <div className="mt-auto">
+        <div className="mt-auto pt-2">
           {product.sur_devis || !product.prix ? (
             <p className="price-label">Sur devis</p>
           ) : (

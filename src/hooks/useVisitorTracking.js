@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/SupabaseAuthContext'; // Utiliser le contexte d'authentification
+import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
 
 let sessionStartTime = null;
@@ -8,7 +8,6 @@ let visitorId = null; // Store the visitor ID for the session
 
 export const useVisitorTracking = () => {
   const location = useLocation();
-  const { supabase } = useAuth(); // Récupérer le client Supabase depuis le contexte
   const updateIntervalRef = useRef(null);
   const isTrackingRef = useRef(false);
 
@@ -37,7 +36,7 @@ export const useVisitorTracking = () => {
       .insert([{
         ip_address: clientIp,
         page_actuelle: window.location.pathname,
-        referer: document.referrer || null,
+        // referer: document.referrer || null, // Commenté car colonne manquante en prod
         navigateur: navigator.userAgent || null,
         statut: 'active'
       }])

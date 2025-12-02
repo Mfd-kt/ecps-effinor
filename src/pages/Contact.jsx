@@ -75,15 +75,15 @@ export default function Contact() {
     try {
       // Sanitize form data before insertion
       const sanitizedFormData = sanitizeFormData({
-        nom: formData.nom,
-        societe: formData.societe,
-        email: formData.email,
-        telephone: formData.telephone,
-        message: `Sujet: ${formData.sujet}\n\nMessage: ${formData.message}`,
-        source: 'Formulaire de Contact',
-        statut: 'Nouveau',
-        type_projet: formData.sujet,
-        page_origine: '/contact'
+            nom: formData.nom,
+            societe: formData.societe,
+            email: formData.email,
+            telephone: formData.telephone,
+            message: `Sujet: ${formData.sujet}\n\nMessage: ${formData.message}`,
+            source: 'Formulaire de Contact',
+            statut: 'Nouveau',
+            type_projet: formData.sujet,
+            page_origine: '/contact'
       });
 
       const { data, error } = await supabase
@@ -132,28 +132,31 @@ export default function Contact() {
 
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section - Full Width Background */}
-        <div className="w-full bg-primary-900 text-white py-16 md:py-20 pt-32">
-          <div className="container mx-auto">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 leading-tight text-white">Contactez-nous</h1>
-            <p className="text-xl text-white/90">Nous sommes à votre écoute pour tous vos projets</p>
+        <div className="w-full bg-primary-900 text-white py-8 md:py-12 pt-24">
+          <div className="container mx-auto max-w-7xl px-4">
+            <div className="max-w-5xl mx-auto">
+              <h1 className="text-xl md:text-2xl font-bold mb-2 leading-tight text-white">Contactez-nous</h1>
+              <p className="text-sm md:text-base text-white/90">Nous sommes à votre écoute pour tous vos projets</p>
+            </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="container mx-auto py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 mb-12">
-            
-            {/* Contact Information */}
-            <div className="lg:col-span-2 space-y-6">
+        <div className="container mx-auto py-4 md:py-6 lg:py-8 max-w-7xl px-3 md:px-4 overflow-x-hidden">
+          <div className="max-w-[95%] sm:max-w-lg md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
               
-              {/* Email */}
-              <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-                <div className="flex items-start gap-4">
-                  <div className="bg-secondary-500 text-white p-3 rounded-lg flex-shrink-0">
-                    <Mail className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Email</h3>
+              {/* Contact Information */}
+              <div className="md:col-span-2 lg:col-span-2 space-y-3 md:space-y-4">
+                
+                {/* Email */}
+                <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-secondary-500 text-white p-2 rounded-lg flex-shrink-0">
+                      <Mail className="w-4 h-4 md:w-5 md:h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm md:text-base font-bold text-gray-900 mb-1">Email</h3>
                     <p className="text-gray-600 mb-1">
                       <a href="mailto:contact@effinor.fr" className="hover:text-secondary-600 font-semibold">
                         contact@effinor.fr
@@ -168,14 +171,14 @@ export default function Contact() {
                 </div>
               </div>
 
-              {/* Phone */}
-              <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-                <div className="flex items-start gap-4">
-                  <div className="bg-secondary-500 text-white p-3 rounded-lg flex-shrink-0">
-                    <Phone className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Téléphone</h3>
+                {/* Phone */}
+                <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-secondary-500 text-white p-2 rounded-lg flex-shrink-0">
+                      <Phone className="w-4 h-4 md:w-5 md:h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm md:text-base font-bold text-gray-900 mb-1">Téléphone</h3>
                     <p className="text-gray-600 mb-1">
                       <a href="tel:+33978455063" className="hover:text-secondary-600 font-semibold">
                         09 78 45 50 63
@@ -189,14 +192,14 @@ export default function Contact() {
                 </div>
               </div>
 
-              {/* Address */}
-              <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-                <div className="flex items-start gap-4">
-                  <div className="bg-secondary-500 text-white p-3 rounded-lg flex-shrink-0">
-                    <MapPin className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Localisation</h3>
+                {/* Address */}
+                <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-secondary-500 text-white p-2 rounded-lg flex-shrink-0">
+                      <MapPin className="w-4 h-4 md:w-5 md:h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm md:text-base font-bold text-gray-900 mb-1">Localisation</h3>
                     <p className="text-gray-600 font-semibold">Siège Social</p>
                     <p className="text-gray-600">1 Avenue de l'Europe</p>
                     <p className="text-gray-600">94320 Thiais Tour europa</p>
@@ -205,32 +208,32 @@ export default function Contact() {
                 </div>
               </div>
 
-              {/* Response Time */}
-              <div className="bg-secondary-50 border-l-4 border-secondary-500 p-6 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-secondary-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="font-bold text-secondary-900 mb-1">Réponse sous 24h garantie</p>
-                    <p className="text-secondary-800 text-sm">
-                      Notre équipe s'engage à vous répondre dans les meilleurs délais.
-                    </p>
+                {/* Response Time */}
+                <div className="bg-secondary-50 border-l-4 border-secondary-500 p-3 md:p-4 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-secondary-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-secondary-900 mb-0.5 text-xs md:text-sm">Réponse sous 24h garantie</p>
+                      <p className="text-secondary-800 text-xs">
+                        Notre équipe s'engage à vous répondre dans les meilleurs délais.
+                      </p>
+                    </div>
                   </div>
                 </div>
+
               </div>
 
-            </div>
-
-            {/* Contact Form */}
-            <div className="lg:col-span-3">
-              <div className="bg-white p-6 lg:p-8 xl:p-10 rounded-2xl shadow-xl border border-gray-100">
-                {/* Form Header */}
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-500/10 rounded-full mb-4">
-                    <MessageSquare className="w-8 h-8 text-secondary-500" />
+              {/* Contact Form */}
+              <div className="md:col-span-2 lg:col-span-3">
+                <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-100">
+                  {/* Form Header */}
+                  <div className="text-center mb-4 md:mb-6">
+                    <div className="inline-flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-secondary-500/10 rounded-full mb-2">
+                      <MessageSquare className="w-5 h-5 md:w-6 md:h-6 text-secondary-500" />
+                    </div>
+                    <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-1">Envoyez-nous un message</h2>
+                    <p className="text-gray-600 text-xs md:text-sm">Notre équipe vous répondra sous 24h</p>
                   </div>
-                  <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Envoyez-nous un message</h2>
-                  <p className="text-gray-600 text-lg">Notre équipe vous répondra sous 24h</p>
-                </div>
 
                 {/* Success Message */}
                 {submitted && (
@@ -415,9 +418,9 @@ export default function Contact() {
                   <div className="pt-4 border-t border-gray-200">
                     <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-2">
                       <Lock className="w-3 h-3" />
-                      En envoyant ce formulaire, vous acceptez notre 
+                    En envoyant ce formulaire, vous acceptez notre 
                       <Link to="/politique-confidentialite" className="text-secondary-600 hover:underline font-medium"> politique de confidentialité</Link>.
-                    </p>
+                  </p>
                   </div>
                 </form>
               </div>
@@ -425,60 +428,61 @@ export default function Contact() {
 
           </div>
 
-          {/* Company Information Section */}
-          <div className="bg-white rounded-lg shadow-md p-8 mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">Informations sur l'Entreprise</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Company Information Section */}
+            <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6">
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">Informations sur l'Entreprise</h2>
               
-              {/* Identification */}
-              <div className="border-l-4 border-secondary-600 pl-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Identification</h3>
-                <div className="space-y-2 text-gray-600">
-                  <p><strong>Dénomination:</strong> ECPS</p>
-                  <p><strong>Nom commercial:</strong> EFFINOR Air-Energie-Lighting</p>
-                  <p><strong>Forme juridique:</strong> SAS</p>
-                  <p><strong>RCS:</strong> 907 547 665 R.C.S. Créteil</p>
-                  <p><strong>EUID:</strong> FR9401.907547665</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                
+                {/* Identification */}
+                <div className="border-l-4 border-secondary-600 pl-3 md:pl-4">
+                  <h3 className="text-sm md:text-base font-bold text-gray-900 mb-2">Identification</h3>
+                  <div className="space-y-1.5 text-xs md:text-sm text-gray-600">
+                    <p><strong>Dénomination:</strong> ECPS</p>
+                    <p><strong>Nom commercial:</strong> EFFINOR Air-Energie-Lighting</p>
+                    <p><strong>Forme juridique:</strong> SAS</p>
+                    <p><strong>RCS:</strong> 907 547 665 R.C.S. Créteil</p>
+                    <p><strong>EUID:</strong> FR9401.907547665</p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Capital & Activities */}
-              <div className="border-l-4 border-secondary-600 pl-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Capital & Activités</h3>
-                <div className="space-y-2 text-gray-600">
-                  <p><strong>Capital social:</strong> 115 900,00 €</p>
-                  <p><strong>Code APE:</strong> 7112 B</p>
-                  <p><strong>Activité:</strong> Bureau d'étude, performance énergétique</p>
-                  <p><strong>Services:</strong> Audit thermique, Chauffage, Climatisation, Plomberie, Électricité</p>
+                {/* Capital & Activities */}
+                <div className="border-l-4 border-secondary-600 pl-3 md:pl-4">
+                  <h3 className="text-sm md:text-base font-bold text-gray-900 mb-2">Capital & Activités</h3>
+                  <div className="space-y-1.5 text-xs md:text-sm text-gray-600">
+                    <p><strong>Capital social:</strong> 115 900,00 €</p>
+                    <p><strong>Code APE:</strong> 7112 B</p>
+                    <p><strong>Activité:</strong> Bureau d'étude, performance énergétique</p>
+                    <p><strong>Services:</strong> Audit thermique, Chauffage, Climatisation, Plomberie, Électricité</p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Dates & Duration */}
-              <div className="border-l-4 border-secondary-600 pl-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Dates & Durée</h3>
-                <div className="space-y-2 text-gray-600">
-                  <p><strong>Création:</strong> 29/11/2021</p>
-                  <p><strong>Durée:</strong> Jusqu'au 25/11/2120</p>
-                  <p><strong>Clôture exercice:</strong> 31 décembre</p>
-                  <p><strong>Localisation:</strong> France / Europe</p>
+                {/* Dates & Duration */}
+                <div className="border-l-4 border-secondary-600 pl-3 md:pl-4">
+                  <h3 className="text-sm md:text-base font-bold text-gray-900 mb-2">Dates & Durée</h3>
+                  <div className="space-y-1.5 text-xs md:text-sm text-gray-600">
+                    <p><strong>Création:</strong> 29/11/2021</p>
+                    <p><strong>Durée:</strong> Jusqu'au 25/11/2120</p>
+                    <p><strong>Clôture exercice:</strong> 31 décembre</p>
+                    <p><strong>Localisation:</strong> France / Europe</p>
+                  </div>
                 </div>
-              </div>
 
-            </div>
-          </div>
-
-          {/* Map Section (Optional) */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="h-96 bg-gray-200 flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 font-semibold">1 Avenue de l'Europe, 94320 Thiais Tour europa</p>
-                <p className="text-gray-500 text-sm mt-2">Carte interactive à intégrer</p>
               </div>
             </div>
-          </div>
 
+            {/* Map Section (Optional) */}
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="h-64 md:h-80 bg-gray-200 flex items-center justify-center">
+                <div className="text-center">
+                  <MapPin className="w-8 h-8 md:w-10 md:h-10 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600 font-semibold text-xs md:text-sm">1 Avenue de l'Europe, 94320 Thiais Tour europa</p>
+                  <p className="text-gray-500 text-xs mt-1">Carte interactive à intégrer</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
     </>

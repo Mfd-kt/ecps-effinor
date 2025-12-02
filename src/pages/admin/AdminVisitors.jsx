@@ -5,8 +5,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { logger } from '@/utils/logger';
 import { Activity, Clock, Link as LinkIcon, Monitor, Globe, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-
 const AdminVisitors = () => {
+  // Note: La vérification des permissions est gérée par RequireRole dans App.jsx
+  // Pas besoin de double vérification ici
+  
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();

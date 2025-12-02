@@ -17,7 +17,7 @@ const Step4BuildingCount = ({ data, onChange, errors }) => {
             <p className="text-yellow-900 font-semibold mb-2">Analyse détaillée par bâtiment</p>
             <p className="text-yellow-800 text-sm">
               Nous allons analyser chaque bâtiment individuellement pour calculer précisément 
-              votre potentiel d'économies d'énergie et les aides CEE disponibles.
+              votre potentiel d'économies d'énergie et les solutions adaptées à vos besoins.
             </p>
           </div>
         </div>

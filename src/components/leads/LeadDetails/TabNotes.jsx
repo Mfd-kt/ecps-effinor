@@ -1,12 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import NotesTimeline from '@/components/NotesTimeline';
+import { useUser } from '@/contexts/UserContext';
 
 /**
  * Onglet Notes & Historique
  * Affiche les notes et l'historique complet du lead
  */
 const TabNotes = ({ lead }) => {
+  const { profile } = useUser();
+  
   if (!lead) return null;
 
   return (
@@ -18,7 +21,7 @@ const TabNotes = ({ lead }) => {
     >
       <NotesTimeline 
         leadId={lead.id}
-        currentUser={{ full_name: 'Current User' }}
+        currentUser={profile?.full_name || profile?.email || 'Admin'}
         title="Notes & Historique"
       />
     </motion.div>
@@ -26,4 +29,11 @@ const TabNotes = ({ lead }) => {
 };
 
 export default TabNotes;
+
+
+
+
+
+
+
 

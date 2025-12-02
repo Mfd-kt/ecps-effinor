@@ -39,3 +39,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 });
+
+// Export par défaut optionnel
+export default supabase;

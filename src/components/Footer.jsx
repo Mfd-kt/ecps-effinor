@@ -4,8 +4,8 @@ import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="footer mt-20">
-      <div className="container mx-auto px-4">
+    <footer className="bg-gray-900 text-white mt-20">
+      <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center space-x-3 mb-4">
@@ -14,24 +14,33 @@ const Footer = () => {
               </div>
               <span className="text-lg font-bold text-white">EFFINOR</span>
             </div>
-            <p className="text-gray-400 text-sm">
-              Solutions d'efficacité énergétique pour les professionnels.
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Votre fournisseur LED professionnel pour l'industrie, le tertiaire et l'agricole.
             </p>
           </div>
 
           <div>
             <span className="font-semibold text-[var(--secondary-400)] block mb-4">Navigation</span>
-            <div className="space-y-2">
-              <Link to="/" className="block text-sm">
+            <div className="space-y-3">
+              <Link to="/" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
                 Accueil
               </Link>
-              <Link to="/boutique" className="block text-sm">
-                Boutique
+              <Link to="/produits-solutions" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
+                Produits & Solutions
               </Link>
-              <Link to="/prime-cee" className="block text-sm">
-                Prime CEE
+              <Link to="/secteurs-activite" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
+                Secteurs d'activité
               </Link>
-              <Link to="/a-propos" className="block text-sm">
+              <Link to="/realisations" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
+                Réalisations
+              </Link>
+              <Link to="/services-accompagnement" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
+                Services & Accompagnement
+              </Link>
+              <Link to="/blog" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
+                Blog
+              </Link>
+              <Link to="/a-propos" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
                 À propos
               </Link>
             </div>
@@ -39,17 +48,20 @@ const Footer = () => {
 
           <div>
             <span className="font-semibold text-[var(--secondary-400)] block mb-4">Informations</span>
-            <div className="space-y-2">
-              <Link to="/contact" className="block text-sm">
+            <div className="space-y-3">
+              <Link to="/contact" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
                 Contact
               </Link>
-              <Link to="/mentions-legales" className="block text-sm">
+              <Link to="/espace-client/login" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
+                Espace client
+              </Link>
+              <Link to="/mentions-legales" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
                 Mentions légales
               </Link>
-              <Link to="/cgv" className="block text-sm">
+              <Link to="/cgv" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
                 CGV
               </Link>
-               <Link to="/politique-confidentialite" className="block text-sm">
+              <Link to="/politique-confidentialite" className="block text-sm text-gray-300 hover:text-[var(--secondary-400)] transition-colors">
                 Politique de Confidentialité
               </Link>
             </div>
@@ -78,7 +90,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="footer-bottom-border mt-8 pt-8 text-center">
+        <div className="border-t border-gray-800 mt-12 pt-8 text-center">
           <p className="text-gray-400 text-sm">
             © {new Date().getFullYear()} EFFINOR. Tous droits réservés.
           </p>

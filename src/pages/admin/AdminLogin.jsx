@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { logger } from '@/utils/logger';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const errorMessages = {
   'invalid_credentials': "Email ou mot de passe incorrect.",
@@ -21,15 +22,60 @@ const errorMessages = {
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signInWithPassword, loading: authLoading, error: authError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [infoMessage, setInfoMessage] = useState(null);
 
   const displayError = (messageKey) => {
     const message = errorMessages[messageKey] || errorMessages['generic_error'];
     setErrorMsg(message);
     logger.error('Login Error:', message);
+  };
+
+  const handleResetPassword = async () => {
+    if (!email || !email.trim()) {
+      setErrorMsg("Merci de saisir votre email pour recevoir le lien de réinitialisation.");
+      setInfoMessage(null);
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      setErrorMsg(null);
+      setInfoMessage(null);
+
+      const redirectTo = `${window.location.origin}/reset-password`;
+      logger.log('[ResetPassword] redirectTo:', redirectTo);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo,
+      });
+
+      if (error) {
+        logger.error('[ResetPassword] error', error);
+        setErrorMsg(error.message || "Erreur lors de l'envoi de l'email de réinitialisation.");
+        setInfoMessage(null);
+        return;
+      }
+
+      // Succès - utiliser toast et infoMessage
+      toast({
+        title: 'Email envoyé',
+        description: "Un email de réinitialisation vient d'être envoyé. Pense à vérifier tes spams.",
+      });
+      setInfoMessage("Un email de réinitialisation vient d'être envoyé. Pense à vérifier tes spams.");
+      setErrorMsg(null);
+    } catch (err) {
+      logger.error('[ResetPassword] unexpected error', err);
+      setErrorMsg("Une erreur inattendue est survenue. Veuillez réessayer.");
+      setInfoMessage(null);
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   const handleLogin = async (e) => {
@@ -45,27 +91,35 @@ const AdminLogin = () => {
     }
 
     try {
-      // 2. Authentication
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      // 2. Authentication via AuthContext
+      const { error: signInError } = await signInWithPassword({
         email: email.trim(),
         password: password,
       });
 
-      if (authError) {
+      if (signInError) {
         // Map Supabase auth errors to our custom messages
-        if (authError.message.includes('Invalid login credentials')) {
+        if (signInError.message.includes('Invalid login credentials')) {
           displayError('invalid_credentials');
         } else {
           displayError('generic_error');
         }
         setPassword(''); // Clear password field on error
-        throw authError;
+        throw signInError;
       }
+
+      // Récupérer les données de session depuis Supabase directement pour le profil
+      const { data: { session } } = await supabase.auth.getSession();
+      const authData = { user: session?.user };
       
       // 3. Load User Profile from 'utilisateurs'
+      // Note: We use role_id foreign key explicitly because there are two FKs (role_id and role_slug)
       const { data: profile, error: profileError } = await supabase
         .from('utilisateurs')
-        .select('*')
+        .select(`
+          *,
+          role:roles!utilisateurs_role_id_fkey(slug, label)
+        `)
         .eq('auth_user_id', authData.user.id)
         .maybeSingle();
 
@@ -97,29 +151,19 @@ const AdminLogin = () => {
 
       // 6. Success and Redirect
       logger.log(`Login successful for ${profile.full_name || profile.email}`);
+      const userRoleSlug = profile.role?.slug || '';
+      logger.log(`[AdminLogin] Profile role_id: ${profile.role_id}, role.slug: ${userRoleSlug}`);
       toast({ title: 'Connexion réussie !', description: `Bienvenue, ${profile.full_name || profile.email}` });
       
       // Optional: Store user info
       localStorage.setItem('user_id', profile.id);
       localStorage.setItem('user_email', profile.email);
       localStorage.setItem('user_name', profile.full_name);
-      localStorage.setItem('user_role', profile.role);
-
-      // Redirect based on role
-      switch (profile.role) {
-        case 'super_admin':
-        case 'admin':
-          navigate('/admin/dashboard', { replace: true });
-          break;
-        case 'commercial':
-          navigate('/commercial/dashboard', { replace: true });
-          break;
-        case 'technicien':
-          navigate('/technicien/dashboard', { replace: true });
-          break;
-        default:
-          navigate('/dashboard', { replace: true });
-      }
+      localStorage.setItem('user_role', userRoleSlug);
+      
+      // Redirect to unified dashboard route (RoleBasedRoute will handle the correct component)
+      logger.log('[AdminLogin] Redirecting to /dashboard (unified route)');
+      navigate('/dashboard', { replace: true });
 
     } catch (error) {
        // Errors are handled and displayed inside the try block
@@ -144,10 +188,16 @@ const AdminLogin = () => {
               <p>Accédez à votre espace de gestion</p>
             </div>
             
-            {errorMsg && (
+            {(errorMsg || authError) && (
               <div id="error-message" className="error-alert">
                 <span className="error-icon" role="img" aria-label="error icon">❌</span>
-                <span id="error-text">{errorMsg}</span>
+                <span id="error-text">{errorMsg || authError}</span>
+              </div>
+            )}
+            
+            {infoMessage && (
+              <div className="mt-2 p-3 text-sm text-green-600 bg-green-50 rounded-md border border-green-200">
+                {infoMessage}
               </div>
             )}
             
@@ -192,7 +242,14 @@ const AdminLogin = () => {
             </form>
             
             <div className="login-footer">
-              <Link to="/forgot-password">Mot de passe oublié ?</Link>
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="text-sm text-blue-600 hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {resetLoading ? "Envoi en cours..." : "Mot de passe oublié ?"}
+              </button>
               <span className="divider">•</span>
               <Link to="/signup">Créer un compte</Link>
             </div>

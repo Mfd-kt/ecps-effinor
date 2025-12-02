@@ -1,116 +1,181 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Package, ShoppingCart, Users, LogOut, Activity, FileText, FolderOpen, FileCheck, Shield, Settings, ChevronDown, ChevronRight, Cog } from 'lucide-react';
+import { Home, Package, ShoppingCart, Users, LogOut, Activity, FileText, FolderOpen, ChevronDown, ChevronRight, Cog, BookOpen, Globe, Image, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@/contexts/UserContext';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import UserAvatar from '@/components/common/UserAvatar';
+import { canAccessRoute } from '@/utils/routePermissions';
 
 const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile, signOut } = useAuth();
-  const [userProfile, setUserProfile] = useState(null);
+  const { user, signOut } = useAuth();
+  const { profile } = useUser();
+  const { notifications } = useNotifications();
+  
+  // Compter les notifications non lues par type
+  const unreadLeadsCount = notifications.filter(n => n.type === 'lead').length;
+  const unreadCommandesCount = notifications.filter(n => n.type === 'commande').length;
 
-  // Load profile from utilisateurs table
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!user?.id) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('utilisateurs')
-          .select('*')
-          .eq('auth_user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error loading profile:', error);
-          return;
-        }
-
-        if (data) {
-          setUserProfile(data);
-        }
-      } catch (error) {
-        console.error('Error loading profile:', error);
-      }
-    };
-
-    loadProfile();
-  }, [user?.id]);
-
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     try {
       await signOut();
-      toast({
-        title: 'Déconnexion réussie',
-        description: 'Vous avez été déconnecté.',
-      });
-      navigate('/admin/login');
-    } catch (error) {
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Erreur lors de la déconnexion', err);
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: `La déconnexion a échoué: ${error.message}`,
+        description: `La déconnexion a échoué: ${err.message || 'Une erreur est survenue'}`,
       });
     }
   };
 
-  // Use profile from utilisateurs table, fallback to context profile or user
-  const currentUser = userProfile || profile || user;
+  // Use profile from UserContext, fallback to user from auth
+  const currentUser = profile || user;
   const userName = currentUser?.full_name || currentUser?.email || 'Utilisateur';
-  const userInitial = (currentUser?.full_name || currentUser?.email || 'U').charAt(0).toUpperCase();
-  const userAvatar = currentUser?.photo_profil_url || currentUser?.avatar_url || '';
 
   // State for settings submenu - check if any settings page is active on mount
   const [settingsOpen, setSettingsOpen] = useState(() => {
-    return location.pathname.startsWith('/admin/settings');
+    return location.pathname.startsWith('/paramètres');
+  });
+  
+  // State for users submenu - check if any users page is active on mount
+  const [usersOpen, setUsersOpen] = useState(() => {
+    return location.pathname.startsWith('/utilisateurs');
+  });
+  
+  // State for content submenu
+  const [contentOpen, setContentOpen] = useState(() => {
+    return location.pathname.startsWith('/admin/pages-seo') || 
+           location.pathname.startsWith('/admin/blog') ||
+           location.pathname.startsWith('/admin/realisations') ||
+           location.pathname.startsWith('/admin/medias');
   });
 
-  const navLinks = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: Home },
-    { href: '/admin/products', label: 'Produits', icon: Package },
-    { href: '/admin/categories', label: 'Catégories', icon: FolderOpen },
-    { href: '/admin/fiches-cee', label: 'Fiches CEE', icon: FileCheck },
-    { href: '/admin/operations', label: 'Opérations CEE', icon: Settings },
-    { href: '/admin/orders', label: 'Commandes', icon: ShoppingCart },
-    { href: '/admin/leads', label: 'Leads', icon: FileText },
-    { href: '/admin/users', label: 'Utilisateurs (Ancien)', icon: Users, adminOnly: false },
-    { href: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users, adminOnly: true },
+  // Obtenir le rôle de l'utilisateur
+  const userRole = profile?.role?.slug || '';
+  
+  // Définir tous les liens possibles
+  const allNavLinks = [
+    { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/produits', label: 'Produits', icon: Package },
+    { href: '/categories', label: 'Catégories', icon: FolderOpen },
     { 
-      href: '/admin/settings', 
-      label: 'Réglages', 
-      icon: Cog, 
-      adminOnly: true,
+      href: '/commandes', 
+      label: 'Commandes', 
+      icon: ShoppingCart,
+      badgeCount: unreadCommandesCount > 0 ? unreadCommandesCount : null
+    },
+    { 
+      href: '/leads', 
+      label: 'Leads', 
+      icon: FileText,
+      badgeCount: unreadLeadsCount > 0 ? unreadLeadsCount : null
+    },
+    { 
+      href: '/paramètres/contenu', 
+      label: 'Contenu', 
+      icon: Globe,
       children: [
-        { href: '/admin/settings/roles', label: 'Rôles & Permissions' },
-        { href: '/admin/settings/lead-statuses', label: 'Statuts Leads' },
-        { href: '/admin/settings/operation-statuses', label: 'Statuts Opérations CEE' },
-        { href: '/admin/settings/order-statuses', label: 'Statuts Commandes' },
+        { href: '/admin/pages-seo', label: 'Pages & SEO' },
+        { href: '/admin/blog', label: 'Blog' },
+        { href: '/admin/realisations', label: 'Réalisations' },
+        { href: '/admin/medias', label: 'Médias' },
       ]
     },
-    { href: '/admin/visitors', label: 'Visiteurs', icon: Activity },
+    { 
+      href: '/admin/blog', 
+      label: 'Blog', 
+      icon: BookOpen
+    },
+    { 
+      href: '/utilisateurs', 
+      label: 'Utilisateurs', 
+      icon: Users, 
+      children: [
+        { href: '/utilisateurs', label: 'Liste des utilisateurs' },
+        { href: '/utilisateurs/new', label: 'Inviter un utilisateur' },
+      ]
+    },
+    { 
+      href: '/paramètres/roles', 
+      label: 'Réglages', 
+      icon: Cog, 
+      children: [
+        { href: '/paramètres/roles', label: 'Rôles & Permissions' },
+        { href: '/paramètres/lead-statuses', label: 'Statuts Leads' },
+        { href: '/paramètres/order-statuses', label: 'Statuts Commandes' },
+      ]
+    },
+    { href: '/visiteurs', label: 'Visiteurs', icon: Activity },
   ];
   
-  // Check admin status - use userProfile (from utilisateurs table) as primary source
-  const userRole = userProfile?.role || profile?.role || currentUser?.role || localStorage.getItem('user_role');
-  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
-  
-  const filteredNavLinks = navLinks.filter(link => {
-    if (link.adminOnly && !isAdmin) {
+  // Filtrer les liens selon les permissions - NE PAS RENDRE les liens non autorisés
+  const filteredNavLinks = allNavLinks.filter(link => {
+    // Vérifier l'accès à la route principale
+    const hasAccess = canAccessRoute(link.href, userRole);
+    
+    if (!hasAccess) {
+      if (import.meta.env.DEV) {
+        console.log(`[AdminSidebar] Accès refusé pour ${link.href} avec rôle ${userRole}`);
+      }
       return false;
     }
+    
+    // Si le lien a des enfants, vérifier qu'au moins un enfant est accessible
+    if (link.children && link.children.length > 0) {
+      const hasAccessibleChild = link.children.some(child => canAccessRoute(child.href, userRole));
+      if (!hasAccessibleChild) {
+        if (import.meta.env.DEV) {
+          console.log(`[AdminSidebar] Aucun enfant accessible pour ${link.href}`);
+        }
+        return false;
+      }
+    }
+    
     return true;
+  });
+  
+  // Filtrer aussi les enfants des liens qui ont des sous-menus
+  const navLinks = filteredNavLinks.map(link => {
+    if (link.children && link.children.length > 0) {
+      return {
+        ...link,
+        children: link.children.filter(child => canAccessRoute(child.href, userRole))
+      };
+    }
+    return link;
   });
 
   // Update settings menu state when location changes
   useEffect(() => {
-    const isSettingsActive = location.pathname.startsWith('/admin/settings');
+    const isSettingsActive = location.pathname.startsWith('/paramètres');
     if (isSettingsActive && !settingsOpen) {
       setSettingsOpen(true);
+    }
+  }, [location.pathname]);
+  
+  // Update users menu state when location changes
+  useEffect(() => {
+    const isUsersActive = location.pathname.startsWith('/utilisateurs');
+    if (isUsersActive && !usersOpen) {
+      setUsersOpen(true);
+    }
+  }, [location.pathname]);
+  
+  // Update content menu state when location changes
+  useEffect(() => {
+    const isContentActive = location.pathname.startsWith('/admin/pages-seo') || 
+                           location.pathname.startsWith('/admin/blog') ||
+                           location.pathname.startsWith('/admin/realisations') ||
+                           location.pathname.startsWith('/admin/medias');
+    if (isContentActive && !contentOpen) {
+      setContentOpen(true);
     }
   }, [location.pathname]);
 
@@ -118,7 +183,7 @@ const AdminSidebar = () => {
     <aside className="w-64 bg-gray-900 text-white flex-col hidden lg:flex fixed left-0 top-0 bottom-0 z-30 overflow-hidden">
       <div className="flex flex-col h-full">
         <div className="h-20 flex items-center justify-center border-b border-gray-700 flex-shrink-0">
-        <Link to="/admin/dashboard" className="flex items-center space-x-3">
+        <Link to="/dashboard" className="flex items-center space-x-3">
           <img 
             src="https://i.ibb.co/6rT1m18/logo-ecps.png" 
             alt="Effinor Logo" 
@@ -130,13 +195,16 @@ const AdminSidebar = () => {
 
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
         {filteredNavLinks.map((link) => {
-          const isActive = location.pathname.startsWith(link.href);
+          // Check if active
+          const isActive = location.pathname.startsWith(link.href) || location.pathname === link.href;
           const hasChildren = link.children && link.children.length > 0;
           
           if (hasChildren) {
             // For settings menu, check if it's the settings link
-            const isSettingsLink = link.href === '/admin/settings';
-            const menuOpen = isSettingsLink ? settingsOpen : false;
+            const isSettingsLink = link.href === '/paramètres/roles';
+            const isUsersLink = link.href === '/utilisateurs';
+            const isContentLink = link.href === '/paramètres/contenu';
+            const menuOpen = isSettingsLink ? settingsOpen : (isUsersLink ? usersOpen : (isContentLink ? contentOpen : false));
             
             return (
               <div key={link.href}>
@@ -144,6 +212,10 @@ const AdminSidebar = () => {
                   onClick={() => {
                     if (isSettingsLink) {
                       setSettingsOpen(!settingsOpen);
+                    } else if (isUsersLink) {
+                      setUsersOpen(!usersOpen);
+                    } else if (isContentLink) {
+                      setContentOpen(!contentOpen);
                     }
                   }}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors ${
@@ -186,43 +258,58 @@ const AdminSidebar = () => {
             );
           }
           
+          // Double vérification : ne pas rendre si pas d'accès (sécurité supplémentaire)
+          if (!canAccessRoute(link.href, userRole)) {
+            return null;
+          }
+          
           return (
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center px-4 py-2.5 rounded-lg transition-colors ${
+              className={`flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors ${
                 isActive 
                   ? 'bg-gray-700 font-semibold' 
                   : 'hover:bg-gray-800'
               }`}
             >
-              <link.icon className="h-5 w-5 mr-3" />
-              {link.label}
+              <div className="flex items-center">
+                <link.icon className="h-5 w-5 mr-3" />
+                {link.label}
+              </div>
+              {link.badgeCount && link.badgeCount > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-xs font-semibold bg-emerald-500 text-white rounded-full min-w-[20px] text-center">
+                  {link.badgeCount > 9 ? '9+' : link.badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
 
       <div className="px-4 py-6 border-t border-gray-700 space-y-4">
-        <div className="flex items-center gap-3 px-4">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={userAvatar} alt={userName} />
-            <AvatarFallback className="bg-gray-700 text-white font-bold">{userInitial}</AvatarFallback>
-          </Avatar>
+        <Link
+          to="/mon-compte"
+          className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer group"
+        >
+          <UserAvatar 
+            user={profile || { email: user?.email, full_name: userName }} 
+            size="md"
+            className="ring-1 ring-gray-600"
+          />
           <div className="flex-1 overflow-hidden">
-            <p id="user-name" className="text-sm font-semibold truncate">{userName}</p>
-            <p className="text-xs text-gray-400 truncate">{userRole || 'Role'}</p>
+            <p id="user-name" className="text-sm font-semibold truncate group-hover:text-white">{userName}</p>
+            <p className="text-xs text-gray-400 truncate group-hover:text-gray-300">{userRole || 'user'}</p>
           </div>
-        </div>
+        </Link>
 
-        <Button
-          onClick={handleSignOut}
-          variant="ghost"
-          className="w-full justify-start text-gray-300 hover:bg-gray-800 hover:text-white"
+        <button
+          onClick={handleLogout}
+          className="mt-4 w-full text-left px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-lg transition-colors flex items-center"
         >
           <LogOut className="h-5 w-5 mr-3" />
-          Déconnexion
-        </Button>
+          Se déconnecter
+        </button>
         
         <Link
           to="/"

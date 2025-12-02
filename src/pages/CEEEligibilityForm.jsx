@@ -313,8 +313,8 @@ const CEEEligibilityForm = () => {
   return (
     <>
       <Helmet>
-        <title>Finalisez votre demande d'éligibilité CEE | EFFINOR</title>
-        <meta name="description" content="Complétez les informations sur votre projet pour obtenir une estimation précise de vos aides et primes CEE." />
+        <title>Finalisez votre demande de devis | EFFINOR</title>
+        <meta name="description" content="Complétez les informations sur votre projet pour obtenir une estimation précise et un devis personnalisé pour vos luminaires LED professionnels." />
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 py-12 pt-32">

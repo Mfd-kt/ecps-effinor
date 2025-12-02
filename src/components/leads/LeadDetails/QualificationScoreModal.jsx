@@ -164,3 +164,15 @@ const QualificationScoreModal = ({ open, onOpenChange, breakdown, score }) => {
 
 export default QualificationScoreModal;
 
+
+
+
+
+
+
+
+
+
+
+
+

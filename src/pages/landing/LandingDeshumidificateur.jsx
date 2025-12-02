@@ -34,20 +34,20 @@ const LandingDeshumidificateur = () => {
   return (
     <>
       <Helmet>
-        <title>Déshumidificateur Industriel 100% Financé | Prime CEE</title>
+        <title>Déshumidificateur Industriel Professionnel | Effinor Lighting</title>
         <meta 
           name="description" 
-          content="Installez un déshumidificateur thermodynamique industriel sans dépenser 1€. Financé à 100% par les primes CEE pour usines, entrepôts, bâtiments agricoles. Vérifiez votre éligibilité gratuite !" 
+          content="Déshumidificateur thermodynamique industriel de qualité pour usines, entrepôts, bâtiments agricoles. Équipement robuste, installation rapide, service professionnel." 
         />
         <meta 
           property="og:title" 
-          content="Déshumidificateur Industriel 100% Financé | Prime CEE" 
+          content="Déshumidificateur Industriel Professionnel | Effinor Lighting" 
         />
         <meta 
           property="og:description" 
-          content="Installez un déshumidificateur thermodynamique industriel sans dépenser 1€. Financé à 100% par les primes CEE. Vérifiez votre éligibilité gratuite !" 
+          content="Déshumidificateur thermodynamique industriel de qualité pour usines, entrepôts, bâtiments agricoles. Équipement robuste, installation rapide." 
         />
-        <meta name="keywords" content="déshumidificateur industriel, prime CEE, déshumidificateur thermodynamique, financement 100%, usine, entrepôt, bâtiment professionnel" />
+        <meta name="keywords" content="déshumidificateur industriel, déshumidificateur thermodynamique, usine, entrepôt, bâtiment professionnel, équipement industriel" />
       </Helmet>
 
       <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200">

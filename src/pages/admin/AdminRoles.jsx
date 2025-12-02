@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2, Shield, Plus, Edit, Trash2, Users as UsersIcon } from 'lucide-react';
 import { getAllRoles, deleteRole } from '@/lib/api/roles';
 import ModalRole from '@/components/admin/ModalRole';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminRoles = () => {
   const [roles, setRoles] = useState([]);

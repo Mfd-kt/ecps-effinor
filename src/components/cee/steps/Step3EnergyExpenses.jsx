@@ -25,7 +25,7 @@ const Step3EnergyExpenses = ({ data, onChange, errors }) => {
             <p className="text-primary-900 font-semibold mb-2">Pourquoi cette information ?</p>
             <p className="text-primary-800 text-sm">
               Le montant de vos dépenses énergétiques nous permet d'estimer le potentiel d'économies 
-              et le montant des aides CEE auxquelles vous pourriez prétendre.
+              et de vous proposer les solutions les plus adaptées à votre projet.
             </p>
           </div>
         </div>

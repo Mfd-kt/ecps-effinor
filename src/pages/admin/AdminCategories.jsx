@@ -52,6 +52,9 @@ const getImageUrl = (imagePath) => {
 };
 
 const AdminCategories = () => {
+  // Note: La vérification des permissions est gérée par RequireRole dans App.jsx
+  // Pas besoin de double vérification ici
+  
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -66,7 +69,9 @@ const AdminCategories = () => {
     nom: '',
     slug: '',
     description: '',
+    description_longue: '',
     image: null,
+    images: [],
     ordre: 0,
     actif: true,
   });
@@ -74,6 +79,7 @@ const AdminCategories = () => {
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [categoryImages, setCategoryImages] = useState([]);
   const [saving, setSaving] = useState(false);
 
   // Fetch categories
@@ -88,10 +94,28 @@ const AdminCategories = () => {
         .order('ordre', { ascending: true });
 
       if (fetchError) {
+        if (import.meta.env.DEV) {
+          console.error('[AdminCategories] Erreur Supabase:', fetchError);
+          console.error('[AdminCategories] Code erreur:', fetchError.code);
+          console.error('[AdminCategories] Message:', fetchError.message);
+          console.error('[AdminCategories] Détails:', fetchError.details);
+          console.error('[AdminCategories] Hint:', fetchError.hint);
+        }
+        
         // Check if table doesn't exist
         if (fetchError.message?.includes('relation') && fetchError.message?.includes('does not exist')) {
           throw new Error('La table "categories" n\'existe pas dans Supabase. Veuillez créer la table dans Supabase Dashboard > SQL Editor.');
         }
+        
+        // Afficher un toast si c'est une erreur RLS
+        if (fetchError.code === '42501' || fetchError.message?.includes('row-level security') || fetchError.message?.includes('permission denied')) {
+          toast({
+            variant: 'destructive',
+            title: 'Erreur de permissions',
+            description: 'Vous n\'avez pas les permissions nécessaires pour voir les catégories. Vérifiez les politiques RLS dans Supabase.',
+          });
+        }
+        
         throw fetchError;
       }
 
@@ -154,7 +178,7 @@ const AdminCategories = () => {
     }
   };
 
-  // Handle image file selection
+  // Handle image file selection (image principale)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -164,7 +188,54 @@ const AdminCategories = () => {
     }
   };
 
-  // Remove image
+  // Handle multiple images for category gallery
+  const handleCategoryImagesChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    try {
+      const uploadedImages = [];
+      for (const file of files) {
+        const imageUrl = await uploadImage(file);
+        if (imageUrl) {
+          uploadedImages.push({
+            url: imageUrl,
+            legend: '',
+            alt_text: file.name.replace(/\.[^/.]+$/, '')
+          });
+        }
+      }
+      setCategoryImages([...categoryImages, ...uploadedImages]);
+      setFormData(prev => ({
+        ...prev,
+        images: [...(prev.images || []), ...uploadedImages]
+      }));
+    } catch (error) {
+      logger.error('Erreur upload images:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'upload des images",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Remove category image
+  const handleRemoveCategoryImage = (index) => {
+    const newImages = categoryImages.filter((_, i) => i !== index);
+    setCategoryImages(newImages);
+    setFormData(prev => ({ ...prev, images: newImages }));
+  };
+
+  // Update image legend/alt_text
+  const handleUpdateImageInfo = (index, field, value) => {
+    const newImages = [...categoryImages];
+    newImages[index] = { ...newImages[index], [field]: value };
+    setCategoryImages(newImages);
+    setFormData(prev => ({ ...prev, images: newImages }));
+  };
+
+  // Remove image principale
   const handleRemoveImage = () => {
     setImageFile(null);
     setImagePreview(null);
@@ -190,11 +261,9 @@ const AdminCategories = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
-
-      return urlData.publicUrl;
+      // Retourner le chemin relatif pour stockage dans JSONB, ou l'URL complète
+      // On retourne le chemin relatif pour être cohérent avec les autres images
+      return filePath;
     } catch (error) {
       logger.error('❌ Erreur upload image:', error);
       throw error;
@@ -219,10 +288,15 @@ const AdminCategories = () => {
 
       let dataToSave = { ...formData };
 
-      // Upload image if new file selected
+      // Upload image principale if new file selected
       if (imageFile) {
         const imageUrl = await uploadImage(imageFile);
         dataToSave.image = imageUrl;
+      }
+
+      // S'assurer que images est bien un tableau JSONB
+      if (dataToSave.images && !Array.isArray(dataToSave.images)) {
+        dataToSave.images = [];
       }
 
       // Sanitize data
@@ -280,13 +354,16 @@ const AdminCategories = () => {
       nom: '',
       slug: '',
       description: '',
+      description_longue: '',
       image: null,
+      images: [],
       ordre: 0,
       actif: true,
     });
     setEditingCategory(null);
     setImageFile(null);
     setImagePreview(null);
+    setCategoryImages([]);
     setIsSlugManuallyEdited(false);
     setShowForm(false);
   };
@@ -294,15 +371,19 @@ const AdminCategories = () => {
   // Edit category
   const handleEdit = (category) => {
     setEditingCategory(category);
+    const images = category.images && Array.isArray(category.images) ? category.images : [];
     setFormData({
       nom: category.nom || '',
       slug: category.slug || '',
       description: category.description || '',
+      description_longue: category.description_longue || '',
       image: category.image || null,
+      images: images,
       ordre: category.ordre || 0,
       actif: category.actif !== undefined ? category.actif : true,
     });
     setImagePreview(category.image ? getImageUrl(category.image) : null);
+    setCategoryImages(images);
     setIsSlugManuallyEdited(true);
     setShowForm(true);
   };
@@ -542,21 +623,38 @@ const AdminCategories = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
+                    Description courte
                   </label>
                   <Textarea
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    rows={4}
-                    placeholder="Description de la catégorie..."
+                    rows={3}
+                    placeholder="Description courte de la catégorie (affichée sous le titre)..."
                     className="w-full"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Image
+                    Description longue
+                  </label>
+                  <Textarea
+                    name="description_longue"
+                    value={formData.description_longue}
+                    onChange={handleInputChange}
+                    rows={6}
+                    placeholder="Description détaillée expliquant pourquoi choisir cette catégorie. Cette description sera affichée dans une section dédiée sur la page de la catégorie..."
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Utilisez cette section pour expliquer les avantages et les raisons de choisir cette catégorie.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Image principale
                   </label>
                   {imagePreview && (
                     <div className="mb-4 relative inline-block">
@@ -580,6 +678,67 @@ const AdminCategories = () => {
                     onChange={handleImageChange}
                     className="w-full"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Image principale de la catégorie (utilisée dans les listes)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Galerie d'images de la catégorie
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Ajoutez plusieurs photos pour montrer visuellement à quoi ressemble cette catégorie et pourquoi la choisir.
+                  </p>
+                  
+                  {categoryImages.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                      {categoryImages.map((img, idx) => (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={getImageUrl(img.url)}
+                            alt={img.alt_text || `Image ${idx + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                            onError={(e) => {
+                              e.target.src = 'https://placehold.co/300x200/e2e8f0/e2e8f0?text=Image';
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCategoryImage(idx)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <div className="mt-2 space-y-1">
+                            <Input
+                              placeholder="Légende (optionnel)"
+                              value={img.legend || ''}
+                              onChange={(e) => handleUpdateImageInfo(idx, 'legend', e.target.value)}
+                              className="text-xs"
+                            />
+                            <Input
+                              placeholder="Texte alternatif"
+                              value={img.alt_text || ''}
+                              onChange={(e) => handleUpdateImageInfo(idx, 'alt_text', e.target.value)}
+                              className="text-xs"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleCategoryImagesChange}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Vous pouvez sélectionner plusieurs images à la fois. Ajoutez une légende et un texte alternatif pour chaque image.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

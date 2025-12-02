@@ -1,19 +1,39 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Filter, X } from 'lucide-react';
 import { logger } from '@/utils/logger';
 import ProductCard from '@/components/ProductCard';
+import { normalizeCaracteristiques } from '@/utils/productSpecs';
 
 const Boutique = () => {
   const [allProducts, setAllProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [currentCategory, setCurrentCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedPowerRange, setSelectedPowerRange] = useState('all');
+  const [selectedUsage, setSelectedUsage] = useState('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Power ranges for filtering
+  const powerRanges = [
+    { value: 'all', label: 'Toutes puissances' },
+    { value: '<100', label: '< 100 W' },
+    { value: '100-200', label: '100 - 200 W' },
+    { value: '200-300', label: '200 - 300 W' },
+    { value: '>300', label: '> 300 W' },
+  ];
+
+  // Usage types (mapped from categories)
+  const usageTypes = [
+    { value: 'all', label: 'Tous usages' },
+    { value: 'industriel', label: 'Industriel' },
+    { value: 'tertiaire', label: 'Tertiaire' },
+    { value: 'agricole', label: 'Agricole' },
+  ];
 
   // Load categories from database
   const loadCategories = useCallback(async () => {
@@ -66,7 +86,7 @@ const Boutique = () => {
     try {
       const { data, error: supabaseError } = await supabase
         .from('products')
-        .select('id, nom, description, prix, image_1, image_url, slug, actif, categorie, categorie_id, ordre')
+        .select('id, nom, description, prix, image_1, image_url, slug, actif, categorie, categorie_id, ordre, marque, reference, caracteristiques, puissance')
         .eq('actif', true)
         .order('ordre', { ascending: true });
 
@@ -93,37 +113,80 @@ const Boutique = () => {
     }
   }, []);
 
-  // Apply category filter to products
-  const applyCategoryFilter = useCallback((products, category) => {
-    if (category === 'all') {
-      setFilteredProducts(products);
-      logger.log(`Displaying all ${products.length} products.`);
-    } else {
-      // Filter by categorie_id (UUID) or categorie (slug) for backward compatibility
-      const filtered = products.filter(p => {
-        // Try to match by categorie_id first (new system - UUID)
-        if (p.categorie_id && category && typeof category === 'string') {
-          // Check if category is a UUID (36 chars) - new system
-          if (category.length === 36) {
-            return p.categorie_id === category;
-          }
-        }
-        // Fallback to categorie slug (old system)
-        // Also check if category matches slug in categories array
-        const categoryObj = categories.find(c => c.id === category || c.slug === category);
-        if (categoryObj) {
-          // If we have categorie_id, match by it, otherwise match by slug
-          if (p.categorie_id) {
-            return p.categorie_id === categoryObj.id;
-          }
-          return p.categorie === categoryObj.slug || p.categorie === category;
-        }
-        return p.categorie === category;
-      });
-      setFilteredProducts(filtered);
-      logger.log(`Found ${filtered.length} products in category '${category}'.`);
+  const matchesSelectedCategory = useCallback((product, category) => {
+    if (category === 'all') return true;
+
+    // Try to match by categorie_id (UUID)
+    if (product.categorie_id && category?.length === 36) {
+      return product.categorie_id === category;
+    }
+
+    const categoryObj = categories.find((c) => c.id === category || c.slug === category);
+    if (categoryObj) {
+      if (product.categorie_id) {
+        return product.categorie_id === categoryObj.id;
+      }
+      return product.categorie === categoryObj.slug || product.categorie === category;
+    }
+
+    return product.categorie === category;
+  }, [categories]);
+
+  const matchesPowerRange = useCallback((product, powerRange) => {
+    if (powerRange === 'all') return true;
+    
+    const normalized = normalizeCaracteristiques(product);
+    const puissance = normalized.specs.puissance_w || product.puissance;
+    if (!puissance || typeof puissance !== 'number') return false;
+
+    switch (powerRange) {
+      case '<100':
+        return puissance < 100;
+      case '100-200':
+        return puissance >= 100 && puissance <= 200;
+      case '200-300':
+        return puissance > 200 && puissance <= 300;
+      case '>300':
+        return puissance > 300;
+      default:
+        return true;
+    }
+  }, []);
+
+  const matchesUsage = useCallback((product, usage) => {
+    if (usage === 'all') return true;
+    
+    const categorySlug = product.categorie?.toLowerCase() || '';
+    const categoryName = categories.find(c => c.id === product.categorie_id || c.slug === product.categorie)?.nom?.toLowerCase() || '';
+    
+    // Map categories to usage types
+    const isIndustriel = categorySlug.includes('industri') || categoryName.includes('industri') || 
+                         categorySlug.includes('highbay') || categorySlug.includes('atelier');
+    const isTertiaire = categorySlug.includes('tertiaire') || categoryName.includes('tertiaire') ||
+                        categorySlug.includes('bureau') || categorySlug.includes('reglette');
+    const isAgricole = categorySlug.includes('agricol') || categoryName.includes('agricol') ||
+                       categorySlug.includes('serre') || categorySlug.includes('elevage');
+
+    switch (usage) {
+      case 'industriel':
+        return isIndustriel;
+      case 'tertiaire':
+        return isTertiaire;
+      case 'agricole':
+        return isAgricole;
+      default:
+        return true;
     }
   }, [categories]);
+
+  const displayedProducts = useMemo(() => {
+    if (!allProducts?.length) return [];
+    return allProducts.filter((product) => {
+      return matchesSelectedCategory(product, selectedCategory) &&
+             matchesPowerRange(product, selectedPowerRange) &&
+             matchesUsage(product, selectedUsage);
+    });
+  }, [allProducts, selectedCategory, selectedPowerRange, selectedUsage, matchesSelectedCategory, matchesPowerRange, matchesUsage]);
 
   useEffect(() => {
     logger.log("Boutique component mounted. Supabase client is defined:", !!supabase);
@@ -131,17 +194,25 @@ const Boutique = () => {
     loadProducts();
   }, [loadCategories, loadProducts]);
 
-  // Apply filter when products or category changes
-  useEffect(() => {
-    if (allProducts.length > 0) {
-      applyCategoryFilter(allProducts, currentCategory);
-    }
-  }, [currentCategory, allProducts, applyCategoryFilter]);
-
   const handleFilterCategory = (category) => {
     logger.log(`Filtering by category: ${category}`);
-    setCurrentCategory(category);
+    setSelectedCategory(category);
   };
+
+  const handleResetFilters = () => {
+    setSelectedCategory('all');
+    setSelectedPowerRange('all');
+    setSelectedUsage('all');
+    setShowAdvancedFilters(false);
+  };
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedCategory !== 'all') count++;
+    if (selectedPowerRange !== 'all') count++;
+    if (selectedUsage !== 'all') count++;
+    return count;
+  }, [selectedCategory, selectedPowerRange, selectedUsage]);
 
   const renderContent = () => {
     if (loading) {
@@ -163,7 +234,7 @@ const Boutique = () => {
       );
     }
 
-    if (filteredProducts.length === 0) {
+    if (displayedProducts.length === 0) {
       return (
         <div className="no-products">
           <span className="icon" role="img" aria-label="box icon">📦</span>
@@ -174,10 +245,10 @@ const Boutique = () => {
       );
     }
     
-    logger.log(`Displaying ${filteredProducts.length} products.`);
+    logger.log(`Displaying ${displayedProducts.length} products.`);
     return (
       <div className="products-grid">
-        {filteredProducts.map((product) => (
+        {displayedProducts.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
@@ -188,7 +259,7 @@ const Boutique = () => {
     <>
       <Helmet>
         <title>Boutique - Catalogue de produits LED | EFFINOR</title>
-        <meta name="description" content="Découvrez notre gamme complète de luminaires LED professionnels pour l'industrie, l'extérieur et les ateliers. Solutions haute performance éligibles CEE." />
+        <meta name="description" content="Découvrez notre gamme complète de luminaires LED professionnels pour l'industrie, l'extérieur et les ateliers. Solutions haute performance, livraison rapide, prix compétitifs." />
       </Helmet>
 
       <section className="catalog-section">
@@ -198,10 +269,11 @@ const Boutique = () => {
             <p className="subtitle">Solutions LED professionnelles haute performance</p>
           </motion.div>
           
-          <div className="category-filters">
+          {/* Main Filters: Categories */}
+          <div className="category-filters mb-6">
             <button 
               key="all"
-              className={`category-btn ${currentCategory === 'all' ? 'active' : ''}`}
+              className={`category-btn ${selectedCategory === 'all' ? 'active' : ''}`}
               onClick={() => handleFilterCategory('all')}
             >
               Tous les produits
@@ -209,7 +281,7 @@ const Boutique = () => {
             {!categoriesLoading && categories.map(category => (
               <button 
                 key={category.id}
-                className={`category-btn ${currentCategory === category.id || currentCategory === category.slug ? 'active' : ''}`}
+                className={`category-btn ${selectedCategory === category.id || selectedCategory === category.slug ? 'active' : ''}`}
                 onClick={() => handleFilterCategory(category.id)}
               >
                 {category.nom}
@@ -222,6 +294,90 @@ const Boutique = () => {
               </div>
             )}
           </div>
+
+          {/* Advanced Filters */}
+          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:border-secondary-500 hover:bg-secondary-50 transition-colors text-sm font-medium"
+            >
+              <Filter className="h-4 w-4" />
+              Filtres avancés
+              {activeFiltersCount > 0 && (
+                <span className="bg-secondary-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={handleResetFilters}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:border-red-500 hover:bg-red-50 transition-colors text-sm font-medium text-red-600"
+              >
+                <X className="h-4 w-4" />
+                Réinitialiser
+              </button>
+            )}
+            <div className="text-sm text-gray-600">
+              {displayedProducts.length} produit{displayedProducts.length > 1 ? 's' : ''} trouvé{displayedProducts.length > 1 ? 's' : ''}
+            </div>
+          </div>
+
+          {/* Advanced Filters Panel */}
+          {showAdvancedFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-gray-50 rounded-xl p-6 mb-6 border border-gray-200"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Power Range Filter */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Puissance
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {powerRanges.map(range => (
+                      <button
+                        key={range.value}
+                        onClick={() => setSelectedPowerRange(range.value)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          selectedPowerRange === range.value
+                            ? 'bg-secondary-500 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                        }`}
+                      >
+                        {range.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Usage Type Filter */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Usage recommandé
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {usageTypes.map(usage => (
+                      <button
+                        key={usage.value}
+                        onClick={() => setSelectedUsage(usage.value)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          selectedUsage === usage.value
+                            ? 'bg-secondary-500 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                        }`}
+                      >
+                        {usage.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
           
           <div id="products-container">
             {renderContent()}

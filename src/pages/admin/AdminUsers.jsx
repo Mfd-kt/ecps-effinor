@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import UserTableRow from '@/components/admin/UserTableRow';
 import { PlusCircle, Loader2, Users } from 'lucide-react';
+import { deleteUser } from '@/lib/api/utilisateurs';
 
 const AdminUsers = () => {
   const [allUsers, setAllUsers] = useState([]);
@@ -54,27 +55,29 @@ const AdminUsers = () => {
   const confirmDelete = async () => {
     if (!userToDelete) return;
 
-    const { error: deleteError } = await supabase
-      .from('utilisateurs')
-      .delete()
-      .eq('id', userToDelete.id);
-
-    if (deleteError) {
+    try {
+      const result = await deleteUser(userToDelete.id);
+      
+      if (result.success) {
+        toast({
+          title: "Utilisateur supprimé",
+          description: `L'utilisateur ${userToDelete.name} a été supprimé avec succès (profil et compte d'authentification).`,
+          variant: "success",
+        });
+        // Re-fetch users after deletion
+        loadUsers();
+      } else {
+        throw new Error('La suppression a échoué');
+      }
+    } catch (deleteError) {
       toast({
         title: "Échec de la suppression",
-        description: `L'utilisateur ${userToDelete.name} n'a pas pu être supprimé.`,
+        description: `L'utilisateur ${userToDelete.name} n'a pas pu être supprimé: ${deleteError.message || 'Erreur inconnue'}`,
         variant: "destructive",
       });
       logger.error("Erreur de suppression:", deleteError);
-    } else {
-      toast({
-        title: "Utilisateur supprimé",
-        description: `L'utilisateur ${userToDelete.name} a été supprimé avec succès.`,
-        variant: "success",
-      });
-      // Re-fetch users after deletion
-      loadUsers();
     }
+    
     setUserToDelete(null);
   };
   

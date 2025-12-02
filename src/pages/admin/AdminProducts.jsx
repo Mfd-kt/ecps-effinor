@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
 import { sanitizeFormData } from '@/utils/sanitize';
+import { getSpecSummary } from '@/utils/productSpecs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,8 @@ const categoryMap = {
 const formatCategory = (category) => categoryMap[category] || category;
 
 const AdminProductCard = ({ product, onDuplicate, onDelete, onToggleStatus, onEdit }) => {
+  const specSummary = getSpecSummary(product);
+
   return (
     <div className="product-card" data-product-id={product.id}>
       <div className="product-image">
@@ -56,11 +59,21 @@ const AdminProductCard = ({ product, onDuplicate, onDelete, onToggleStatus, onEd
           )}
         </div>
         <h3 className="product-name">{product.nom}</h3>
+        {(product.marque || product.reference) && (
+          <p className="text-sm text-gray-600 mb-2">
+            {product.marque && <span className="font-semibold text-gray-900">{product.marque}</span>}
+            {product.marque && product.reference && <span className="mx-1 text-gray-400">—</span>}
+            {product.reference && <span className="text-gray-500">Réf. {product.reference}</span>}
+          </p>
+        )}
         <p className="product-description">{product.description}</p>
         
-        <div className="product-specs">
-          {product.puissance && <span>{product.puissance}</span>}
-          {product.luminosite && <span>{product.luminosite}</span>}
+        <div className="mt-3 text-xs text-gray-600 bg-gray-50 rounded-md px-3 py-2 border border-dashed border-gray-200">
+          {specSummary ? (
+            <span className="font-medium text-gray-700">{specSummary}</span>
+          ) : (
+            <span className="italic text-gray-400">Caractéristiques non renseignées</span>
+          )}
         </div>
       </div>
       <div className="product-footer">
@@ -109,6 +122,9 @@ const AdminProductCard = ({ product, onDuplicate, onDelete, onToggleStatus, onEd
 };
 
 const AdminProducts = () => {
+  // Note: La vérification des permissions est gérée par RequireRole dans App.jsx
+  // Pas besoin de double vérification ici
+  
   const { toast } = useToast();
   const navigate = useNavigate();
   const [allProducts, setAllProducts] = useState([]);
@@ -127,7 +143,11 @@ const AdminProducts = () => {
       // Build query with server-side filters
       let query = supabase
         .from('products')
-        .select('id, nom, description, prix, actif, categorie, slug, image_1, ordre', { count: 'exact' });
+        .select('id, nom, description, prix, actif, categorie, slug, image_1, image_url, ordre, marque, reference, caracteristiques, prime_cee', { count: 'exact' });
+      
+      if (import.meta.env.DEV) {
+        console.log('[AdminProducts] Tentative de chargement des produits...');
+      }
       
       // Apply category filter (server-side)
       if (filters.category && filters.category !== 'all') {
@@ -144,8 +164,31 @@ const AdminProducts = () => {
       const { data, error: dbError, count } = await query
         .order('ordre', { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (import.meta.env.DEV) {
+        console.log('[AdminProducts] Résultat requête Supabase:', { data: data?.length, count, error: dbError });
+      }
         
-      if (dbError) throw dbError;
+      if (dbError) {
+        if (import.meta.env.DEV) {
+          console.error('[AdminProducts] Erreur Supabase:', dbError);
+          console.error('[AdminProducts] Code erreur:', dbError.code);
+          console.error('[AdminProducts] Message:', dbError.message);
+          console.error('[AdminProducts] Détails:', dbError.details);
+          console.error('[AdminProducts] Hint:', dbError.hint);
+        }
+        
+        // Afficher un toast si c'est une erreur RLS
+        if (dbError.code === '42501' || dbError.message?.includes('row-level security') || dbError.message?.includes('permission denied')) {
+          toast({
+            variant: 'destructive',
+            title: 'Erreur de permissions',
+            description: 'Vous n\'avez pas les permissions nécessaires pour voir les produits. Vérifiez les politiques RLS dans Supabase.',
+          });
+        }
+        
+        throw dbError;
+      }
 
       setAllProducts(data || []);
       setTotalCount(count || 0);
@@ -199,7 +242,7 @@ const AdminProducts = () => {
 
   const handleEdit = (productId) => {
     logger.log(`Editing product ${productId}`);
-    navigate(`/admin/products/${productId}/edit`);
+    navigate(`/produits/${productId}/edit`);
   };
   
   const handleDuplicateProduct = async (productId) => {
@@ -275,7 +318,7 @@ const AdminProducts = () => {
                 <span className="text-6xl" role="img" aria-label="box">📦</span>
                 <h3 className="text-2xl font-semibold mt-4">Aucun produit</h3>
                 <p className="text-gray-600 my-2">Cliquez sur 'Ajouter un produit' pour commencer.</p>
-                 <Link to="/admin/products/new">
+                 <Link to="/produits/new">
                     <Button className="mt-4">Ajouter un produit</Button>
                 </Link>
             </div>

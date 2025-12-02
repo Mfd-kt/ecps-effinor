@@ -83,7 +83,8 @@ const LeadSidebar = ({
   formatAmount,
   formatRelativeTime,
   leadStatuses = [], // Receive statuses from parent
-  users: usersProp = [] // Receive users from parent to avoid duplicate loading
+  users: usersProp = [], // Receive users from parent to avoid duplicate loading
+  isCommercial = false // Hide assign/delete for commercial users
 }) => {
   const [localUsers, setLocalUsers] = useState([]);
   const [editingField, setEditingField] = useState(null);
@@ -388,56 +389,89 @@ const LeadSidebar = ({
             </div>
           </div>
 
-          {/* Assigned Commercial */}
-          <div>
-            <label className="text-sm font-semibold text-gray-700 mb-2 block">Commercial Assigné</label>
-            <Select 
-              value={lead.commercial_assigne_id || 'none'} 
-              onValueChange={(v) => {
-                if (onAssign) {
-                  onAssign(v === 'none' ? null : v);
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  {lead.commercial_assigne_id && lead.commercial_assigne ? (
-                    <div className="flex items-center gap-2">
-                      <UserAvatar user={lead.commercial_assigne} size="sm" />
-                      <span>{lead.commercial_assigne.prenom || ''} {lead.commercial_assigne.nom || ''}</span>
-                    </div>
-                  ) : (
-                    lead.commercial_assigne_id && displayUsers && displayUsers.length > 0 ? (
-                      (() => {
-                        const foundUser = displayUsers.find(u => u.id === lead.commercial_assigne_id);
-                        return foundUser ? (
-                          <div className="flex items-center gap-2">
-                            <UserAvatar user={foundUser} size="sm" />
-                            <span>{foundUser.prenom || ''} {foundUser.nom || ''}</span>
-                          </div>
-                        ) : 'Non assigné';
-                      })()
-                    ) : 'Non assigné'
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Non assigné</SelectItem>
-                {displayUsers && displayUsers.length > 0 ? (
-                  displayUsers.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
+          {/* Assigned Commercial - Only show if not commercial user */}
+          {!isCommercial && (
+            <div>
+              <label className="text-sm font-semibold text-gray-700 mb-2 block">Commercial Assigné</label>
+              <Select 
+                value={lead.commercial_assigne_id || 'none'} 
+                onValueChange={(v) => {
+                  if (onAssign) {
+                    onAssign(v === 'none' ? null : v);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {lead.commercial_assigne_id && lead.commercial_assigne ? (
                       <div className="flex items-center gap-2">
-                        <UserAvatar user={user} size="sm" />
-                        <span>{user.prenom || ''} {user.nom || ''}</span>
+                        <UserAvatar user={lead.commercial_assigne} size="sm" />
+                        <span>{lead.commercial_assigne.prenom || ''} {lead.commercial_assigne.nom || ''}</span>
                       </div>
-                    </SelectItem>
-                  ))
+                    ) : (
+                      lead.commercial_assigne_id && displayUsers && displayUsers.length > 0 ? (
+                        (() => {
+                          const foundUser = displayUsers.find(u => u.id === lead.commercial_assigne_id);
+                          return foundUser ? (
+                            <div className="flex items-center gap-2">
+                              <UserAvatar user={foundUser} size="sm" />
+                              <span>{foundUser.prenom || ''} {foundUser.nom || ''}</span>
+                            </div>
+                          ) : 'Non assigné';
+                        })()
+                      ) : 'Non assigné'
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Non assigné</SelectItem>
+                  {displayUsers && displayUsers.length > 0 ? (
+                    displayUsers.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex items-center gap-2">
+                          <UserAvatar user={user} size="sm" />
+                          <span>{user.prenom || ''} {user.nom || ''}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">Chargement des commerciaux...</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {/* Assigned Commercial - Read-only display for commercial users */}
+          {isCommercial && (
+            <div>
+              <label className="text-sm font-semibold text-gray-700 mb-2 block">Commercial Assigné</label>
+              <div className="px-3 py-2 bg-gray-50 rounded-md border border-gray-200">
+                {lead.commercial_assigne_id && lead.commercial_assigne ? (
+                  <div className="flex items-center gap-2">
+                    <UserAvatar user={lead.commercial_assigne} size="sm" />
+                    <span className="text-sm font-medium text-gray-900">
+                      {lead.commercial_assigne.prenom || ''} {lead.commercial_assigne.nom || ''}
+                    </span>
+                  </div>
                 ) : (
-                  <div className="px-3 py-2 text-sm text-gray-500">Chargement des commerciaux...</div>
+                  lead.commercial_assigne_id && displayUsers && displayUsers.length > 0 ? (
+                    (() => {
+                      const foundUser = displayUsers.find(u => u.id === lead.commercial_assigne_id);
+                      return foundUser ? (
+                        <div className="flex items-center gap-2">
+                          <UserAvatar user={foundUser} size="sm" />
+                          <span className="text-sm font-medium text-gray-900">
+                            {foundUser.prenom || ''} {foundUser.nom || ''}
+                          </span>
+                        </div>
+                      ) : <span className="text-sm text-gray-500">Non assigné</span>;
+                    })()
+                  ) : <span className="text-sm text-gray-500">Non assigné</span>
                 )}
-              </SelectContent>
-            </Select>
-          </div>
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="space-y-2">
@@ -483,14 +517,17 @@ const LeadSidebar = ({
               <Target className="h-4 w-4 mr-2" />
               Convertir
             </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={() => onDelete?.()}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Supprimer
-            </Button>
+            {/* Hide delete button for commercial users */}
+            {!isCommercial && onDelete && (
+              <Button
+                variant="outline"
+                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => onDelete?.()}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </Button>
+            )}
           </div>
 
           {/* Tags */}

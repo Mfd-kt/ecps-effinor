@@ -35,6 +35,8 @@ export const handleFormSubmission = async (formData) => {
     // Sanitize data before insertion to prevent XSS attacks
     const sanitizedData = sanitizeFormData(formData);
     
+    // IMPORTANT: Désactiver temporairement les triggers si possible
+    // En utilisant une transaction ou en insérant sans trigger
     const { data, error } = await supabase
       .from('leads')
       .insert([sanitizedData])
@@ -42,7 +44,47 @@ export const handleFormSubmission = async (formData) => {
       .single();
 
     if (error) {
+      // Log l'erreur complète pour le debugging
+      logger.error('Error submitting form to Supabase:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      // Si c'est une erreur de contrainte de clé étrangère (leads_events)
+      // C'est probablement un trigger qui cause le problème
+      if (error.code === '23503' && error.message?.includes('leads_events')) {
+        logger.error('CRITICAL: Foreign key constraint error on leads_events. The trigger must be disabled.');
+        logger.error('Please run the migration: migrations/20251201_fix_leads_events_trigger_AGGRESSIVE.sql');
+        // Ne pas retourner de succès ici car le lead n'a probablement pas été créé
+      }
+      
       throw error;
+    }
+
+    // Si le lead a été créé avec succès, on peut optionnellement logger l'événement manuellement
+    // MAIS seulement APRÈS avoir vérifié que le lead existe
+    if (data && data.id) {
+      // Optionnel: logger manuellement dans leads_events (non-bloquant)
+      try {
+        await supabase
+          .from('leads_events')
+          .insert([{
+            lead_id: data.id,
+            event_type: 'lead_created',
+            details: {
+              source: sanitizedData.source || 'unknown',
+              statut: sanitizedData.statut || 'nouveau',
+              formulaire_complet: sanitizedData.formulaire_complet || false
+            }
+          }]);
+      } catch (eventError) {
+        // Ignorer silencieusement - le logging d'événement est non-critique
+        if (import.meta.env.DEV) {
+          logger.warn('Could not log lead creation event (non-critical):', eventError);
+        }
+      }
     }
 
     return { success: true, data };

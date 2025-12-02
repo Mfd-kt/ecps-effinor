@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Loader2 } from 'lucide-react';
+import { logger } from '@/utils/logger';
 
 function getParams() {
   const hash = new URLSearchParams(window.location.hash.slice(1));
@@ -31,28 +32,67 @@ export default function AuthCallback() {
 
   useEffect(() => {
     (async () => {
-      // Si on a les tokens dans l'URL (magic link, invite, recovery)
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (sessionError) {
-          setError(sessionError.message);
-          setPhase('error');
-          return;
-        }
-
+      // Attendre un peu pour que Supabase traite automatiquement le hash (detectSessionInUrl)
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Vérifier d'abord si Supabase a déjà créé une session (via detectSessionInUrl)
+      const { data: { session: existingSession }, error: sessionCheckError } = await supabase.auth.getSession();
+      
+      if (existingSession && existingSession.user) {
+        logger.log('✅ Session détectée automatiquement par Supabase');
+        
+        // Si c'est une invitation ou récupération, demander le mot de passe
         if (type === 'invite' || type === 'recovery') {
           setPhase('needs_password');
-        } else {
-          setPhase('done');
-          window.location.replace(next || '/admin');
+          return;
         }
+        
+        // Sinon, rediriger vers le dashboard
+        setPhase('done');
+        const redirectUrl = next || '/dashboard';
+        window.location.replace(redirectUrl);
+        return;
+      }
+      
+      // Si on a les tokens dans l'URL (magic link, invite, recovery)
+      if (accessToken && refreshToken) {
+        try {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (sessionError) {
+            logger.error('Erreur setSession:', sessionError);
+            setError(sessionError.message || "Erreur lors de l'authentification");
+            setPhase('error');
+            return;
+          }
+
+          // Vérifier si c'est une invitation ou une récupération (nécessite un mot de passe)
+          if (type === 'invite' || type === 'recovery') {
+            setPhase('needs_password');
+          } else {
+            // Connexion réussie, rediriger
+            setPhase('done');
+            const redirectUrl = next || '/dashboard';
+            window.location.replace(redirectUrl);
+          }
+        } catch (err) {
+          logger.error('Erreur inattendue dans AuthCallback:', err);
+          setError(err.message || "Une erreur inattendue est survenue");
+          setPhase('error');
+        }
+      } else if (accessToken && !refreshToken) {
+        // Cas où on a seulement access_token (peut arriver avec certaines invitations)
+        logger.log('⚠️ Access token présent mais pas de refresh token');
+        setError("Token d'authentification incomplet. Veuillez utiliser le lien complet de l'email.");
+        setPhase('error');
       } else {
-         setError("Paramètres d'authentification manquants dans l'URL.");
-         setPhase('error');
+        // Pas de tokens dans l'URL et pas de session existante
+        logger.log('⚠️ Aucun token ou session détecté');
+        setError("Paramètres d'authentification manquants dans l'URL.");
+        setPhase('error');
       }
     })();
   }, [type, next, accessToken, refreshToken]);
@@ -149,7 +189,7 @@ export default function AuthCallback() {
         <div className="max-w-md w-full mx-auto p-8 bg-white rounded-2xl shadow-xl text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Lien invalide ou expiré</h1>
           <p className="mb-6 text-gray-700">{error}</p>
-          <a className="text-secondary-600 underline font-semibold" href="/admin/login">
+          <a className="text-secondary-600 underline font-semibold" href="/login">
             Retour à la connexion
           </a>
         </div>

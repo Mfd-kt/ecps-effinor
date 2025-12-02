@@ -5,20 +5,20 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 const FaqSection = () => {
   const faqItems = [
     { 
-      q: "Est-ce vraiment 100% gratuit pour moi ?", 
-      a: "Oui. Grâce au dispositif des Certificats d'Économies d'Énergie (CEE), l'installation est financée par les 'obligés' (fournisseurs d'énergie). Dans la plupart des cas, cela couvre 100% des coûts, sans aucun reste à charge pour vous." 
+      q: "Quel est le prix d'un déshumidificateur industriel ?", 
+      a: "Le prix varie selon la taille de votre bâtiment, la puissance nécessaire et les options choisies. Contactez-nous pour un devis personnalisé gratuit adapté à vos besoins spécifiques. Nous proposons des solutions rentables avec un retour sur investissement rapide grâce aux économies d'énergie générées." 
     },
     { 
       q: "Quels types de bâtiments sont éligibles ?", 
-      a: "Tous les bâtiments professionnels peuvent être éligibles : usines, entrepôts, bâtiments agricoles, serres, salles de sport, centres commerciaux, etc. Le mieux est de remplir notre formulaire pour une vérification gratuite et rapide de votre situation spécifique." 
+      a: "Tous les bâtiments professionnels peuvent bénéficier de nos solutions : usines, entrepôts, bâtiments agricoles, serres, salles de sport, centres commerciaux, etc. Le mieux est de remplir notre formulaire pour un diagnostic gratuit et rapide adapté à votre situation spécifique." 
     },
     { 
-      q: "Qui s'occupe de la paperasse pour la prime CEE ?", 
-      a: "Nous ! Notre équipe gère l'intégralité du montage et du dépôt de votre dossier de financement. C'est zéro tracas administratif pour vous." 
+      q: "Quelle est la garantie sur l'équipement ?", 
+      a: "Nos déshumidificateurs industriels bénéficient d'une garantie complète incluant pièces et main-d'œuvre. Notre équipe assure également un suivi technique et une assistance continue pour garantir le bon fonctionnement de votre installation." 
     },
     { 
       q: "Y a-t-il des coûts cachés ou un abonnement ?", 
-      a: "Absolument aucun. Il n'y a ni frais cachés, ni abonnement. Vous bénéficiez de l'équipement et de son installation gratuite, puis vous profitez des économies d'énergie qu'il génère." 
+      a: "Non, aucun coût caché ni abonnement. Le prix que nous vous proposons est transparent et inclut l'équipement, l'installation par nos experts certifiés, et la garantie. Vous profitez ensuite des économies d'énergie générées sans aucun frais supplémentaire." 
     },
     { 
       q: "Combien de temps prend l'installation ?", 
@@ -40,7 +40,7 @@ const FaqSection = () => {
           transition={{ duration: 0.5 }}
           className="text-3xl md:text-4xl text-center font-bold mb-12"
         >
-          Trop beau pour être vrai ? On répond à tout.
+          Des questions ? On répond à tout.
         </motion.h2>
         <motion.div 
           initial={{ opacity: 0 }} 

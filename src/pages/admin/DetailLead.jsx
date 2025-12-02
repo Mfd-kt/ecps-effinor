@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/leads';
 import { getStatuses } from '@/lib/api/statuses';
 import { getAllUsers } from '@/lib/api/utilisateurs';
+import { useUser } from '@/contexts/UserContext';
 import LeadHeader from '@/components/leads/LeadDetails/LeadHeader';
 import LeadSidebar from '@/components/leads/LeadDetails/LeadSidebar';
 import LeadTabsHeader from '@/components/leads/LeadDetails/LeadTabsHeader';
@@ -35,6 +36,15 @@ const DetailLead = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useUser();
+  
+  // Check if user is a commercial
+  const isCommercial = profile?.role?.slug === 'commercial';
+  
+  // Helper function to navigate to leads list (unified route)
+  const navigateToLeadsList = () => {
+    navigate('/leads');
+  };
 
   // State
   const [lead, setLead] = useState(null);
@@ -64,6 +74,20 @@ const DetailLead = () => {
       const result = await getLeadById(id);
 
       if (result.success && result.data) {
+        // Check if commercial user can access this lead
+        if (isCommercial && profile?.id) {
+          const leadCommercialId = result.data.commercial_assigne_id || result.data.responsable_id;
+          if (leadCommercialId !== profile.id) {
+            toast({
+              variant: 'destructive',
+              title: 'Accès refusé',
+              description: 'Ce lead ne vous est pas assigné'
+            });
+            navigateToLeadsList();
+            return;
+          }
+        }
+        
         // Use qualification score and breakdown from API
         // The API automatically calculates and updates the score in the database
         let finalScore = result.data.qualification_score || 0;
@@ -91,7 +115,7 @@ const DetailLead = () => {
           title: 'Erreur',
           description: result.error || 'Lead non trouvé'
         });
-        navigate('/admin/leads');
+        navigateToLeadsList();
       }
     } catch (error) {
       console.error('Error loading lead:', error);
@@ -100,11 +124,11 @@ const DetailLead = () => {
         title: 'Erreur',
         description: 'Impossible de charger le lead'
       });
-      navigate('/admin/leads');
+      navigateToLeadsList();
     } finally {
       setLoading(false);
     }
-  }, [id, navigate, toast]);
+  }, [id, navigate, toast, isCommercial, profile?.id, navigateToLeadsList]);
 
   // Load statuses
   const loadStatuses = async () => {
@@ -367,7 +391,7 @@ const DetailLead = () => {
           title: 'Lead supprimé',
           description: 'Le lead a été supprimé avec succès'
         });
-        navigate('/admin/leads');
+        navigateToLeadsList();
       } else {
         throw new Error(result.error);
       }
@@ -443,7 +467,7 @@ const DetailLead = () => {
       <div className="admin-page p-6">
         <div className="text-center py-12">
           <p className="text-gray-500 mb-4">Lead non trouvé</p>
-          <Button onClick={() => navigate('/admin/leads')}>
+          <Button onClick={navigateToLeadsList}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour à la liste
           </Button>
@@ -465,7 +489,7 @@ const DetailLead = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/admin/leads')}
+              onClick={navigateToLeadsList}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -501,8 +525,8 @@ const DetailLead = () => {
               timeline={timeline}
               onUpdate={autoSave}
               onStatusChange={handleStatusChange}
-              onAssign={handleAssign}
-              onDelete={handleDelete}
+              onAssign={isCommercial ? undefined : handleAssign}
+              onDelete={isCommercial ? undefined : handleDelete}
               onCall={(phone) => window.open(`tel:${phone}`, '_self')}
               onEmail={(email) => window.open(`mailto:${email}`, '_self')}
               onSchedule={() => toast({ title: 'Fonctionnalité à venir', description: 'Bientôt disponible' })}
@@ -510,6 +534,7 @@ const DetailLead = () => {
               formatRelativeTime={formatRelativeTime}
               leadStatuses={leadStatuses}
               users={users}
+              isCommercial={isCommercial}
             />
           </aside>
 

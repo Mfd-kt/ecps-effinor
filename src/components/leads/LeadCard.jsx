@@ -168,3 +168,15 @@ const LeadCard = ({ lead, isSelected, onClick }) => {
 
 export default LeadCard;
 
+
+
+
+
+
+
+
+
+
+
+
+

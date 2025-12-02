@@ -6,8 +6,9 @@ import { logger } from '@/utils/logger';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { sanitizeFormData } from '@/utils/sanitize';
-import UserAvatar from '@/components/ui/UserAvatar';
+import UserAvatar from '@/components/common/UserAvatar';
 import { getAllUsers } from '@/lib/api/utilisateurs';
+import { useUser } from '@/contexts/UserContext';
 
 /**
  * Reusable Notes Timeline Component
@@ -31,6 +32,7 @@ export default function NotesTimeline({
   title = 'Notes Internes'
 }) {
   const { toast } = useToast();
+  const { profile } = useUser();
   const [notes, setNotes] = useState([]);
   const [users, setUsers] = useState([]); // Cache des utilisateurs
   const [newNote, setNewNote] = useState('');
@@ -43,16 +45,41 @@ export default function NotesTimeline({
     }
   }, [leadId, commandeId]);
 
-  // Charger tous les utilisateurs une fois pour le cache
+  // Charger tous les utilisateurs une fois pour le cache (avec photos de profil)
   useEffect(() => {
     const loadUsers = async () => {
       try {
         const result = await getAllUsers();
         if (result.success && result.data) {
           setUsers(result.data);
+        } else {
+          // Fallback: charger directement depuis Supabase avec tous les champs
+          const { data, error } = await supabase
+            .from('utilisateurs')
+            .select('id, prenom, nom, email, full_name, photo_profil_url, avatar_url, auth_user_id');
+          if (!error && data) {
+            logger.log('[NotesTimeline] Utilisateurs chargés (fallback):', data.length);
+            setUsers(data);
+          } else if (error) {
+            logger.error('[NotesTimeline] Erreur fallback chargement users:', error);
+          }
         }
       } catch (error) {
-        console.error('Error loading users:', error);
+        logger.error('Error loading users:', error);
+        // Fallback: charger directement depuis Supabase
+        try {
+          const { data, error } = await supabase
+            .from('utilisateurs')
+            .select('id, prenom, nom, email, full_name, photo_profil_url, avatar_url, auth_user_id');
+          if (!error && data) {
+            logger.log('[NotesTimeline] Utilisateurs chargés (fallback 2):', data.length);
+            setUsers(data);
+          } else if (error) {
+            logger.error('[NotesTimeline] Erreur fallback 2 chargement users:', error);
+          }
+        } catch (fallbackError) {
+          logger.error('Fallback user loading failed:', fallbackError);
+        }
       }
     };
     loadUsers();
@@ -67,6 +94,8 @@ export default function NotesTimeline({
         .from('notes_internes')
         .select('id, lead_id, commande_id, auteur, note, created_at')
         .order('created_at', { ascending: false });
+      
+      logger.log('[NotesTimeline] Chargement notes pour:', { leadId, commandeId });
 
       // Filter by lead_id or commande_id
       if (leadId) {
@@ -107,7 +136,7 @@ export default function NotesTimeline({
         throw error;
       }
 
-      logger.log(`✅ ${data?.length || 0} note(s) chargée(s)`);
+      logger.log(`✅ ${data?.length || 0} note(s) chargée(s)`, data);
       setNotes(data || []);
     } catch (error) {
       logger.error('❌ Erreur chargement notes (catch):', {
@@ -151,10 +180,23 @@ export default function NotesTimeline({
       // Sanitize note content
       const sanitizedNote = sanitizeFormData({ note: newNote.trim() }).note;
 
+      // Store author info as JSON string for better user matching
+      const authorInfo = profile ? {
+        full_name: profile.full_name || `${profile.prenom || ''} ${profile.nom || ''}`.trim(),
+        email: profile.email || '',
+        prenom: profile.prenom || '',
+        nom: profile.nom || '',
+        photo_profil_url: profile.photo_profil_url || null,
+        id: profile.id
+      } : {
+        full_name: typeof currentUser === 'string' ? currentUser : (currentUser?.full_name || 'Admin'),
+        email: currentUser?.email || '',
+      };
+
       // Use 'note' column
       const noteData = {
         note: sanitizedNote,  // ✅ Use 'note' column
-        auteur: currentUser || 'Admin',
+        auteur: JSON.stringify(authorInfo), // Store as JSON for better matching
         ...(leadId && { lead_id: leadId }),
         ...(commandeId && { commande_id: commandeId })
       };
@@ -268,19 +310,20 @@ export default function NotesTimeline({
     
     // Si auteur est maintenant un objet, extraire les infos
     if (typeof auteurValue === 'object' && auteurValue !== null) {
-      // Si l'objet a un full_name, email, etc.
-      const fullName = auteurValue.full_name || auteurValue.fullName || auteurValue.name || '';
-      const email = auteurValue.email || '';
-      const prenom = auteurValue.prenom || auteurValue.firstName || '';
-      const nom = auteurValue.nom || auteurValue.lastName || '';
+      // PRIORITÉ 1: Chercher par ID si disponible
+      if (auteurValue.id) {
+        const userById = users.find(u => u.id === auteurValue.id);
+        if (userById) return userById;
+      }
       
-      // Chercher dans users par email
-      if (email) {
-        const userByEmail = users.find(u => u.email === email);
+      // PRIORITÉ 2: Chercher par email
+      if (auteurValue.email) {
+        const userByEmail = users.find(u => u.email === auteurValue.email);
         if (userByEmail) return userByEmail;
       }
       
-      // Chercher dans users par full_name
+      // PRIORITÉ 3: Chercher par full_name
+      const fullName = auteurValue.full_name || auteurValue.fullName || auteurValue.name || '';
       if (fullName) {
         const userByName = users.find(u => 
           u.full_name === fullName ||
@@ -289,30 +332,32 @@ export default function NotesTimeline({
         if (userByName) return userByName;
       }
       
-      // Créer un objet utilisateur à partir de l'objet auteur
-      if (fullName || email || prenom || nom) {
-        // Si on a full_name mais pas prenom/nom, splitter full_name
-        let finalPrenom = prenom;
-        let finalNom = nom;
-        if (!finalPrenom && !finalNom && fullName) {
-          const nameParts = fullName.trim().split(/\s+/);
-          if (nameParts.length >= 2) {
-            finalPrenom = nameParts[0];
-            finalNom = nameParts.slice(1).join(' ');
-          } else if (nameParts.length === 1) {
-            finalPrenom = nameParts[0];
-            finalNom = '';
-          }
+      // Si on a les infos dans auteurValue, les utiliser directement
+      const prenom = auteurValue.prenom || auteurValue.firstName || '';
+      const nom = auteurValue.nom || auteurValue.lastName || '';
+      const email = auteurValue.email || '';
+      
+      // Si on a full_name mais pas prenom/nom, splitter full_name
+      let finalPrenom = prenom;
+      let finalNom = nom;
+      if (!finalPrenom && !finalNom && fullName) {
+        const nameParts = fullName.trim().split(/\s+/);
+        if (nameParts.length >= 2) {
+          finalPrenom = nameParts[0];
+          finalNom = nameParts.slice(1).join(' ');
+        } else if (nameParts.length === 1) {
+          finalPrenom = nameParts[0];
+          finalNom = '';
         }
-        
-        return {
-          prenom: finalPrenom || email?.split('@')[0] || '',
-          nom: finalNom || '',
-          email: email || '',
-          full_name: fullName || `${finalPrenom} ${finalNom}`.trim() || email || 'Utilisateur',
-          photo_profil_url: auteurValue.photo_profil_url || auteurValue.photo || null
-        };
       }
+      
+      return {
+        prenom: finalPrenom || email?.split('@')[0] || '',
+        nom: finalNom || '',
+        email: email || '',
+        full_name: fullName || `${finalPrenom} ${finalNom}`.trim() || email || 'Utilisateur',
+        photo_profil_url: auteurValue.photo_profil_url || auteurValue.photo || auteurValue.avatar_url || null
+      };
     }
     
     // Si auteur est une string, chercher dans users
@@ -425,6 +470,13 @@ export default function NotesTimeline({
           notes.map((note) => {
             const noteUser = getUserForNote(note);
             
+            logger.log('[NotesTimeline] Note user:', { 
+              noteId: note.id, 
+              auteur: note.auteur, 
+              noteUser,
+              usersCount: users.length 
+            });
+            
             // Construire le nom d'affichage de manière robuste
             let displayName = 'Admin';
             if (noteUser.prenom && noteUser.nom) {
@@ -457,18 +509,28 @@ export default function NotesTimeline({
                 {/* Avatar */}
                 <div className="flex-shrink-0">
                   <UserAvatar 
-                    user={noteUser} 
+                    user={{
+                      ...noteUser,
+                      photo_profil_url: noteUser.photo_profil_url || noteUser.avatar_url || null,
+                      full_name: displayName || noteUser.full_name || `${noteUser.prenom || ''} ${noteUser.nom || ''}`.trim() || noteUser.email || 'Utilisateur'
+                    }} 
                     size="md"
+                    className="ring-1 ring-gray-200"
                   />
                 </div>
                 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1">
                       <span className="font-semibold text-sm text-gray-900">
                         {displayName}
                       </span>
+                      {noteUser.email && noteUser.email !== displayName && (
+                        <span className="text-xs text-gray-500">
+                          {noteUser.email}
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs text-gray-500 whitespace-nowrap">
                       {formatTimestamp(note.created_at)}

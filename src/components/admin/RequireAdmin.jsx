@@ -1,34 +1,46 @@
+/**
+ * Composant de protection des routes admin
+ * 
+ * Ce composant utilise le AuthContext pour vérifier si un utilisateur est authentifié.
+ * Si l'utilisateur n'est pas connecté, il est redirigé vers la page de login.
+ * 
+ * Utilisation :
+ * <RequireAdmin>
+ *   <AdminLayout>
+ *     <YourAdminPage />
+ *   </AdminLayout>
+ * </RequireAdmin>
+ */
+
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-const RequireAdmin = ({ children, roles }) => {
-  const { user, loading, profile } = useAuth();
+export default function RequireAdmin({ children }) {
+  const { user, loading } = useAuth();
   const location = useLocation();
 
+  // Afficher un message de chargement pendant la vérification de la session
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-100">
-        <Loader2 className="h-16 w-16 animate-spin text-secondary-500" />
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600 text-sm">Chargement de votre session...</p>
       </div>
     );
   }
 
+  // Si l'utilisateur n'est pas connecté, rediriger vers la page de login
+  // en conservant la page d'origine pour y revenir après connexion
   if (!user) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to. This allows us to send them along to that page after they login.
-    return <Navigate to="/admin/login" state={{ from: location }} replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location }}
+      />
+    );
   }
 
-  // If roles are specified, check if user's role is in the allowed list
-  if (roles && profile && !roles.includes(profile.role)) {
-     // User is logged in but does not have the required role
-     // Redirect to a default dashboard or an "access-denied" page
-     return <Navigate to="/dashboard" state={{ from: location }} replace />;
-  }
-
-  return children;
-};
-
-export default RequireAdmin;
+  // Utilisateur connecté : afficher le contenu protégé
+  return <>{children}</>;
+}

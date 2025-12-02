@@ -30,3 +30,15 @@ const TabDocuments = ({ lead, onUpload, onDelete }) => {
 
 export default TabDocuments;
 
+
+
+
+
+
+
+
+
+
+
+
+

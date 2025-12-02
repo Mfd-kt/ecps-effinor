@@ -86,3 +86,15 @@ const LeadSearch = ({ value, onChange, placeholder = "Rechercher (nom, entrepris
 
 export default LeadSearch;
 
+
+
+
+
+
+
+
+
+
+
+
+

@@ -69,11 +69,6 @@ const Shop = () => {
                   <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer">
                     <div className="aspect-video bg-gray-100 relative overflow-hidden">
                       <img className="w-full h-full object-cover" alt={product.name} src="https://images.unsplash.com/photo-1671376354106-d8d21e55dddd" />
-                      {product.ceeEligible && (
-                        <Badge className="absolute top-3 right-3 bg-accent-400 text-black">
-                          Éligible CEE
-                        </Badge>
-                      )}
                     </div>
                     <div className="p-6">
                       <h3 className="text-lg font-bold text-gray-900 mb-2">{product.name}</h3>

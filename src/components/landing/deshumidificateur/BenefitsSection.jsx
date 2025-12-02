@@ -7,8 +7,8 @@ const BenefitsSection = () => {
   const benefits = [
     { 
       icon: <Euro className="h-8 w-8" />, 
-      title: "0 € de reste à charge", 
-      description: "Votre installation est 100% financée grâce aux primes CEE pour les bâtiments professionnels." 
+      title: "Investissement rentable", 
+      description: "Un retour sur investissement rapide grâce aux économies d'énergie générées. ROI moyen de 2 à 3 ans." 
     },
     { 
       icon: <TrendingUp className="h-8 w-8" />, 
@@ -37,7 +37,7 @@ const BenefitsSection = () => {
           transition={{ duration: 0.5 }}
           className="text-3xl md:text-4xl text-center font-bold mb-12"
         >
-          Des bénéfices concrets, <span className="bg-gradient-to-r from-secondary-600 to-green-600 bg-clip-text text-transparent">un coût de 0 €</span>
+          Des bénéfices concrets, <span className="bg-gradient-to-r from-secondary-600 to-green-600 bg-clip-text text-transparent">un investissement rentable</span>
         </motion.h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {benefits.map((benefit, index) => (

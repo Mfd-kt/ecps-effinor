@@ -23,3 +23,15 @@ CREATE INDEX IF NOT EXISTS idx_leads_events_event_type ON leads_events(event_typ
 CREATE INDEX IF NOT EXISTS idx_leads_events_created_at ON leads_events(created_at DESC);
 
 -- Note: user_id sera stocké dans details JSONB comme: details->>'user_id'
+
+
+
+
+
+
+
+
+
+
+
+

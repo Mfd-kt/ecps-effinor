@@ -8,9 +8,14 @@ import { Button } from '@/components/ui/button';
 const ThankYou = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { leadId, ceePotential, companyName } = location.state || {};
+  const { leadId, orderId, orderType, ceePotential, companyName, reference, adressePostale } = location.state || {};
+  
+  // Accept either leadId (from CEE form) or orderId (from cart/devis)
+  const requestId = orderId || leadId;
+  const isOrder = !!orderId || orderType === 'devis' || orderType === 'commande_rappel';
+  const isRappel = orderType === 'commande_rappel';
 
-  if (!leadId) {
+  if (!requestId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
@@ -27,7 +32,7 @@ const ThankYou = () => {
     <>
       <Helmet>
         <title>Merci pour votre demande | EFFINOR</title>
-        <meta name="description" content="Votre demande d'éligibilité CEE a été envoyée avec succès. Notre équipe vous contactera sous 24h." />
+        <meta name="description" content="Votre demande a été envoyée avec succès. Notre équipe vous contactera sous 24h pour vous accompagner dans votre projet." />
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 py-12">
@@ -55,30 +60,34 @@ const ThankYou = () => {
                   Merci {companyName ? companyName : ''} !
                 </h1>
                 <p className="text-xl text-gray-600">
-                  Votre demande d'éligibilité CEE a été envoyée avec succès
+                  {isRappel 
+                    ? "Votre commande a été enregistrée avec succès. Un expert va vous rappeler pour finaliser votre commande."
+                    : isOrder 
+                      ? "Votre demande de devis a été envoyée avec succès" 
+                      : "Votre demande a été envoyée avec succès"}
                 </p>
               </div>
 
               {ceePotential && (
                 <div className="bg-gradient-to-r from-secondary-50 to-green-50 border-2 border-secondary-200 rounded-lg p-6 mb-8">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-                    Estimation de votre potentiel CEE
+                    Estimation de votre projet
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-                      <p className="text-sm text-gray-600 mb-2">Potentiel LED</p>
+                      <p className="text-sm text-gray-600 mb-2">Économies LED estimées</p>
                       <p className="text-2xl font-bold text-secondary-600">
                         {ceePotential.ledPotential.toLocaleString('fr-FR')} €
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-                      <p className="text-sm text-gray-600 mb-2">Potentiel Chauffage</p>
+                      <p className="text-sm text-gray-600 mb-2">Économies énergétiques</p>
                       <p className="text-2xl font-bold text-secondary-600">
                         {ceePotential.heatingPotential.toLocaleString('fr-FR')} €
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-                      <p className="text-sm text-gray-600 mb-2">Total estimé</p>
+                      <p className="text-sm text-gray-600 mb-2">Total économies/an</p>
                       <p className="text-2xl font-bold text-green-600">
                         {ceePotential.totalPotential.toLocaleString('fr-FR')} €
                       </p>
@@ -92,25 +101,51 @@ const ThankYou = () => {
                   <FileText className="h-5 w-5" />
                   Prochaines étapes
                 </h3>
-                <ul className="space-y-3 text-blue-800">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
-                    <span>Notre équipe d'experts analyse votre dossier sous 24h ouvrées</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
-                    <span>Vous recevrez une étude personnalisée détaillée par email</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
-                    <span>Un expert vous contactera pour affiner votre projet</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
-                    <span>Nous vous accompagnons dans la constitution de votre dossier CEE</span>
-                  </li>
-                </ul>
+                {isRappel ? (
+                  <ul className="space-y-3 text-blue-800">
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+                      <span>Un expert vous contactera dans les plus brefs délais (sous 24h ouvrées)</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+                      <span>Il finalisera avec vous les détails de votre commande</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+                      <span>Votre commande sera ensuite préparée et expédiée rapidement</span>
+                    </li>
+                  </ul>
+                ) : (
+                  <ul className="space-y-3 text-blue-800">
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+                      <span>Notre équipe d'experts analyse votre dossier sous 24h ouvrées</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+                      <span>Vous recevrez une étude personnalisée détaillée par email</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+                      <span>Un expert vous contactera pour affiner votre projet</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-600" />
+                      <span>Nous vous accompagnons dans la réalisation de votre projet</span>
+                    </li>
+                  </ul>
+                )}
               </div>
+
+              {isOrder && adressePostale && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+                  <h3 className="font-semibold text-gray-900 mb-2">Adresse de livraison</h3>
+                  <p className="text-sm text-gray-700 whitespace-pre-line">
+                    {adressePostale}
+                  </p>
+                </div>
+              )}
 
               <div className="bg-gray-50 rounded-lg p-6 mb-8">
                 <h3 className="font-semibold text-gray-900 mb-4">Besoin d'aide ?</h3>
@@ -137,16 +172,19 @@ const ThankYou = () => {
                     Retour à l'accueil
                   </Button>
                 </Link>
-                <Link to="/prime-cee/eligibilite">
+                <Link to="/boutique">
                   <Button size="lg" className="w-full sm:w-auto bg-secondary-600 hover:bg-secondary-700">
                     <FileText className="mr-2 h-5 w-5" />
-                    Nouvelle demande
+                    Voir la boutique
                   </Button>
                 </Link>
               </div>
 
               <p className="text-center text-sm text-gray-500 mt-8">
-                Référence de votre demande : <span className="font-mono font-semibold">{leadId}</span>
+                Référence de votre demande :{' '}
+                <span className="font-mono font-semibold">
+                  {reference || requestId}
+                </span>
               </p>
             </motion.div>
           </div>

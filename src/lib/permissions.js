@@ -43,8 +43,27 @@ export function canAccess(user, route) {
   // Admin a accès à tout
   if (hasPermission(user, 'all')) return true;
 
-  // Mapping des routes vers les permissions
+  // Mapping des routes vers les permissions (routes unifiées sans préfixes)
   const routePermissions = {
+    '/dashboard': 'dashboard',
+    '/leads': 'leads.view',
+    '/leads/new': 'leads.create',
+    '/devis': 'devis.view',
+    '/devis/new': 'devis.create',
+    '/commandes': 'commandes.view',
+    '/commandes/new': 'commandes.create',
+    '/produits': 'produits.view',
+    '/produits/new': 'produits.create',
+    '/utilisateurs': 'utilisateurs.view',
+    '/utilisateurs/new': 'utilisateurs.create',
+    '/paramètres/roles': 'utilisateurs.manage',
+    '/factures': 'factures.view',
+    '/factures/new': 'factures.create',
+    '/clients': 'clients.view',
+    '/clients/new': 'clients.create',
+    '/rapports': 'rapports.view',
+    '/paramètres': 'parametres.view',
+    // Support des anciennes routes pour compatibilité
     '/admin/dashboard': 'dashboard',
     '/admin/leads': 'leads.view',
     '/admin/leads/new': 'leads.create',
@@ -123,7 +142,15 @@ export function getUserPermissions(user) {
  */
 export function isAdmin(user) {
   if (!user) return false;
-  return user.role === 'admin' || user.role === 'super_admin' || hasPermission(user, 'all');
+  const userRole = user.role?.slug || '';
+  return userRole === 'admin' || userRole === 'super_admin' || hasPermission(user, 'all');
 }
+
+
+
+
+
+
+
 
 

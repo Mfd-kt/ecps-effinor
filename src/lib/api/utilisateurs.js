@@ -365,14 +365,20 @@ export async function getAllUsers() {
         nom,
         full_name,
         telephone,
-        role,
+        poste,
+        departement,
+        equipe,
+        role_id,
         permissions,
         statut,
+        statut_emploi,
+        active,
         avatar_url,
         photo_profil_url,
         derniere_connexion,
         created_at,
-        updated_at
+        updated_at,
+        role:roles!utilisateurs_role_id_fkey(id, slug, label, nom)
       `)
       .order('created_at', { ascending: false });
 
@@ -483,12 +489,13 @@ export async function updateUser(id, updates, photoFile = null) {
 
 /**
  * Supprimer un utilisateur
+ * Supprime à la fois le profil dans utilisateurs ET l'utilisateur Auth via Edge Function
  */
 export async function deleteUser(id) {
   try {
     logger.log('Suppression utilisateur:', id);
 
-    // 1. Récupérer auth_user_id avant suppression
+    // Récupérer auth_user_id avant suppression (pour l'Edge Function)
     const { data: user, error: fetchError } = await supabase
       .from('utilisateurs')
       .select('auth_user_id, email')
@@ -497,24 +504,51 @@ export async function deleteUser(id) {
 
     if (fetchError) throw fetchError;
 
-    // 2. Supprimer le profil
-    const { error: deleteError } = await supabase
-      .from('utilisateurs')
-      .delete()
-      .eq('id', id);
+    // Appeler l'Edge Function qui gère les deux suppressions (auth.users + public.utilisateurs)
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const functionUrl = `${supabaseUrl}/functions/v1/delete-user`;
+    
+    logger.log('📤 Appel Edge Function delete-user:', functionUrl);
+    
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({
+        utilisateur_id: id, // ID de la table utilisateurs
+        auth_user_id: user.auth_user_id || undefined, // ID de auth.users si existe
+      }),
+    });
 
-    if (deleteError) throw deleteError;
-
-    // 3. Supprimer l'utilisateur Auth si auth_user_id existe
-    if (user.auth_user_id) {
-      const { error: authDeleteError } = await supabase.auth.admin.deleteUser(user.auth_user_id);
-      if (authDeleteError) {
-        logger.error('Erreur suppression auth:', authDeleteError);
-        // Ne pas échouer si l'auth échoue (peut déjà être supprimé)
-      }
+    const responseText = await response.text();
+    let responseData;
+    
+    try {
+      responseData = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      responseData = { error: responseText || 'Erreur inconnue' };
     }
 
-    return { success: true };
+    if (!response.ok) {
+      const errorMsg = responseData?.error || 'Erreur lors de la suppression de l\'utilisateur';
+      logger.error('❌ Erreur Edge Function delete-user:', errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    logger.log('✅ Utilisateur supprimé:', {
+      utilisateur_id: id,
+      auth_deleted: responseData?.auth_deleted,
+      table_deleted: responseData?.table_deleted,
+    });
+
+    return { 
+      success: true,
+      auth_deleted: responseData?.auth_deleted,
+      table_deleted: responseData?.table_deleted,
+    };
   } catch (error) {
     logger.error('Erreur suppression utilisateur:', error);
     throw error;

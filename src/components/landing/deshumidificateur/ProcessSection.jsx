@@ -10,8 +10,8 @@ const ProcessSection = () => {
     },
     { 
       number: "2", 
-      title: "Confirmation d'éligibilité", 
-      description: "Recevez rapidement la confirmation de votre prise en charge à 100% par les primes CEE." 
+      title: "Devis personnalisé", 
+      description: "Recevez sous 24h un devis détaillé adapté à vos besoins et à votre budget." 
     },
     { 
       number: "3", 
@@ -35,7 +35,7 @@ const ProcessSection = () => {
           transition={{ duration: 0.5 }}
           className="text-3xl md:text-4xl text-center font-bold mb-16"
         >
-          Un processus ultra-clair vers le <span className="bg-gradient-to-r from-secondary-600 to-green-600 bg-clip-text text-transparent">100% financé</span>
+          Un processus simple pour <span className="bg-gradient-to-r from-secondary-600 to-green-600 bg-clip-text text-transparent">votre projet</span>
         </motion.h2>
         <div className="relative max-w-4xl mx-auto">
           <div className="hidden md:block absolute top-8 left-0 w-full h-0.5 bg-slate-300 dark:bg-slate-700"></div>

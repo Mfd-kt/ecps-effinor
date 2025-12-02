@@ -11,7 +11,7 @@ export async function getAllRoles() {
       .from('roles')
       .select(`
         *,
-        utilisateurs:utilisateurs(count)
+        utilisateurs:utilisateurs!utilisateurs_role_id_fkey(count)
       `)
       .order('nom');
 

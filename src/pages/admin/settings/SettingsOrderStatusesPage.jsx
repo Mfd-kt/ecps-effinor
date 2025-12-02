@@ -1,9 +1,9 @@
 import React from 'react';
 import StatusSettingsPage from '@/components/settings/statuses/StatusSettingsPage';
-
 /**
  * Settings Order Statuses Page
  * Gestion des statuts des commandes
+ * Note: La vérification des permissions est gérée par RequireRole dans App.jsx
  */
 const SettingsOrderStatusesPage = () => {
   return (
@@ -16,4 +16,11 @@ const SettingsOrderStatusesPage = () => {
 };
 
 export default SettingsOrderStatusesPage;
+
+
+
+
+
+
+
 

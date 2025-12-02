@@ -311,5 +311,18 @@ Avant de commiter:
 
 ---
 
-**Dernière mise à jour**: ${new Date().toLocaleDateString('fr-FR')}
+## 📦 Migration adresse commandes (à exécuter dans Supabase)
+
+```sql
+alter table public.commandes
+  add column if not exists adresse_ligne1 text,
+  add column if not exists adresse_ligne2 text,
+  add column if not exists pays text default 'France';
+```
+
+> Remarque :
+> - Les anciennes commandes auront `adresse_ligne1` à NULL → le front/admin gère ce cas en n'affichant que code_postal + ville.
+> - À terme, `adresse_ligne1` pourra être rendue NOT NULL côté base si nécessaire.
+
+**Dernière mise à jour**: 2024-12-XX
 

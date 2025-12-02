@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea.jsx';
 import { Checkbox } from '@/components/ui/checkbox.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx';
 import { Loader2, Upload, Trash2, ImagePlus } from 'lucide-react';
+import { getCategorySpecSchema, buildCaracteristiquesPayload } from '@/utils/productSpecs';
 
 const slugify = (text) => {
   if (!text) return '';
@@ -37,7 +38,7 @@ const ImageUploadPreview = ({ label, currentUrl, onFileChange, onRemove, fieldNa
         setPreview(currentUrl);
       } else {
         // Ensure we construct the full URL if needed
-        setPreview(currentUrl);
+      setPreview(currentUrl);
       }
     } else {
       setPreview(null);
@@ -143,6 +144,8 @@ const AdminProductForm = () => {
     categorie_id: null,
     sous_categorie: '',
     description: '',
+    marque: '',
+    reference: '',
     puissance: '',
     luminosite: '',
     prix: '',
@@ -157,6 +160,7 @@ const AdminProductForm = () => {
     image_url: null,
     fiche_technique: null,
   });
+  const [specsValues, setSpecsValues] = useState({});
 
   const [categories, setCategories] = useState([]);
   const [fichesCEE, setFichesCEE] = useState([]);
@@ -166,6 +170,7 @@ const AdminProductForm = () => {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+
 
   // Fetch categories from database
   const fetchCategories = useCallback(async () => {
@@ -206,6 +211,31 @@ const AdminProductForm = () => {
       
       logger.log('✅ Produit chargé:', data);
       setFormData(prev => ({ ...prev, ...data }));
+      let initialSpecs = data?.caracteristiques || {};
+      if (typeof initialSpecs === 'string') {
+        try {
+          initialSpecs = JSON.parse(initialSpecs);
+        } catch (error) {
+          initialSpecs = {};
+        }
+      }
+      
+      // Récupérer aussi les valeurs depuis les colonnes directes si elles existent
+      const directFields = {
+        materiaux: data.materiaux,
+        temperature_couleur: data.temperature_couleur,
+        indice_rendu_couleurs: data.indice_rendu_couleurs,
+        commande_controle: data.commande_controle,
+        tension_entree: data.tension_entree,
+        angle_faisceau: data.angle_faisceau,
+        protection: data.protection,
+        installation: data.installation,
+        dimensions: data.dimensions,
+        poids_net: data.poids_net,
+      };
+      
+      // Fusionner : les colonnes directes ont priorité sur le JSON
+      setSpecsValues({ ...initialSpecs, ...directFields });
       
       if (data.slug) {
         setIsSlugManuallyEdited(true);
@@ -397,29 +427,29 @@ const AdminProductForm = () => {
         }
         
         // Upload file
-        const { error: uploadError } = await supabase.storage
-          .from(bucket)
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
           .upload(filePath, file, { 
             upsert: true,
             contentType: file.type,
             cacheControl: '3600'
           });
-        
-        if (uploadError) {
+      
+      if (uploadError) {
           logger.error(`❌ Erreur upload avec bucket "${bucket}":`, uploadError);
           lastError = uploadError;
           continue; // Try next bucket
-        }
-        
+      }
+      
         // Get public URL
-        const { data: urlData } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(filePath);
-        
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+      
         logger.log(`✅ Fichier uploadé avec succès dans "${bucket}": ${urlData.publicUrl}`);
-        return urlData.publicUrl;
-        
-      } catch (error) {
+      return urlData.publicUrl;
+      
+    } catch (error) {
         logger.error(`❌ Erreur avec bucket "${bucket}":`, error);
         lastError = error;
         continue; // Try next bucket
@@ -505,6 +535,32 @@ const AdminProductForm = () => {
         logger.log('⚠️ categorie_id est null, suppression du champ (la colonne n\'existe peut-être pas encore)');
       }
 
+      // Build structured caracteristiques payload (category-specific specs)
+      dataToSave.caracteristiques = buildCaracteristiquesPayload(
+        formData.categorie,
+        specsValues
+      );
+
+      // Sauvegarder aussi les nouveaux champs dans les colonnes directes (pour faciliter les requêtes)
+      // Extraction des nouveaux champs depuis specsValues (tous en texte pour accepter lettres et chiffres)
+      // Note: Ces colonnes peuvent ne pas exister encore si la migration n'a pas été exécutée
+      const newFields = {
+        materiaux: specsValues.materiaux || null,
+        temperature_couleur: specsValues.temperature_couleur || null, // Texte (ex: "3000K", "4000-5000K")
+        indice_rendu_couleurs: specsValues.indice_rendu_couleurs || null, // Texte (ex: "80", "80+", "CRI 90")
+        commande_controle: specsValues.commande_controle || null,
+        tension_entree: specsValues.tension_entree || null,
+        angle_faisceau: specsValues.angle_faisceau || null, // Texte (ex: "60°", "90-120°")
+        protection: specsValues.protection || null,
+        installation: specsValues.installation || null,
+        dimensions: specsValues.dimensions || null,
+        poids_net: specsValues.poids_net || null, // Texte (ex: "2.5kg", "5.0 kg")
+      };
+      
+      // Fusionner avec dataToSave (les colonnes directes ont priorité si elles existent déjà)
+      // On garde ces champs dans dataToSave, mais on les supprimera si l'erreur indique qu'elles n'existent pas
+      Object.assign(dataToSave, newFields);
+
       // Sanitize data before save to prevent XSS attacks
       const sanitizedDataToSave = sanitizeFormData(dataToSave);
 
@@ -529,7 +585,62 @@ const AdminProductForm = () => {
           .single());
       }
 
-      if (error) throw error;
+      if (error) {
+        // Si l'erreur indique qu'une colonne n'existe pas, on retire les nouveaux champs et on réessaie
+        if (error.message?.includes('Could not find') && error.message?.includes('column')) {
+          logger.warn('⚠️ Colonnes manquantes détectées, suppression des nouveaux champs et nouvelle tentative...');
+          
+          // Supprimer les nouveaux champs de sanitizedDataToSave
+          const newFieldsKeys = ['materiaux', 'temperature_couleur', 'indice_rendu_couleurs', 'commande_controle', 
+                                  'tension_entree', 'angle_faisceau', 'protection', 'installation', 'dimensions', 'poids_net'];
+          newFieldsKeys.forEach(key => delete sanitizedDataToSave[key]);
+          
+          // Réessayer la sauvegarde sans les nouveaux champs
+          if (isEditing) {
+            ({ data: savedData, error } = await supabase
+              .from('products')
+              .update(sanitizedDataToSave)
+              .eq('id', id)
+              .select()
+              .single());
+          } else {
+            ({ data: savedData, error } = await supabase
+              .from('products')
+              .insert([sanitizedDataToSave])
+              .select()
+              .single());
+          }
+          
+          // Si ça fonctionne maintenant, afficher un avertissement
+          if (!error && savedData) {
+            logger.log('✅ Produit sauvegardé (sans les nouveaux champs):', savedData);
+            
+            // Save fiches CEE links
+            if (savedData?.id) {
+              await saveFichesLinks(savedData.id);
+            }
+            
+            toast({ 
+              title: "Produit sauvegardé", 
+              description: "Le produit a été sauvegardé, mais les nouveaux champs de détails n'ont pas été enregistrés. Veuillez exécuter la migration SQL pour activer ces champs.",
+              variant: "default"
+            });
+            
+            if (!isEditing) {
+              navigate('/admin/products');
+            } else {
+              fetchProduct();
+              fetchExistingFichesLinks();
+            }
+            return; // Sortir de la fonction ici
+          } else {
+            // Si ça échoue encore, lancer l'erreur originale
+            throw error;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       logger.log('✅ Produit sauvegardé:', savedData);
       
@@ -554,8 +665,20 @@ const AdminProductForm = () => {
     } catch (error) {
       logger.error("❌ Erreur de sauvegarde:", error);
       
+      // Check if error is about missing columns (new product detail fields)
+      if (error.message?.includes('Could not find') && error.message?.includes('column') && 
+          (error.message?.includes('angle_faisceau') || error.message?.includes('materiaux') || 
+           error.message?.includes('temperature_couleur') || error.message?.includes('poids_net'))) {
+        toast({ 
+          title: "Colonnes manquantes", 
+          description: "Les nouveaux champs de détails produits n'existent pas encore dans la base de données. Veuillez exécuter la migration SQL : migrations/20251128_add_product_details_fields.sql",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       // Check if error is about categorie_id column not existing
-      if (error.message?.includes('categorie_id') || error.message?.includes('column') && error.message?.includes('not found')) {
+      if (error.message?.includes('categorie_id') || (error.message?.includes('column') && error.message?.includes('not found'))) {
         // Try again without categorie_id
         logger.log('⚠️ Tentative de sauvegarde sans categorie_id...');
         delete sanitizedDataToSave.categorie_id;
@@ -614,6 +737,8 @@ const AdminProductForm = () => {
     );
   }
 
+  const specSchema = getCategorySpecSchema(formData.categorie);
+
   return (
     <>
       <Helmet>
@@ -659,8 +784,8 @@ const AdminProductForm = () => {
             <div className="form-group">
               <label htmlFor="categorie">Catégorie *</label>
               {categories.length > 0 ? (
-                <Select 
-                  name="categorie" 
+              <Select 
+                name="categorie" 
                   onValueChange={(value) => {
                     const selectedCategory = categories.find(c => c.id === value);
                     setFormData(prev => ({
@@ -670,18 +795,18 @@ const AdminProductForm = () => {
                     }));
                   }}
                   value={formData.categorie_id || formData.categorie || ''}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez une catégorie" />
-                  </SelectTrigger>
-                  <SelectContent>
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.nom}
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
+                </SelectContent>
+              </Select>
               ) : (
                 <Input
                   name="categorie"
@@ -706,35 +831,33 @@ const AdminProductForm = () => {
                 placeholder="Description détaillée du produit." 
               />
             </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="marque">Marque</label>
+                <Input 
+                  id="marque"
+                  name="marque"
+                  value={formData.marque || ''}
+                  onChange={handleInputChange} 
+                  placeholder="Ex: Philips"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="reference">Référence</label>
+                <Input 
+                  id="reference"
+                  name="reference"
+                  value={formData.reference || ''}
+                  onChange={handleInputChange} 
+                  placeholder="Ex: BY218P"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Specifications & Price */}
           <div className="form-section">
             <h2>⚙️ Spécifications & Prix</h2>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="puissance">Puissance (W)</label>
-                <Input 
-                  id="puissance" 
-                  name="puissance" 
-                  type="text" 
-                  value={formData.puissance || ''} 
-                  onChange={handleInputChange} 
-                  placeholder="Ex: 150W" 
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="luminosite">Flux (lm)</label>
-                <Input 
-                  id="luminosite" 
-                  name="luminosite" 
-                  type="text" 
-                  value={formData.luminosite || ''} 
-                  onChange={handleInputChange} 
-                  placeholder="Ex: 21000 lm" 
-                />
-              </div>
-            </div>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="prix">Prix vente HT (€)</label>
@@ -745,7 +868,8 @@ const AdminProductForm = () => {
                   step="0.01" 
                   value={formData.prix || ''} 
                   onChange={handleInputChange} 
-                  placeholder="Laisser vide si sur devis" 
+                  placeholder="Laisser vide si le produit est sur devis" 
+                  min="0"
                 />
               </div>
               <div className="form-group">
@@ -754,13 +878,14 @@ const AdminProductForm = () => {
                   id="stock" 
                   name="stock" 
                   type="number" 
-                  value={formData.stock || '0'} 
+                  value={formData.stock ?? ''} 
                   onChange={handleInputChange} 
+                  placeholder="0"
                   min="0" 
                 />
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-4">
               <div className="checkbox-label">
                 <Checkbox 
                   id="prime_cee" 
@@ -775,7 +900,7 @@ const AdminProductForm = () => {
                   id="sur_devis" 
                   name="sur_devis" 
                   checked={!!formData.sur_devis} 
-                  disabled 
+                  onCheckedChange={(checked) => handleInputChange({ target: { name: 'sur_devis', checked, type: 'checkbox' }})}
                 />
                 <label htmlFor="sur_devis">Sur devis</label>
               </div>
@@ -789,6 +914,33 @@ const AdminProductForm = () => {
                 <label htmlFor="actif">Produit actif</label>
               </div>
             </div>
+            {/* Caractéristiques spécifiques */}
+            {specSchema?.fields?.length > 0 && (
+              <div className="bg-white border rounded-lg p-5 mt-8">
+                <h3 className="text-lg font-semibold mb-3">
+                  Caractéristiques spécifiques — {specSchema.label}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {specSchema.fields.map((f) => (
+                    <div key={f.key} className="flex flex-col">
+                      <label className="text-sm font-medium mb-1">{f.label}</label>
+                      <input
+                        type={f.inputType ?? 'text'}
+                        className="border rounded px-3 py-2"
+                        placeholder={f.placeholder}
+                        value={specsValues[f.key] ?? ''}
+                        onChange={(e) =>
+                          setSpecsValues((prev) => ({
+                            ...prev,
+                            [f.key]: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Fiches CEE */}
@@ -829,7 +981,7 @@ const AdminProductForm = () => {
               </div>
             </div>
           )}
-
+          
           {/* Images & Documents */}
           <div className="form-section">
             <h2>🖼️ Images & Documents</h2>

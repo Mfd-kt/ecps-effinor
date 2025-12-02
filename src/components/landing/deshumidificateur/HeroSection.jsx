@@ -290,7 +290,7 @@ const DeshumidificateurForm = () => {
           ) : (
             <>
               <Euro className="w-5 h-5 mr-2" /> 
-              Vérifier mon éligibilité gratuite
+              Demander un devis gratuit
             </>
           )}
         </Button>
@@ -322,7 +322,7 @@ const HeroSection = () => {
             transition={{ duration: 0.7 }}
             className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4"
           >
-            Déshumidificateur industriel <span className="bg-gradient-to-r from-secondary-600 to-green-600 bg-clip-text text-transparent">100% financé</span>
+            Déshumidificateur industriel <span className="bg-gradient-to-r from-secondary-600 to-green-600 bg-clip-text text-transparent">professionnel</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: -20 }} 
@@ -330,7 +330,7 @@ const HeroSection = () => {
             transition={{ duration: 0.7, delay: 0.2 }}
             className="text-lg md:text-xl text-slate-600 dark:text-slate-300 mb-8"
           >
-            Grâce aux primes CEE, votre installation est entièrement prise en charge. Optimisez votre environnement de travail, sans sortir le moindre centime.
+            Solutions déshumidification haute performance pour usines, entrepôts et bâtiments professionnels. Installation rapide, service expert, garantie complète.
           </motion.p>
         </div>
 
@@ -351,7 +351,7 @@ const HeroSection = () => {
             </div>
             <div className="absolute bottom-4 left-4 text-white">
               <p className="font-bold">Avant / Après : Voyez la différence</p>
-              <p className="text-sm opacity-80">Bâtiment sain, sans rien payer</p>
+              <p className="text-sm opacity-80">Bâtiment sain, environnement optimisé</p>
             </div>
           </motion.div>
           <div className="lg:col-span-2" id="contact-form">

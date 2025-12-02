@@ -1,22 +1,24 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
-import { 
-  Loader2, Award, ShieldCheck, Phone, ArrowLeft, ShoppingCart, 
-  Download, FileText, CheckCircle2, Zap, Lightbulb, Clock, 
-  TrendingUp, Star, Heart, Maximize2, ChevronLeft, ChevronRight,
-  Package, Truck, RotateCcw, ArrowRight
+import {
+  Loader2, Award, ShieldCheck, Phone, ArrowLeft, ShoppingCart,
+  Download, FileText, CheckCircle2, TrendingUp, Star, Heart,
+  Clock, Maximize2, ChevronLeft, ChevronRight, Package, Truck,
+  RotateCcw, ArrowRight, Mail, Zap, Award as AwardIcon
 } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getDisplaySpecsForProduct } from '@/utils/productSpecs';
 
 const ProductDetail = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { toast } = useToast();
   
@@ -27,8 +29,6 @@ const ProductDetail = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('description');
   const [imageZoom, setImageZoom] = useState(false);
-  const [expandedSpecs, setExpandedSpecs] = useState(false);
-  const [fichesCEE, setFichesCEE] = useState([]);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
@@ -54,36 +54,6 @@ const ProductDetail = () => {
     return imagePath;
   }, [supabaseUrl]);
 
-  // Parse characteristics helper
-  const parseCharacteristics = useMemo(() => {
-    if (!product?.caracteristiques) return [];
-    
-    try {
-      const parsed = JSON.parse(product.caracteristiques);
-      if (Array.isArray(parsed)) {
-        return parsed;
-      } else if (typeof parsed === 'object') {
-        return Object.entries(parsed).map(([key, value]) => ({
-          label: key,
-          value: value
-        }));
-      }
-    } catch (e) {
-      const text = product.caracteristiques;
-      if (typeof text === 'string') {
-        const lines = text.split(/\n|;/).filter(line => line.trim());
-        return lines.map(line => {
-          const [label, ...valueParts] = line.split(':');
-          return {
-            label: label?.trim() || line.trim(),
-            value: valueParts.join(':').trim() || ''
-          };
-        });
-      }
-    }
-    return [];
-  }, [product?.caracteristiques]);
-
   useEffect(() => {
     const loadProduct = async () => {
       if (!slug) {
@@ -99,7 +69,7 @@ const ProductDetail = () => {
       try {
         const { data, error: supabaseError } = await supabase
           .from('products')
-          .select('id, nom, description, prix, categorie, slug, actif, image_1, image_2, image_3, image_4, image_url, caracteristiques, fiche_technique, puissance, luminosite, prime_cee, sur_devis, ordre')
+          .select('id, nom, description, prix, categorie, slug, actif, image_1, image_2, image_3, image_4, image_url, caracteristiques, fiche_technique, puissance, luminosite, sur_devis, ordre, marque, reference, materiaux, temperature_couleur, indice_rendu_couleurs, commande_controle, tension_entree, angle_faisceau, protection, installation, dimensions, poids_net')
           .eq('slug', slug)
           .eq('actif', true)
           .single();
@@ -131,9 +101,18 @@ const ProductDetail = () => {
     if (!product) return;
     addToCart(product);
     toast({
-      title: "Produit ajouté au panier !",
-      description: `${product.nom} a été ajouté à votre demande de devis.`,
+      title: "✅ Produit ajouté au panier !",
+      description: `${product.nom} a été ajouté. Vous pouvez continuer vos achats ou finaliser votre demande de devis.`,
     });
+  };
+
+  const handleRequestQuote = () => {
+    if (!product) return;
+    // Store product info for quote form
+    localStorage.setItem('devis_product', JSON.stringify(product));
+    localStorage.setItem('devis_product_id', product.id);
+    // Navigate to contact page with product info
+    navigate(`/contact?product=${product.slug}&type=devis`);
   };
 
   // Get all gallery images
@@ -173,11 +152,17 @@ const ProductDetail = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [imageZoom, selectedImageIndex, galleryImages.length]);
 
+  // Specs display helper
   // Get PDF URL
   const pdfUrl = useMemo(() => {
     if (!product?.fiche_technique) return null;
     return getImageUrl(product.fiche_technique);
   }, [product?.fiche_technique, getImageUrl]);
+
+  const { schema: specSchema, heroSpecs, allSpecs } = useMemo(
+    () => getDisplaySpecsForProduct(product || {}),
+    [product]
+  );
 
   if (loading) {
     return (
@@ -218,13 +203,30 @@ const ProductDetail = () => {
   }
 
   const categoryName = formatCategory(product.categorie);
-  const specs = parseCharacteristics;
+  const schemaType = specSchema?.type || null;
+  const schemaLabel = specSchema?.label || categoryName;
+  const fallbackKpiSpecs = [
+    product?.puissance && {
+      key: 'fallback_puissance',
+      label: 'Puissance électrique (max.)',
+      value: product.puissance,
+      unit: 'W',
+    },
+    product?.luminosite && {
+      key: 'fallback_flux',
+      label: 'Flux lumineux',
+      value: product.luminosite,
+      unit: 'lm',
+    },
+  ].filter(Boolean);
+  const kpiSpecs = heroSpecs.length ? heroSpecs : fallbackKpiSpecs;
+  const hasSpecs = allSpecs.length > 0;
 
   return (
     <>
       <Helmet>
         <title>{`${product.nom} | Effinor - Luminaires LED Professionnels`}</title>
-        <meta name="description" content={product.description || `Découvrez ${product.nom} sur Effinor. Solutions LED professionnelles éligibles CEE.`} />
+        <meta name="description" content={product.description || `Découvrez ${product.nom} sur Effinor. Solutions LED professionnelles haute performance pour l'industrie et le tertiaire.`} />
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -251,9 +253,10 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-8 lg:py-12">
+        <div className="container mx-auto px-3 md:px-4 py-4 md:py-6 lg:py-8 xl:py-12 max-w-7xl overflow-x-hidden">
+          <div className="max-w-[95%] sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto">
           {/* Main Product Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8 xl:gap-12 mb-6 md:mb-8 lg:mb-12">
             {/* Image Gallery Section */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -273,7 +276,7 @@ const ProductDetail = () => {
                       transition={{ duration: 0.3 }}
                       src={mainImage || 'https://via.placeholder.com/800x800?text=Image+non+disponible'}
                       alt={product.nom}
-                      className="w-full h-full object-contain p-8 cursor-zoom-in transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-contain p-4 md:p-6 lg:p-8 max-w-[85%] max-h-[85%] mx-auto cursor-zoom-in transition-transform duration-300 group-hover:scale-105"
                       onClick={() => galleryImages.length > 0 && setImageZoom(true)}
                       onError={(e) => {
                         e.target.src = 'https://via.placeholder.com/800x800?text=Image+non+disponible';
@@ -291,14 +294,6 @@ const ProductDetail = () => {
                     </button>
                   )}
 
-                  {/* Prime CEE Badge */}
-                  {product.prime_cee && (
-                    <div className="absolute top-4 left-4">
-                      <Badge className="bg-accent-400 text-white font-bold px-4 py-2 shadow-lg text-sm">
-                        <Award className="w-4 h-4 mr-2 inline" /> Prime CEE
-                      </Badge>
-                    </div>
-                  )}
 
                   {/* Image Navigation Arrows */}
                   {galleryImages.length > 1 && (
@@ -368,16 +363,16 @@ const ProductDetail = () => {
               )}
 
               {/* Quick Actions */}
-              <div className="flex items-center justify-center gap-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
                   <Package className="w-4 h-4 text-secondary-500" />
                   <span>En stock</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
                   <Truck className="w-4 h-4 text-secondary-500" />
                   <span>Livraison rapide</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
                   <RotateCcw className="w-4 h-4 text-secondary-500" />
                   <span>Retour facile</span>
                 </div>
@@ -399,42 +394,43 @@ const ProductDetail = () => {
               </div>
 
               {/* Product Name */}
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">{product.nom}</h1>
+              <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 leading-tight">{product.nom}</h1>
+              {(product.marque || product.reference) && (
+                <div className="text-sm text-gray-600 flex flex-wrap gap-4">
+                  {product.marque && (
+                    <span>
+                      <span className="font-semibold text-gray-800">Marque :</span> {product.marque}
+                    </span>
+                  )}
+                  {product.reference && (
+                    <span>
+                      <span className="font-semibold text-gray-800">Référence :</span> {product.reference}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Quick Stats */}
-              <div className="flex items-center gap-6 py-4 border-y border-gray-200">
-                {product.puissance && (
-                  <div className="flex items-center gap-2">
-                    <div className="bg-secondary-100 p-2 rounded-lg">
-                      <Zap className="w-5 h-5 text-secondary-600" />
+              {kpiSpecs.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-y border-gray-200">
+                  {kpiSpecs.map((spec) => (
+                    <div
+                      key={spec.key}
+                      className="rounded-2xl bg-white shadow-sm border border-gray-100 px-4 py-3"
+                    >
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
+                        {spec.label}
+                      </p>
+                      <p className="text-2xl font-semibold text-gray-900 mt-1">
+                        {spec.value}
+                        {spec.unit && (
+                          <span className="text-sm text-gray-500 ml-1">{spec.unit}</span>
+                        )}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Puissance</p>
-                      <p className="text-lg font-bold text-gray-900">{product.puissance}</p>
-                    </div>
-                  </div>
-                )}
-                {product.luminosite && (
-                  <div className="flex items-center gap-2">
-                    <div className="bg-secondary-100 p-2 rounded-lg">
-                      <Lightbulb className="w-5 h-5 text-secondary-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Luminosité</p>
-                      <p className="text-lg font-bold text-gray-900">{product.luminosite}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <div className="bg-secondary-100 p-2 rounded-lg">
-                    <Clock className="w-5 h-5 text-secondary-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Durée de vie</p>
-                    <p className="text-lg font-bold text-gray-900">50 000h</p>
-                  </div>
+                  ))}
                 </div>
-              </div>
+              )}
 
               {/* Price Section */}
               <div className="bg-gradient-to-br from-secondary-50 to-secondary-100 rounded-2xl p-6 border-2 border-secondary-200">
@@ -454,30 +450,40 @@ const ProductDetail = () => {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button
-                  onClick={handleAddToCart}
-                  className="bg-secondary-500 hover:bg-secondary-600 text-white font-bold py-6 px-8 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all flex-1 group"
-                  size="lg"
-                >
-                  <ShoppingCart className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" /> 
-                  Ajouter au devis
-                </Button>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    onClick={handleRequestQuote}
+                    className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-6 px-8 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all flex-1 group"
+                    size="lg"
+                  >
+                    <Mail className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" /> 
+                    Demander un devis
+                  </Button>
+                  <Button
+                    onClick={handleAddToCart}
+                    className="bg-secondary-500 hover:bg-secondary-600 text-white font-bold py-6 px-8 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all flex-1 group"
+                    size="lg"
+                  >
+                    <ShoppingCart className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" /> 
+                    Ajouter au panier
+                  </Button>
+                </div>
                 {pdfUrl && (
                   <a
                     href={pdfUrl}
                     download
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-6 py-6 bg-white hover:bg-gray-50 rounded-xl font-bold transition-all border-2 border-gray-300 hover:border-secondary-500 text-gray-700 hover:text-secondary-600 shadow-md hover:shadow-lg"
+                    className="flex items-center justify-center gap-2 px-6 py-4 bg-white hover:bg-gray-50 rounded-xl font-semibold transition-all border-2 border-gray-300 hover:border-secondary-500 text-gray-700 hover:text-secondary-600 shadow-md hover:shadow-lg"
                   >
-                    <FileText className="w-5 h-5" /> PDF
+                    <FileText className="w-5 h-5" /> Télécharger la fiche technique (PDF)
                   </a>
                 )}
               </div>
 
               {/* Trust Badges */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3">
                     <ShieldCheck className="w-8 h-8 text-secondary-500" />
@@ -489,10 +495,10 @@ const ProductDetail = () => {
                 </div>
                 <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3">
-                    <Award className="w-8 h-8 text-accent-500" />
+                    <Truck className="w-8 h-8 text-secondary-500" />
                     <div>
-                      <p className="font-semibold text-gray-900">Prime CEE</p>
-                      <p className="text-xs text-gray-600">Jusqu'à 100% financé</p>
+                      <p className="font-semibold text-gray-900">Livraison rapide</p>
+                      <p className="text-xs text-gray-600">24-48h en stock</p>
                     </div>
                   </div>
                 </div>
@@ -517,6 +523,7 @@ const ProductDetail = () => {
                 </div>
               </div>
             </motion.div>
+          </div>
           </div>
 
           {/* Tabs Section */}
@@ -560,34 +567,33 @@ const ProductDetail = () => {
 
                 {activeTab === 'caracteristiques' && (
                   <div>
-                    {specs.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(expandedSpecs ? specs : specs.slice(0, 10)).map((spec, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="flex justify-between items-center py-4 px-4 bg-gray-50 rounded-lg border-l-4 border-secondary-500 hover:bg-gray-100 transition-colors"
-                          >
-                            <span className="font-semibold text-gray-700">{spec.label}</span>
-                            <span className="text-gray-900 font-medium">{spec.value || '-'}</span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-600 text-center py-8">Aucune caractéristique disponible pour ce produit.</p>
+                    {schemaType && (
+                      <p className="text-xs uppercase tracking-wide text-secondary-600 font-semibold mb-4">
+                        {schemaType === 'luminaire' && 'Profil Luminaire'}
+                        {schemaType === 'destratificateur' && "Profil Déstratificateur d'air"}
+                        {schemaType !== 'luminaire' &&
+                          schemaType !== 'destratificateur' &&
+                          `Profil ${schemaType}`}
+                      </p>
                     )}
-                    {specs.length > 10 && (
-                      <div className="text-center mt-6">
-                        <Button
-                          variant="outline"
-                          onClick={() => setExpandedSpecs(!expandedSpecs)}
-                          className="border-secondary-500 text-secondary-600 hover:bg-secondary-50"
-                        >
-                          {expandedSpecs ? 'Voir moins' : `Voir toutes les caractéristiques (${specs.length})`}
-                        </Button>
-                      </div>
+                    {allSpecs.length > 0 ? (
+                      <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        {allSpecs.map((spec) => (
+                          <div key={spec.key} className="flex flex-col">
+                            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                              {spec.label}
+                            </dt>
+                            <dd className="text-base text-gray-900">
+                              {spec.value}
+                              {spec.unit && <span className="ml-1 text-gray-500">{spec.unit}</span>}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Les caractéristiques détaillées seront bientôt disponibles pour ce produit.
+                      </p>
                     )}
                   </div>
                 )}
@@ -625,29 +631,36 @@ const ProductDetail = () => {
                     </div>
                     <div>
                       <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <Award className="w-7 h-7 text-accent-500" />
-                        Éligibilité CEE
+                        <AwardIcon className="w-7 h-7 text-accent-500" />
+                        Avantages & Certifications
                       </h3>
                       <div className="space-y-4">
                         <div className="flex items-start gap-3">
                           <CheckCircle2 className="w-6 h-6 text-accent-500 mt-0.5 flex-shrink-0" />
                           <div>
-                            <p className="font-semibold text-gray-900">Prime CEE</p>
-                            <p className="text-gray-600">{product.prime_cee ? 'Éligible jusqu\'à 100% du financement' : 'Non éligible'}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="w-6 h-6 text-accent-500 mt-0.5 flex-shrink-0" />
-                          <div>
                             <p className="font-semibold text-gray-900">Certifications</p>
-                            <p className="text-gray-600">Normes CE, IP65, conforme aux réglementations</p>
+                            <p className="text-gray-600">Normes CE, IP65/IK08, RoHS, conforme aux réglementations européennes</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
                           <CheckCircle2 className="w-6 h-6 text-accent-500 mt-0.5 flex-shrink-0" />
                           <div>
-                            <p className="font-semibold text-gray-900">Économies d'énergie</p>
-                            <p className="text-gray-600">Jusqu'à 80% d'économie sur votre facture</p>
+                            <p className="font-semibold text-gray-900">Performance énergétique</p>
+                            <p className="text-gray-600">Technologie LED haute efficacité, jusqu'à 80% d'économie d'énergie vs éclairage traditionnel</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="w-6 h-6 text-accent-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-semibold text-gray-900">Durabilité</p>
+                            <p className="text-gray-600">Durée de vie jusqu'à 50 000h, réduction des coûts de maintenance</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="w-6 h-6 text-accent-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-semibold text-gray-900">Qualité professionnelle</p>
+                            <p className="text-gray-600">Fabrication européenne, testé et certifié selon les standards industriels</p>
                           </div>
                         </div>
                       </div>
@@ -658,52 +671,30 @@ const ProductDetail = () => {
             </AnimatePresence>
           </div>
 
-          {/* Fiches CEE Section */}
-          {fichesCEE.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-gradient-to-br from-secondary-50 to-green-50 rounded-2xl p-6 lg:p-8 mb-8 border-2 border-secondary-200"
-            >
-              <h3 className="text-xl lg:text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900">
-                <Award className="w-6 h-6 text-secondary-600" />
-                Fiches CEE Applicables
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Ce produit est éligible aux Certificats d'Économies d'Énergie suivants :
-              </p>
-              <div className="space-y-3">
-                {fichesCEE.map(fiche => (
-                  <Link
-                    key={fiche.slug}
-                    to={`/prime-cee/${fiche.slug}`}
-                    className="block p-4 bg-white rounded-lg border-2 border-secondary-200 hover:border-secondary-500 hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <Badge className="bg-secondary-100 text-secondary-700 text-xs font-mono mb-2">
-                          {fiche.numero}
-                        </Badge>
-                        <h4 className="font-semibold text-gray-900 mt-2">{fiche.titre}</h4>
-                        {fiche.description && (
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-1">{fiche.description}</p>
-                        )}
-                      </div>
-                      <div className="text-right ml-4">
-                        {fiche.montant_cee && (
-                          <p className="text-secondary-600 font-bold text-lg">
-                            {fiche.montant_cee} {fiche.unite || '€/unité'}
-                          </p>
-                        )}
-                        <LinkIcon className="w-4 h-4 text-secondary-500 mt-2 ml-auto" />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+          {hasSpecs && (
+            <section className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-12">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-gray-900">Caractéristiques techniques</h3>
+                <Badge className="bg-secondary-100 text-secondary-700 text-xs uppercase tracking-wide">
+                  {schemaLabel}
+                </Badge>
               </div>
-            </motion.div>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {allSpecs.map((spec) => (
+                  <div key={spec.key} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {spec.label}
+                    </dt>
+                    <dd className="text-lg font-semibold text-gray-900 mt-1">
+                      {spec.value}
+                      {spec.unit && <span className="ml-1 text-gray-500">{spec.unit}</span>}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           )}
+
 
           {/* Why Choose Effinor Section */}
           <motion.div
@@ -720,7 +711,7 @@ const ProductDetail = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { icon: TrendingUp, title: "100% Financé", desc: "Par les primes CEE, zéro investissement de votre part" },
+                { icon: TrendingUp, title: "Livraison rapide", desc: "Expédition sous 24-48h pour tous nos produits en stock" },
                 { icon: Clock, title: "Installation Rapide", desc: "Intervention en 7 jours sans interruption d'activité" },
                 { icon: ShieldCheck, title: "Garantie 5 ans", desc: "Matériel et installation garantis par nos experts" },
                 { icon: Star, title: "Accompagnement", desc: "Suivi personnalisé de A à Z par nos spécialistes" },

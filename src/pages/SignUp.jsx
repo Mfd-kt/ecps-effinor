@@ -136,7 +136,7 @@ const SignUp = () => {
               </div>
             </form>
             <div className="text-sm text-center mt-6">
-                <Link to="/admin/login" className="font-medium text-secondary-600 hover:underline">
+                <Link to="/login" className="font-medium text-secondary-600 hover:underline">
                   Déjà un compte ? Se connecter
                 </Link>
               </div>

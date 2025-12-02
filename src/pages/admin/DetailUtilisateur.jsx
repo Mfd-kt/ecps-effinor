@@ -12,16 +12,51 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Loader2, Save, KeyRound, UserMinus, UserPlus, Trash2, Upload, Camera, User, Mail, Phone, Briefcase, Building, Users, FileText, Calendar, Shield, AlertTriangle } from 'lucide-react';
 import UserAvatar from '@/components/ui/UserAvatar';
-import { getUserById, updateUser, resetUserPassword, deleteUser } from '@/lib/api/utilisateurs';
-import { getAllRoles, AVAILABLE_PERMISSIONS } from '@/lib/api/roles';
+import { updateUser, resetUserPassword, deleteUser } from '@/lib/api/utilisateurs';
+import { AVAILABLE_PERMISSIONS } from '@/lib/api/roles';
 import { validateEmail, validateFrenchPhone } from '@/utils/formUtils';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
 const DetailUtilisateur = () => {
+  // Note: La vérification des permissions est gérée par RequireRole dans App.jsx
+  // Pas besoin de double vérification ici
+  
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { profile: currentProfile } = useAuth();
+  const { user: authUser } = useAuth();
+  const [currentProfile, setCurrentProfile] = useState(null);
+
+  // Load current user's profile from utilisateurs table (for permission checks)
+  useEffect(() => {
+    const loadCurrentUserProfile = async () => {
+      if (!authUser?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('utilisateurs')
+          .select(`
+            *,
+            role:roles!utilisateurs_role_id_fkey(slug, label, nom)
+          `)
+          .eq('auth_user_id', authUser.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading current user profile:', error);
+          return;
+        }
+
+        if (data) {
+          setCurrentProfile(data);
+        }
+      } catch (error) {
+        console.error('Error loading current user profile:', error);
+      }
+    };
+
+    loadCurrentUserProfile();
+  }, [authUser?.id]);
   
   const [user, setUser] = useState(null);
   const [roles, setRoles] = useState([]);
@@ -43,46 +78,68 @@ const DetailUtilisateur = () => {
     departement: '',
     equipe: '',
     bio: '',
-    role: '',
-    permissions: [],
     statut: 'actif'
   });
+  
+  // Role state (separate from formData)
+  const [roleId, setRoleId] = useState('');
+  const [roleSlug, setRoleSlug] = useState('');
+  const [permissions, setPermissions] = useState([]);
+  
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
 
   useEffect(() => {
     if (id) {
-      fetchUser();
-      fetchRoles();
+      loadData();
     }
   }, [id]);
 
-  const fetchUser = async () => {
+  const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getUserById(id);
-      if (result.success && result.data) {
-        const userData = result.data;
-        setUser(userData);
-        setFormData({
-          prenom: userData.prenom || '',
-          nom: userData.nom || '',
-          email: userData.email || '',
-          telephone: userData.telephone || '',
-          poste: userData.poste || '',
-          departement: userData.departement || '',
-          equipe: userData.equipe || '',
-          bio: userData.bio || '',
-          role: userData.role || '',
-          permissions: Array.isArray(userData.permissions) ? userData.permissions : [],
-          statut: userData.statut || 'actif'
-        });
-      } else {
-        throw new Error('Aucune donnée retournée');
-      }
+      // 1) Charger les rôles système
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('roles')
+        .select('id, slug, label, description, permissions, is_system')
+        .eq('is_system', true)
+        .order('label', { ascending: true });
+
+      if (rolesError) throw rolesError;
+      setRoles(rolesData ?? []);
+
+      // 2) Charger l'utilisateur avec role_id et relation role
+      const { data: userData, error: userError } = await supabase
+        .from('utilisateurs')
+        .select(`
+          id, prenom, nom, email, telephone, poste, departement, equipe, bio, statut, role_id, permissions,
+          role:roles!utilisateurs_role_id_fkey(id, slug, label, nom)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (userError) throw userError;
+
+      setUser(userData);
+      setFormData({
+        prenom: userData.prenom || '',
+        nom: userData.nom || '',
+        email: userData.email || '',
+        telephone: userData.telephone || '',
+        poste: userData.poste || '',
+        departement: userData.departement || '',
+        equipe: userData.equipe || '',
+        bio: userData.bio || '',
+        statut: userData.statut || 'actif'
+      });
+      
+      // Set role state
+      setRoleId(userData.role_id || '');
+      setRoleSlug(userData.role?.slug || '');
+      setPermissions(Array.isArray(userData.permissions) ? userData.permissions : []);
     } catch (error) {
-      console.error('Erreur récupération utilisateur:', error);
+      console.error('Erreur chargement roles/utilisateur', error);
       const errorMessage = error.message || 'Impossible de charger les informations de l\'utilisateur.';
       setError(errorMessage);
       
@@ -109,17 +166,6 @@ const DetailUtilisateur = () => {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchRoles = async () => {
-    try {
-      const result = await getAllRoles();
-      if (result.success) {
-        setRoles(result.data || []);
-      }
-    } catch (error) {
-      console.error('Erreur récupération rôles:', error);
     }
   };
 
@@ -182,7 +228,7 @@ const DetailUtilisateur = () => {
         });
         setPhotoFile(null);
         setPhotoPreview(null);
-        fetchUser();
+        loadData();
       }
     } catch (error) {
       console.error('Erreur mise à jour:', error);
@@ -197,28 +243,45 @@ const DetailUtilisateur = () => {
   };
 
   const handleSaveRole = async () => {
+    if (!user) return;
+    if (!roleId) {
+      toast({
+        variant: 'destructive',
+        title: 'Rôle manquant',
+        description: "Choisis un rôle avant d'enregistrer.",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const updates = {
-        role: formData.role,
-        permissions: formData.permissions
+        role_id: roleId || null,
+        permissions: permissions,
       };
 
-      const result = await updateUser(id, updates);
+      console.log('Mise à jour utilisateur:', user.id, updates);
+
+      const { error } = await supabase
+        .from('utilisateurs')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: '✅ Rôle mis à jour',
+        description: "Le rôle de l'utilisateur a bien été enregistré.",
+      });
       
-      if (result.success) {
-        toast({
-          title: '✅ Rôle mis à jour',
-          description: 'Le rôle et les permissions ont été mis à jour.'
-        });
-        fetchUser();
-      }
+      // Reload data to reflect changes
+      loadData();
     } catch (error) {
       console.error('Erreur mise à jour rôle:', error);
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error.message || 'Impossible de mettre à jour le rôle.'
+        description: error.message || "Impossible d'enregistrer le rôle.",
       });
     } finally {
       setSaving(false);
@@ -257,7 +320,7 @@ const DetailUtilisateur = () => {
           title: `✅ Utilisateur ${newStatus === 'actif' ? 'activé' : 'suspendu'}`,
           description: `Le statut a été mis à jour.`
         });
-        fetchUser();
+        loadData();
       }
     } catch (error) {
       console.error('Erreur changement statut:', error);
@@ -280,7 +343,7 @@ const DetailUtilisateur = () => {
         title: '✅ Utilisateur supprimé',
         description: 'L\'utilisateur a été supprimé avec succès.'
       });
-      navigate('/admin/utilisateurs');
+      navigate('/utilisateurs');
     } catch (error) {
       console.error('Erreur suppression:', error);
       toast({
@@ -293,24 +356,22 @@ const DetailUtilisateur = () => {
     }
   };
 
-  const handleRoleChange = (roleId) => {
-    const selectedRole = roles.find(r => r.id === roleId || r.nom === roleId);
-    if (selectedRole) {
-      setFormData(prev => ({
-        ...prev,
-        role: selectedRole.nom,
-        permissions: Array.isArray(selectedRole.permissions) ? selectedRole.permissions : []
-      }));
-    }
+  const handleRoleChange = (newRoleId) => {
+    const selectedRole = roles.find((r) => r.id === newRoleId);
+    if (!selectedRole) return;
+
+    setRoleId(selectedRole.id);
+    setRoleSlug(selectedRole.slug); // ex: 'commercial', 'admin', 'callcenter'
+    setPermissions(Array.isArray(selectedRole.permissions) ? selectedRole.permissions : []);
   };
 
   const handlePermissionToggle = (permission) => {
-    setFormData(prev => {
-      const currentPerms = prev.permissions || [];
+    setPermissions(prev => {
+      const currentPerms = prev || [];
       const newPerms = currentPerms.includes(permission)
         ? currentPerms.filter(p => p !== permission)
         : [...currentPerms, permission];
-      return { ...prev, permissions: newPerms };
+      return newPerms;
     });
   };
 
@@ -353,7 +414,7 @@ const DetailUtilisateur = () => {
         )}
         <div className="flex gap-4 justify-center">
           <Button 
-            onClick={() => navigate(isUsersRoute ? '/admin/users' : '/admin/utilisateurs')}
+            onClick={() => navigate('/utilisateurs')}
           >
             Retour à la liste
           </Button>
@@ -445,9 +506,9 @@ const DetailUtilisateur = () => {
                     <div className={`w-2 h-2 rounded-full mr-2 ${formData.statut === 'actif' ? 'bg-white animate-pulse' : 'bg-white'}`} />
                     {formData.statut || 'actif'}
                   </Badge>
-                  {formData.role && (
+                  {roleSlug && (
                     <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 shadow-sm">
-                      {roles.find(r => r.nom === formData.role)?.label || formData.role}
+                      {roles.find(r => r.slug === roleSlug || r.id === roleId)?.label || roleSlug}
                     </Badge>
                   )}
                   {user.poste && (
@@ -645,35 +706,37 @@ const DetailUtilisateur = () => {
               <CardContent className="space-y-6">
                 <div>
                   <Label htmlFor="role">Rôle</Label>
-                  <Select value={formData.role} onValueChange={handleRoleChange}>
+                  <Select value={roleId || ''} onValueChange={handleRoleChange}>
                     <SelectTrigger id="role">
                       <SelectValue placeholder="Sélectionnez un rôle" />
                     </SelectTrigger>
                     <SelectContent>
                       {roles.map((role) => (
-                        <SelectItem key={role.id} value={role.nom}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full bg-${role.color}-500`}></div>
-                            {role.label}
-                          </div>
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {roleSlug && roles.find(r => r.slug === roleSlug || r.id === roleId)?.description && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {roles.find(r => r.slug === roleSlug || r.id === roleId)?.description}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-700">Permissions</Label>
                   <div className="mt-2 space-y-4 max-h-96 overflow-y-auto p-4 border border-gray-200 rounded-lg bg-gray-50/50">
-                    {Object.entries(groupedPermissions).map(([resource, permissions]) => (
+                    {Object.entries(groupedPermissions).map(([resource, perms]) => (
                       <div key={resource} className="space-y-3">
                         <h4 className="font-bold text-sm text-gray-900 capitalize border-b border-gray-200 pb-2">{resource}</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-2">
-                          {permissions.map((perm) => (
+                          {perms.map((perm) => (
                             <label key={perm.id} className="flex items-center space-x-3 text-sm cursor-pointer p-2 rounded-lg hover:bg-white transition-colors group">
                               <input
                                 type="checkbox"
-                                checked={formData.permissions?.includes(perm.id)}
+                                checked={permissions?.includes(perm.id)}
                                 onChange={() => handlePermissionToggle(perm.id)}
                                 className="rounded"
                               />
@@ -864,4 +927,3 @@ const DetailUtilisateur = () => {
 };
 
 export default DetailUtilisateur;
-

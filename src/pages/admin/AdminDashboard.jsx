@@ -4,43 +4,102 @@ import {
   TrendingUp, Users, ShoppingCart, FileText, 
   CheckCircle2, Clock, Send, Trophy, Filter, 
   RefreshCw, ArrowUpRight, ArrowDownRight,
-  Activity, BarChart3, LineChart
+  Activity, BarChart3, LineChart, DollarSign, Calendar, 
+  AlertCircle, Eye, X, ChevronRight
 } from 'lucide-react';
 import { 
   ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, Legend, PieChart as RechartsPieChart, 
-  Pie, Cell
+  Pie, Cell, Area, AreaChart
 } from 'recharts';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@/contexts/UserContext';
 import { logger } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 
-// Status colors mapping
+// ============================================
+// TYPES & INTERFACES (JSDoc comments)
+// ============================================
+
+/**
+ * @typedef {Object} Lead
+ * @property {string} id
+ * @property {string} created_at
+ * @property {string} [nom]
+ * @property {string} [societe]
+ * @property {string} [email]
+ * @property {string} [telephone]
+ * @property {string} statut
+ * @property {string} [source]
+ * @property {number} [montant_cee_estime]
+ * @property {string} [responsable_id]
+ */
+
+/**
+ * @typedef {Object} Commande
+ * @property {string} id
+ * @property {string} date_creation
+ * @property {string} [reference]
+ * @property {string} [nom_client]
+ * @property {string} [email]
+ * @property {number} [total_ttc]
+ * @property {number} [total_ht]
+ * @property {string} [paiement_statut]
+ * @property {string} [mode_suivi]
+ * @property {string} [source]
+ */
+
+/**
+ * @typedef {Object} SourceStats
+ * @property {string} source
+ * @property {number} leads
+ * @property {number} orders
+ * @property {number} conversion
+ * @property {number} revenue
+ */
+
+// ============================================
+// CONSTANTS
+// ============================================
+
 const STATUS_COLORS = {
-  'nouveau': '#3B82F6', // blue
-  'devis_a_preparer': '#F59E0B', // amber
-  'devis_envoye': '#8B5CF6', // purple
-  'en_negociation': '#EC4899', // pink
-  'gagne': '#10B981', // green
-  'perdu': '#EF4444', // red
+  'nouveau': '#3B82F6',
+  'devis_a_preparer': '#F59E0B',
+  'devis_envoye': '#8B5CF6',
+  'en_negociation': '#EC4899',
+  'gagne': '#10B981',
+  'perdu': '#EF4444',
 };
 
-// KPI Card Component
-const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-secondary-500', loading = false }) => {
+const QUALIFIED_STATUSES = ['devis_a_preparer', 'devis_envoye', 'en_negociation', 'gagne'];
+
+const COMMANDE_STATUS_COLORS = {
+  'payee': '#10B981',
+  'en_attente': '#F59E0B',
+  'refusee': '#EF4444',
+  'annulee': '#6B7280',
+};
+
+// ============================================
+// COMPONENTS
+// ============================================
+
+const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-[#10B981]', loading = false, subtitle }) => {
   const isPositive = trendValue >= 0;
   
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
+      <Card className="rounded-lg border border-slate-200 shadow-sm">
+        <CardContent className="p-4">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
-            <div className="h-8 bg-gray-200 rounded w-32 mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-20 mb-3"></div>
+            <div className="h-8 bg-gray-200 rounded w-24"></div>
           </div>
         </CardContent>
       </Card>
@@ -48,26 +107,29 @@ const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-
   }
   
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
-      <CardContent className="p-6">
+    <Card className="rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-            <p className="text-3xl font-bold text-gray-900 mb-2">{value?.toLocaleString() || 0}</p>
-            {trend !== null && trend !== undefined && !isNaN(trendValue) && (
-              <div className={`flex items-center gap-1 text-sm ${isPositive ? 'text-secondary-600' : 'text-red-600'}`}>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-slate-600 mb-1 truncate">{title}</p>
+            <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+            )}
+            {trend !== null && trend !== undefined && !isNaN(trendValue) && trendValue !== 0 && (
+              <div className={`flex items-center gap-1 text-xs mt-2 ${isPositive ? 'text-[#10B981]' : 'text-red-600'}`}>
                 {isPositive ? (
-                  <ArrowUpRight className="h-4 w-4" />
+                  <ArrowUpRight className="h-3 w-3" />
                 ) : (
-                  <ArrowDownRight className="h-4 w-4" />
+                  <ArrowDownRight className="h-3 w-3" />
                 )}
                 <span className="font-medium">{Math.abs(trendValue).toFixed(1)}%</span>
-                <span className="text-gray-500">vs mois dernier</span>
+                <span className="text-slate-400">vs précédent</span>
               </div>
             )}
           </div>
-          <div className={`${iconColor}/10 p-3 rounded-lg`}>
-            <Icon className={`h-6 w-6 ${iconColor.replace('bg-', 'text-')}`} />
+          <div className={`${iconColor}/10 p-2 rounded-lg flex-shrink-0 ml-2`}>
+            <Icon className={`h-5 w-5 ${iconColor.replace('bg-', 'text-')}`} />
           </div>
         </div>
       </CardContent>
@@ -75,76 +137,71 @@ const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-
   );
 };
 
-// Status Card Component
-const StatusCard = ({ title, value, status, icon: Icon, loading = false }) => {
-  const statusColor = STATUS_COLORS[status] || '#6B7280';
-  
-  if (loading) {
+const StatusBadge = ({ status, type = 'lead' }) => {
+  if (type === 'lead') {
+    const color = STATUS_COLORS[status] || '#6B7280';
     return (
-      <Card>
-        <CardContent className="p-4">
-          <div className="animate-pulse">
-            <div className="h-3 bg-gray-200 rounded w-20 mb-2"></div>
-            <div className="h-6 bg-gray-200 rounded w-16"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <Badge 
+        variant="outline" 
+        className="text-xs"
+        style={{ borderColor: color, color: color, backgroundColor: `${color}10` }}
+      >
+        {status.replace('_', ' ')}
+      </Badge>
+    );
+  } else {
+    const color = COMMANDE_STATUS_COLORS[status] || '#6B7280';
+    return (
+      <Badge 
+        variant="outline" 
+        className="text-xs"
+        style={{ borderColor: color, color: color, backgroundColor: `${color}10` }}
+      >
+        {status.replace('_', ' ')}
+      </Badge>
     );
   }
-  
-  return (
-    <Card className="hover:shadow-md transition-shadow duration-200">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <p className="text-xs font-medium text-gray-600 mb-1">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value?.toLocaleString() || 0}</p>
-          </div>
-          <div className="p-2 rounded-lg" style={{ backgroundColor: `${statusColor}15` }}>
-            <Icon className="h-5 w-5" style={{ color: statusColor }} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 };
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 const AdminDashboard = () => {
   const { toast } = useToast();
-  const { user, profile } = useAuth();
-  const currentUser = profile || user;
-
+  const { user } = useAuth();
+  const { profile } = useUser();
+  
   // Loading state
   const [loading, setLoading] = useState(true);
-  
-  // Chart data
-  const [chartData, setChartData] = useState([]);
-  const [chartType, setChartType] = useState('composed'); // 'composed', 'line'
+  const [lastUpdate, setLastUpdate] = useState(new Date());
   
   // Filters
-  const [dateRange, setDateRange] = useState('12'); // months
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedSource, setSelectedSource] = useState('all');
+  const [period, setPeriod] = useState('30d');
+  const [dataType, setDataType] = useState('all'); // 'all', 'leads', 'commandes'
+  const [source, setSource] = useState('all');
+  const [chartView, setChartView] = useState('daily'); // 'daily', 'weekly', 'monthly'
   
-  // Main KPIs
-  const [totalLeadsThisMonth, setTotalLeadsThisMonth] = useState(0);
-  const [totalLeadsLastMonth, setTotalLeadsLastMonth] = useState(0);
-  const [totalOrdersThisMonth, setTotalOrdersThisMonth] = useState(0);
-  const [totalOrdersLastMonth, setTotalOrdersLastMonth] = useState(0);
-  const [conversionRate, setConversionRate] = useState(0);
-  const [avgOrderValue, setAvgOrderValue] = useState(0);
-  
-  // Status breakdown
-  const [statusBreakdown, setStatusBreakdown] = useState([]);
-  const [statusStats, setStatusStats] = useState({});
-  
-  // Top sources
+  // Data
+  const [leads, setLeads] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [leadsStatusBreakdown, setLeadsStatusBreakdown] = useState([]);
+  const [ordersStatusBreakdown, setOrdersStatusBreakdown] = useState([]);
   const [topSources, setTopSources] = useState([]);
-  const [uniqueSourcesList, setUniqueSourcesList] = useState([]);
+  const [topClients, setTopClients] = useState([]);
   
-  // Recent activity
-  const [recentLeads, setRecentLeads] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
+  // KPIs
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [leadsTrend, setLeadsTrend] = useState(0);
+  const [qualifiedLeads, setQualifiedLeads] = useState(0);
+  const [qualifiedPercentage, setQualifiedPercentage] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [ordersTrend, setOrdersTrend] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [avgBasket, setAvgBasket] = useState(0);
+  const [conversionRate, setConversionRate] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
 
   // Calculate date range
   const getDateRange = () => {
@@ -152,19 +209,37 @@ const AdminDashboard = () => {
     endDate.setHours(23, 59, 59, 999);
     const startDate = new Date();
     
-    if (dateRange === '7d') {
+    if (period === 'today') {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === '7d') {
       startDate.setDate(startDate.getDate() - 7);
-    } else if (dateRange === '30d') {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === '30d') {
       startDate.setDate(startDate.getDate() - 30);
-    } else {
-      startDate.setMonth(startDate.getMonth() - parseInt(dateRange) || 12);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === 'month') {
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === '12m') {
+      startDate.setMonth(startDate.getMonth() - 12);
+      startDate.setHours(0, 0, 0, 0);
     }
     
-    startDate.setHours(0, 0, 0, 0);
     return { startDate, endDate };
   };
 
-  // Fetch all dashboard data
+  // Get previous period for comparison
+  const getPreviousPeriod = () => {
+    const { startDate, endDate } = getDateRange();
+    const periodLength = endDate.getTime() - startDate.getTime();
+    const prevEndDate = new Date(startDate);
+    prevEndDate.setTime(prevEndDate.getTime() - 1);
+    const prevStartDate = new Date(prevEndDate);
+    prevStartDate.setTime(prevStartDate.getTime() - periodLength);
+    return { prevStartDate, prevEndDate };
+  };
+
+  // Fetch all data
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -172,73 +247,179 @@ const AdminDashboard = () => {
       const startISO = startDate.toISOString();
       const endISO = endDate.toISOString();
 
-      // Fetch leads with filters
+      // Fetch leads
       let leadsQuery = supabase
         .from('leads')
-        .select('id, created_at, statut, source, montant_cee_estime, nom')
+        .select('id, created_at, nom, societe, email, telephone, statut, source, montant_cee_estime, responsable_id, commercial_assigne_id')
         .gte('created_at', startISO)
         .lte('created_at', endISO);
       
-      if (selectedStatus && selectedStatus !== 'all') {
-        leadsQuery = leadsQuery.eq('statut', selectedStatus);
+      // Filter by assigned commercial if user is a commercial
+      if (profile?.role?.slug === 'commercial' && profile?.id) {
+        leadsQuery = leadsQuery.eq('commercial_assigne_id', profile.id);
       }
       
-      if (selectedSource && selectedSource !== 'all') {
-        leadsQuery = leadsQuery.eq('source', selectedSource);
+      if (source !== 'all') {
+        leadsQuery = leadsQuery.eq('source', source);
       }
       
       const { data: allLeads, error: leadsError } = await leadsQuery;
       if (leadsError) throw leadsError;
 
-      // Fetch orders (total column may not exist, so we don't select it)
-      const { data: allOrders, error: ordersError } = await supabase
+      // Fetch orders
+      let ordersQuery = supabase
         .from('commandes')
-        .select('id, date_creation')
+        .select('id, date_creation, reference, nom_client, email, total_ttc, total_ht, paiement_statut, mode_suivi, source, commercial_assigne_id')
         .gte('date_creation', startISO)
         .lte('date_creation', endISO);
       
-      if (ordersError) throw ordersError;
-
-      // Calculate chart data
-      const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-      const periodMap = new Map();
-      const isDaily = daysDiff <= 90;
+      // Filter by assigned commercial if user is a commercial
+      // Note: commandes table might not have commercial_assigne_id yet, so we check if it exists
+      if (profile?.role?.slug === 'commercial' && profile?.id) {
+        // Try to filter by commercial_assigne_id if column exists
+        // If column doesn't exist, this will be ignored (no error)
+        try {
+          ordersQuery = ordersQuery.eq('commercial_assigne_id', profile.id);
+        } catch (e) {
+          // Column might not exist, ignore
+        }
+      }
       
-      if (isDaily) {
-        // Daily data
+      if (source !== 'all') {
+        ordersQuery = ordersQuery.eq('source', source);
+      }
+      
+      const { data: allOrders, error: ordersError } = await ordersQuery;
+      if (ordersError) {
+        // Fallback if columns don't exist
+        logger.warn('Error fetching orders, trying fallback');
+        const { data: fallbackOrders } = await supabase
+          .from('commandes')
+          .select('id, date_creation, reference, nom_client, email')
+          .gte('date_creation', startISO)
+          .lte('date_creation', endISO);
+        setOrders((fallbackOrders || []).map(o => ({ ...o, total_ttc: 0, paiement_statut: 'en_attente' })));
+      } else {
+        setOrders(allOrders || []);
+      }
+
+      // Filter by data type
+      const filteredLeads = dataType === 'commandes' ? [] : (allLeads || []);
+      const filteredOrders = dataType === 'leads' ? [] : (allOrders || []);
+
+      setLeads(filteredLeads);
+      if (!ordersError) {
+        setOrders(filteredOrders);
+      }
+
+      // Calculate KPIs
+      setTotalLeads(filteredLeads.length);
+      
+      // Qualified leads
+      const qualified = filteredLeads.filter(l => QUALIFIED_STATUSES.includes(l.statut));
+      setQualifiedLeads(qualified.length);
+      setQualifiedPercentage(filteredLeads.length > 0 ? (qualified.length / filteredLeads.length * 100) : 0);
+      
+      // Orders
+      setTotalOrders(filteredOrders.length);
+      
+      // Revenue
+      const revenue = (filteredOrders || []).reduce((sum, o) => sum + (o.total_ttc || o.total_ht || 0), 0);
+      setTotalRevenue(revenue);
+      setAvgBasket(filteredOrders.length > 0 ? revenue / filteredOrders.length : 0);
+      
+      // Conversion rate
+      const conversion = filteredLeads.length > 0 ? (filteredOrders.length / filteredLeads.length * 100) : 0;
+      setConversionRate(conversion);
+      
+      // Pending orders
+      const pending = filteredOrders.filter(o => 
+        o.paiement_statut === 'en_attente' || o.paiement_statut === 'en_cours'
+      ).length;
+      setPendingOrders(pending);
+
+      // Trends (compare with previous period)
+      const { prevStartDate, prevEndDate } = getPreviousPeriod();
+      const { count: prevLeadsCount } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', prevStartDate.toISOString())
+        .lte('created_at', prevEndDate.toISOString());
+      
+      const { count: prevOrdersCount } = await supabase
+        .from('commandes')
+        .select('*', { count: 'exact', head: true })
+        .gte('date_creation', prevStartDate.toISOString())
+        .lte('date_creation', prevEndDate.toISOString());
+
+      const leadsTrendValue = (prevLeadsCount || 0) > 0 
+        ? ((filteredLeads.length - (prevLeadsCount || 0)) / (prevLeadsCount || 0) * 100)
+        : 0;
+      setLeadsTrend(leadsTrendValue);
+
+      const ordersTrendValue = (prevOrdersCount || 0) > 0
+        ? ((filteredOrders.length - (prevOrdersCount || 0)) / (prevOrdersCount || 0) * 100)
+        : 0;
+      setOrdersTrend(ordersTrendValue);
+
+      // Chart data
+      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const periodMap = new Map();
+      
+      if (chartView === 'daily' && daysDiff <= 90) {
         for (let i = 0; i < daysDiff; i++) {
           const d = new Date(startDate);
           d.setDate(d.getDate() + i);
           const key = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-          periodMap.set(key, { name: key, leads: 0, commandes: 0 });
+          periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
+        }
+      } else if (chartView === 'weekly') {
+        const weeks = Math.ceil(daysDiff / 7);
+        for (let i = 0; i < weeks; i++) {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + (i * 7));
+          const weekNum = Math.ceil((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+          const key = `Sem. ${weekNum}`;
+          periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
         }
       } else {
-        // Monthly data
-        const monthsToShow = parseInt(dateRange) || 12;
-        for (let i = monthsToShow - 1; i >= 0; i--) {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
+        const months = Math.ceil(daysDiff / 30);
+        for (let i = 0; i < months; i++) {
+          const d = new Date(startDate);
+          d.setMonth(d.getMonth() + i);
           const key = d.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
-          periodMap.set(key, { name: key, leads: 0, commandes: 0 });
+          periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
         }
       }
 
-      // Populate period map with data
-      (allLeads || []).forEach(lead => {
+      // Populate chart data
+      filteredLeads.forEach(lead => {
         const date = new Date(lead.created_at);
-        const key = isDaily
-          ? date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
-          : date.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
+        let key = '';
+        if (chartView === 'daily') {
+          key = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+        } else if (chartView === 'weekly') {
+          const weekNum = Math.ceil((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+          key = `Sem. ${weekNum}`;
+        } else {
+          key = date.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
+        }
         if (periodMap.has(key)) {
           periodMap.get(key).leads++;
         }
       });
 
-      (allOrders || []).forEach(order => {
+      filteredOrders.forEach(order => {
         const date = new Date(order.date_creation);
-        const key = isDaily
-          ? date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
-          : date.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
+        let key = '';
+        if (chartView === 'daily') {
+          key = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+        } else if (chartView === 'weekly') {
+          const weekNum = Math.ceil((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+          key = `Sem. ${weekNum}`;
+        } else {
+          key = date.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
+        }
         if (periodMap.has(key)) {
           periodMap.get(key).commandes++;
         }
@@ -246,110 +427,80 @@ const AdminDashboard = () => {
 
       setChartData(Array.from(periodMap.values()));
 
-      // Calculate this month vs last month
-      const now = new Date();
-      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-
-      const { count: leadsThisMonth } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thisMonthStart.toISOString());
-      
-      const { count: leadsLastMonth } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', lastMonthStart.toISOString())
-        .lte('created_at', lastMonthEnd.toISOString());
-
-      const { count: ordersThisMonth } = await supabase
-        .from('commandes')
-        .select('*', { count: 'exact', head: true })
-        .gte('date_creation', thisMonthStart.toISOString());
-
-      const { count: ordersLastMonth } = await supabase
-        .from('commandes')
-        .select('*', { count: 'exact', head: true })
-        .gte('date_creation', lastMonthStart.toISOString())
-        .lte('date_creation', lastMonthEnd.toISOString());
-
-      setTotalLeadsThisMonth(leadsThisMonth || 0);
-      setTotalLeadsLastMonth(leadsLastMonth || 0);
-      setTotalOrdersThisMonth(ordersThisMonth || 0);
-      setTotalOrdersLastMonth(ordersLastMonth || 0);
-
-      // Calculate conversion rate
-      const conversion = leadsLastMonth > 0 
-        ? ((ordersLastMonth || 0) / leadsLastMonth * 100)
-        : 0;
-      setConversionRate(parseFloat(conversion.toFixed(1)));
-
-      // Calculate average order value (if total column exists in commandes_lignes)
-      // For now, we'll calculate it from commandes_lignes if needed
-      // Since total doesn't exist in commandes, we'll set to 0 or fetch from lignes
-      setAvgOrderValue(0); // TODO: Calculate from commandes_lignes if needed
-
-      // Status breakdown
-      const statusCount = {};
-      (allLeads || []).forEach(lead => {
+      // Status breakdowns
+      const leadsStatusCount = {};
+      filteredLeads.forEach(lead => {
         const status = lead.statut || 'nouveau';
-        statusCount[status] = (statusCount[status] || 0) + 1;
+        leadsStatusCount[status] = (leadsStatusCount[status] || 0) + 1;
       });
+      setLeadsStatusBreakdown(Object.entries(leadsStatusCount).map(([name, value]) => ({
+        name,
+        value,
+        color: STATUS_COLORS[name] || '#6B7280'
+      })));
 
-      const breakdown = Object.entries(statusCount).map(([status, count]) => ({
-        name: status,
-        value: count,
-        color: STATUS_COLORS[status] || '#6B7280'
-      }));
-      setStatusBreakdown(breakdown);
-      setStatusStats(statusCount);
+      const ordersStatusCount = {};
+      filteredOrders.forEach(order => {
+        const status = order.paiement_statut || 'en_attente';
+        ordersStatusCount[status] = (ordersStatusCount[status] || 0) + 1;
+      });
+      setOrdersStatusBreakdown(Object.entries(ordersStatusCount).map(([name, value]) => ({
+        name,
+        value,
+        color: COMMANDE_STATUS_COLORS[name] || '#6B7280'
+      })));
 
       // Top sources
-      const sourceCount = {};
-      (allLeads || []).forEach(lead => {
-        const source = lead.source || 'Autre';
-        sourceCount[source] = (sourceCount[source] || 0) + 1;
+      const sourceMap = new Map();
+      filteredLeads.forEach(lead => {
+        const src = lead.source || 'Autre';
+        if (!sourceMap.has(src)) {
+          sourceMap.set(src, { source: src, leads: 0, orders: 0, conversion: 0, revenue: 0 });
+        }
+        const leadStats = sourceMap.get(src);
+        if (leadStats) {
+          leadStats.leads++;
+        }
       });
+      filteredOrders.forEach(order => {
+        const src = order.source || 'Autre';
+        if (!sourceMap.has(src)) {
+          sourceMap.set(src, { source: src, leads: 0, orders: 0, conversion: 0, revenue: 0 });
+        }
+        const stats = sourceMap.get(src);
+        if (stats) {
+          stats.orders++;
+          stats.revenue += (order.total_ttc || order.total_ht || 0);
+        }
+      });
+      sourceMap.forEach((stats, src) => {
+        stats.conversion = stats.leads > 0 ? (stats.orders / stats.leads * 100) : 0;
+      });
+      setTopSources(Array.from(sourceMap.values()).sort((a, b) => b.leads - a.leads).slice(0, 5));
 
-      const topSourcesData = Object.entries(sourceCount)
-        .map(([source, count]) => ({
-          source,
-          count,
-          conversion: 0
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-      
-      setTopSources(topSourcesData);
-      
-      // Unique sources for filter
-      const sources = Array.from(new Set(topSourcesData.map(s => s.source))).sort();
-      setUniqueSourcesList(sources);
+      // Top clients
+      const clientMap = new Map();
+      filteredOrders.forEach(order => {
+        const clientName = order.nom_client || order.email || 'Client inconnu';
+        if (!clientMap.has(clientName)) {
+          clientMap.set(clientName, { name: clientName, orders: 0, revenue: 0 });
+        }
+        const client = clientMap.get(clientName);
+        if (client) {
+          client.orders++;
+          client.revenue += (order.total_ttc || order.total_ht || 0);
+        }
+      });
+      setTopClients(Array.from(clientMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5));
 
-      // Recent leads (last 5)
-      const { data: recentLeadsData } = await supabase
-        .from('leads')
-        .select('id, nom, created_at, statut')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      setRecentLeads(recentLeadsData || []);
-
-      // Recent activity
-      const activity = (recentLeadsData || []).map(lead => ({
-        type: 'lead_created',
-        title: `Nouveau lead: ${lead.nom || 'Sans nom'}`,
-        time: new Date(lead.created_at).toLocaleString('fr-FR'),
-        status: lead.statut
-      }));
-      setRecentActivity(activity);
-
+      setLastUpdate(new Date());
     } catch (error) {
       logger.error('Error fetching dashboard data:', error);
       toast({
-        title: "Impossible de charger les données",
-        description: "Vérifiez votre connexion internet et réessayez. Si le problème persiste, contactez le support technique.",
+        title: "Erreur de chargement",
+        description: error.message?.includes('column') 
+          ? "Certaines colonnes sont manquantes dans la base de données."
+          : "Impossible de charger les données. Vérifiez votre connexion.",
         variant: "destructive"
       });
     } finally {
@@ -359,32 +510,37 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange, selectedStatus, selectedSource]);
-
-  // Calculate trends
-  const leadsTrend = useMemo(() => {
-    if (totalLeadsLastMonth === 0 || isNaN(totalLeadsLastMonth)) return 0;
-    return ((totalLeadsThisMonth - totalLeadsLastMonth) / totalLeadsLastMonth * 100);
-  }, [totalLeadsThisMonth, totalLeadsLastMonth]);
-  
-  const ordersTrend = useMemo(() => {
-    if (totalOrdersLastMonth === 0 || isNaN(totalOrdersLastMonth)) return 0;
-    return ((totalOrdersThisMonth - totalOrdersLastMonth) / totalOrdersLastMonth * 100);
-  }, [totalOrdersThisMonth, totalOrdersLastMonth]);
+  }, [period, dataType, source, chartView]);
 
   const resetFilters = () => {
-    setDateRange('12');
-    setSelectedStatus('all');
-    setSelectedSource('all');
+    setPeriod('30d');
+    setDataType('all');
+    setSource('all');
+    setChartView('daily');
   };
 
-  // Custom Tooltip for chart
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', { 
+      style: 'currency', 
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', { 
+      day: '2-digit', 
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold mb-2">{payload[0].payload.name}</p>
+        <div className="bg-white p-3 border border-slate-200 rounded-lg shadow-lg">
+          <p className="font-semibold mb-2 text-slate-900">{payload[0].payload.name}</p>
           {payload.map((entry, index) => (
             <p key={index} style={{ color: entry.color }} className="text-sm">
               {entry.name}: {entry.value}
@@ -396,189 +552,199 @@ const AdminDashboard = () => {
     return null;
   };
 
+  const periodLabel = useMemo(() => {
+    const labels = {
+      'today': 'Aujourd\'hui',
+      '7d': '7 derniers jours',
+      '30d': '30 derniers jours',
+      'month': 'Mois en cours',
+      '12m': '12 derniers mois'
+    };
+    return labels[period] || period;
+  }, [period]);
+
   return (
     <>
       <Helmet>
-        <title>Dashboard | Effinor Admin</title>
+        <title>Tableau de bord | Effinor Admin</title>
       </Helmet>
       
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Tableau de bord</h1>
-            {currentUser && (
-              <p className="text-gray-600 mt-1">
-                Bienvenue, <span className="font-semibold text-secondary-600">{currentUser.full_name || currentUser.email}</span>
-              </p>
-            )}
+        <div className="mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Tableau de bord</h1>
+              <p className="text-slate-600 mt-1">Vue d'ensemble Leads & Commandes</p>
+            </div>
+            <div className="text-right text-sm text-slate-600">
+              <p>Période sélectionnée : <span className="font-semibold text-slate-900">{periodLabel}</span></p>
+              <p>Dernière mise à jour : <span className="font-semibold text-slate-900">
+                {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </span></p>
+            </div>
           </div>
-          {currentUser && (
-            <Badge variant="outline" className="text-sm">
-              {currentUser.role || 'Admin'}
-            </Badge>
-          )}
+
+          {/* Filters Bar */}
+          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-slate-500" />
+                  <span className="text-sm font-medium text-slate-700">Filtres :</span>
+                </div>
+                
+                <div className="flex-1 min-w-[200px]">
+                  <Select value={period} onValueChange={setPeriod}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Aujourd'hui</SelectItem>
+                      <SelectItem value="7d">7 derniers jours</SelectItem>
+                      <SelectItem value="30d">30 derniers jours</SelectItem>
+                      <SelectItem value="month">Mois en cours</SelectItem>
+                      <SelectItem value="12m">12 derniers mois</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex-1 min-w-[150px]">
+                  <Select value={dataType} onValueChange={setDataType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tout</SelectItem>
+                      <SelectItem value="leads">Leads</SelectItem>
+                      <SelectItem value="commandes">Commandes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex-1 min-w-[200px]">
+                  <Select value={source} onValueChange={setSource}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les sources</SelectItem>
+                      <SelectItem value="Formulaire site">Formulaire site</SelectItem>
+                      <SelectItem value="Facebook Ads">Facebook Ads</SelectItem>
+                      <SelectItem value="Google Ads">Google Ads</SelectItem>
+                      <SelectItem value="Téléphone">Téléphone</SelectItem>
+                      <SelectItem value="Autre">Autre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Réinitialiser
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Main KPIs - Row 1 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <KPICard
             title="Total Leads"
-            value={totalLeadsThisMonth}
+            value={totalLeads.toLocaleString()}
             trend={leadsTrend}
             trendValue={leadsTrend}
             icon={Users}
-            iconColor="bg-secondary-500"
+            iconColor="bg-blue-500"
             loading={loading}
+            subtitle={`Période sélectionnée`}
+          />
+          <KPICard
+            title="Leads qualifiés"
+            value={qualifiedLeads.toLocaleString()}
+            trend={null}
+            trendValue={0}
+            icon={CheckCircle2}
+            iconColor="bg-green-500"
+            loading={loading}
+            subtitle={`${qualifiedPercentage.toFixed(1)}% des leads`}
           />
           <KPICard
             title="Total Commandes"
-            value={totalOrdersThisMonth}
+            value={totalOrders.toLocaleString()}
             trend={ordersTrend}
             trendValue={ordersTrend}
             icon={ShoppingCart}
-            iconColor="bg-blue-500"
+            iconColor="bg-purple-500"
             loading={loading}
+            subtitle={`Période sélectionnée`}
           />
           <KPICard
-            title="Taux de Conversion"
-            value={`${conversionRate}%`}
+            title="CA Commandes (TTC)"
+            value={formatCurrency(totalRevenue)}
+            trend={null}
+            trendValue={0}
+            icon={DollarSign}
+            iconColor="bg-emerald-500"
+            loading={loading}
+            subtitle={`Panier moyen : ${formatCurrency(avgBasket)}`}
+          />
+          <KPICard
+            title="Taux de conversion"
+            value={conversionRate > 0 ? `${conversionRate.toFixed(1)}%` : '—'}
             trend={null}
             trendValue={0}
             icon={TrendingUp}
-            iconColor="bg-purple-500"
-            loading={loading}
-          />
-          <KPICard
-            title="Panier Moyen"
-            value={`${avgOrderValue.toFixed(0)}€`}
-            trend={null}
-            trendValue={0}
-            icon={Trophy}
             iconColor="bg-amber-500"
             loading={loading}
+            subtitle={`Lead → Commande`}
           />
-        </div>
-
-        {/* Status Cards - Row 2 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatusCard
-            title="Leads Nouveaux"
-            value={statusStats['nouveau'] || 0}
-            status="nouveau"
-            icon={FileText}
-            loading={loading}
-          />
-          <StatusCard
-            title="Devis En Attente"
-            value={statusStats['devis_a_preparer'] || 0}
-            status="devis_a_preparer"
+          <KPICard
+            title="Commandes en attente"
+            value={pendingOrders.toLocaleString()}
+            trend={null}
+            trendValue={0}
             icon={Clock}
+            iconColor="bg-orange-500"
             loading={loading}
-          />
-          <StatusCard
-            title="Devis Envoyés"
-            value={statusStats['devis_envoye'] || 0}
-            status="devis_envoye"
-            icon={Send}
-            loading={loading}
-          />
-          <StatusCard
-            title="Projets Gagnés"
-            value={statusStats['gagne'] || 0}
-            status="gagne"
-            icon={CheckCircle2}
-            loading={loading}
+            subtitle={`En attente de paiement`}
           />
         </div>
 
-        {/* Filters Section */}
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-gray-600" />
-                <CardTitle className="text-lg">Filtres</CardTitle>
-              </div>
-              <Button variant="outline" size="sm" onClick={resetFilters}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Réinitialiser
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Période</label>
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7d">7 derniers jours</SelectItem>
-                    <SelectItem value="30d">30 derniers jours</SelectItem>
-                    <SelectItem value="3">3 derniers mois</SelectItem>
-                    <SelectItem value="6">6 derniers mois</SelectItem>
-                    <SelectItem value="12">12 derniers mois</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Statut Lead</label>
-                <Select value={selectedStatus || 'all'} onValueChange={setSelectedStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tous les statuts" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-                    <SelectItem value="nouveau">Nouveau</SelectItem>
-                    <SelectItem value="devis_a_preparer">Devis à préparer</SelectItem>
-                    <SelectItem value="devis_envoye">Devis envoyé</SelectItem>
-                    <SelectItem value="en_negociation">En négociation</SelectItem>
-                    <SelectItem value="gagne">Gagné</SelectItem>
-                    <SelectItem value="perdu">Perdu</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Source</label>
-                <Select value={selectedSource || 'all'} onValueChange={setSelectedSource}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Toutes les sources" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les sources</SelectItem>
-                    {uniqueSourcesList.map(source => (
-                      <SelectItem key={source} value={source}>{source}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Chart and Status Breakdown - Row 3 */}
+        {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Chart */}
-          <Card className="lg:col-span-2">
+          {/* Main Chart - 2/3 width */}
+          <Card className="lg:col-span-2 rounded-lg border border-slate-200 shadow-sm bg-white">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Évolution Leads & Commandes</CardTitle>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-slate-900">Évolution Leads & Commandes</CardTitle>
+                  <CardDescription className="text-sm text-slate-600">Évolution sur la période sélectionnée</CardDescription>
+                </div>
                 <div className="flex gap-2">
                   <Button
-                    variant={chartType === 'composed' ? 'default' : 'outline'}
+                    variant={chartView === 'daily' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartType('composed')}
+                    onClick={() => setChartView('daily')}
+                    className={chartView === 'daily' ? 'bg-[#10B981] hover:bg-[#10B981]/90' : ''}
                   >
-                    <BarChart3 className="h-4 w-4" />
+                    Quotidien
                   </Button>
                   <Button
-                    variant={chartType === 'line' ? 'default' : 'outline'}
+                    variant={chartView === 'weekly' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setChartType('line')}
+                    onClick={() => setChartView('weekly')}
+                    className={chartView === 'weekly' ? 'bg-[#10B981] hover:bg-[#10B981]/90' : ''}
                   >
-                    <LineChart className="h-4 w-4" />
+                    Hebdomadaire
+                  </Button>
+                  <Button
+                    variant={chartView === 'monthly' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setChartView('monthly')}
+                    className={chartView === 'monthly' ? 'bg-[#10B981] hover:bg-[#10B981]/90' : ''}
+                  >
+                    Mensuel
                   </Button>
                 </div>
               </div>
@@ -586,201 +752,348 @@ const AdminDashboard = () => {
             <CardContent>
               {loading ? (
                 <div className="h-[400px] flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary-500"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10B981]"></div>
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="h-[400px] flex flex-col items-center justify-center text-slate-500">
+                  <BarChart3 className="h-12 w-12 text-slate-300 mb-4" />
+                  <p className="text-center font-medium">Aucune donnée disponible</p>
                 </div>
               ) : (
                 <div style={{ width: '100%', height: 400 }}>
                   <ResponsiveContainer>
-                    {chartType === 'line' ? (
-                      <ComposedChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                        <XAxis dataKey="name" stroke="#6B7280" />
-                        <YAxis yAxisId="left" stroke="#6B7280" />
-                        <YAxis yAxisId="right" orientation="right" stroke="#6B7280" />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                        <Line 
-                          yAxisId="right" 
-                          type="monotone" 
-                          dataKey="leads" 
-                          stroke="#10B981" 
-                          strokeWidth={3} 
-                          name="Leads"
-                          activeDot={{ r: 8 }}
-                        />
-                        <Line 
-                          yAxisId="left" 
-                          type="monotone" 
-                          dataKey="commandes" 
-                          stroke="#3B82F6" 
-                          strokeWidth={3} 
-                          name="Commandes"
-                          activeDot={{ r: 8 }}
-                        />
-                      </ComposedChart>
-                    ) : (
-                      <ComposedChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                        <XAxis dataKey="name" stroke="#6B7280" />
-                        <YAxis yAxisId="left" stroke="#6B7280" />
-                        <YAxis yAxisId="right" orientation="right" stroke="#6B7280" />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend />
-                        <Bar 
-                          yAxisId="left" 
-                          dataKey="commandes" 
-                          fill="#3B82F6" 
-                          name="Commandes"
-                          radius={[4, 4, 0, 0]}
-                        />
-                        <Line 
-                          yAxisId="right" 
-                          type="monotone" 
-                          dataKey="leads" 
-                          stroke="#10B981" 
-                          strokeWidth={3} 
-                          name="Leads"
-                          activeDot={{ r: 8 }}
-                        />
-                      </ComposedChart>
-                    )}
+                    <ComposedChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis dataKey="name" stroke="#6B7280" />
+                      <YAxis yAxisId="left" stroke="#6B7280" />
+                      <YAxis yAxisId="right" orientation="right" stroke="#6B7280" />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Bar 
+                        yAxisId="left" 
+                        dataKey="commandes" 
+                        fill="#3B82F6" 
+                        name="Commandes"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Line 
+                        yAxisId="right" 
+                        type="monotone" 
+                        dataKey="leads" 
+                        stroke="#10B981" 
+                        strokeWidth={3} 
+                        name="Leads"
+                        activeDot={{ r: 8 }}
+                      />
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Status Breakdown */}
-          <Card>
+          {/* Status Breakdown - 1/3 width */}
+          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
             <CardHeader>
-              <CardTitle>Répartition par Statut</CardTitle>
+              <CardTitle className="text-lg font-semibold text-slate-900">Répartition par Statut</CardTitle>
+              <CardDescription className="text-sm text-slate-600">Distribution Leads & Commandes</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="h-[400px] flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary-500"></div>
+                <div className="space-y-8">
+                  <div className="h-[180px] flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10B981]"></div>
+                  </div>
+                  <div className="h-[180px] flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10B981]"></div>
+                  </div>
                 </div>
-              ) : statusBreakdown.length > 0 ? (
-                <>
-                  <div style={{ width: '100%', height: 300 }}>
-                    <ResponsiveContainer>
-                      <RechartsPieChart>
-                        <Pie
-                          data={statusBreakdown}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {statusBreakdown.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {statusBreakdown.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: item.color }}
-                          />
-                          <span className="text-gray-700 capitalize">{item.name.replace('_', ' ')}</span>
-                        </div>
-                        <span className="font-semibold">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
               ) : (
-                <p className="text-center text-gray-500 py-8">Aucune donnée disponible</p>
+                <div className="space-y-8">
+                  {/* Leads Status */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Leads</h4>
+                    {leadsStatusBreakdown.length > 0 ? (
+                      <>
+                        <div style={{ width: '100%', height: 150 }}>
+                          <ResponsiveContainer>
+                            <RechartsPieChart>
+                              <Pie
+                                data={leadsStatusBreakdown}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                outerRadius={60}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {leadsStatusBreakdown.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          {leadsStatusBreakdown.map((item) => (
+                            <div key={item.name} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                <span className="text-slate-600 capitalize">{item.name.replace('_', ' ')}</span>
+                              </div>
+                              <span className="font-semibold text-slate-900">{item.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-center text-slate-400 text-sm py-8">Aucun lead</p>
+                    )}
+                  </div>
+
+                  {/* Orders Status */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Commandes</h4>
+                    {ordersStatusBreakdown.length > 0 ? (
+                      <>
+                        <div style={{ width: '100%', height: 150 }}>
+                          <ResponsiveContainer>
+                            <RechartsPieChart>
+                              <Pie
+                                data={ordersStatusBreakdown}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                outerRadius={60}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {ordersStatusBreakdown.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          {ordersStatusBreakdown.map((item) => (
+                            <div key={item.name} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                <span className="text-slate-600 capitalize">{item.name.replace('_', ' ')}</span>
+                              </div>
+                              <span className="font-semibold text-slate-900">{item.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-center text-slate-400 text-sm py-8">Aucune commande</p>
+                    )}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Top Sources and Recent Activity - Row 4 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Sources */}
-          <Card>
+        {/* Recent Leads & Orders Tables */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Recent Leads */}
+          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
             <CardHeader>
-              <CardTitle>Top Sources</CardTitle>
-              <CardDescription>Les 5 principales sources de leads</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold text-slate-900">Leads récents</CardTitle>
+                  <CardDescription className="text-sm text-slate-600">10 derniers leads</CardDescription>
+                </div>
+                <Link to="/admin/leads">
+                  <Button variant="ghost" size="sm">
+                    Voir tous <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="animate-pulse h-16 bg-gray-200 rounded-lg"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse h-16 bg-gray-200 rounded"></div>
                   ))}
                 </div>
-              ) : topSources.length > 0 ? (
-                <div className="space-y-4">
-                  {topSources.map((source, index) => (
-                    <div key={source.source} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-secondary-500/10 flex items-center justify-center">
-                          <span className="text-sm font-bold text-secondary-600">#{index + 1}</span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{source.source}</p>
-                          <p className="text-xs text-gray-500">{source.count} leads</p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary">{source.conversion || 0}%</Badge>
-                    </div>
-                  ))}
+              ) : leads.slice(0, 10).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Date</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Nom</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Source</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Statut</th>
+                        <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600">Montant</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leads.slice(0, 10).map((lead) => (
+                        <tr key={lead.id} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-2 px-3 text-xs text-slate-600">{formatDate(lead.created_at)}</td>
+                          <td className="py-2 px-3 text-xs text-slate-900">{lead.nom || lead.societe || '—'}</td>
+                          <td className="py-2 px-3 text-xs text-slate-600">{lead.source || '—'}</td>
+                          <td className="py-2 px-3">
+                            <StatusBadge status={lead.statut} type="lead" />
+                          </td>
+                          <td className="py-2 px-3 text-xs font-semibold text-slate-900 text-right">
+                            {lead.montant_cee_estime ? formatCurrency(lead.montant_cee_estime) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">Aucune donnée disponible</p>
+                <p className="text-center text-slate-400 text-sm py-8">Aucun lead récent</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Recent Activity */}
-          <Card>
+          {/* Recent Orders */}
+          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
             <CardHeader>
-              <CardTitle>Activité Récente</CardTitle>
-              <CardDescription>Dernières actions sur la plateforme</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold text-slate-900">Commandes récentes</CardTitle>
+                  <CardDescription className="text-sm text-slate-600">10 dernières commandes</CardDescription>
+                </div>
+                <Link to="/admin/orders">
+                  <Button variant="ghost" size="sm">
+                    Voir toutes <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="animate-pulse h-20 bg-gray-200 rounded-lg"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse h-16 bg-gray-200 rounded"></div>
                   ))}
                 </div>
-              ) : recentActivity.length > 0 ? (
-                <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 border-l-4 border-secondary-500 bg-gray-50 rounded-r-lg">
-                      <Activity className="h-5 w-5 text-secondary-500 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 text-sm">{activity.title}</p>
-                        <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+              ) : orders.slice(0, 10).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Date</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Réf.</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Client</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Statut</th>
+                        <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.slice(0, 10).map((order) => (
+                        <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-2 px-3 text-xs text-slate-600">{formatDate(order.date_creation)}</td>
+                          <td className="py-2 px-3 text-xs text-slate-900 font-mono">{order.reference || order.id.substring(0, 8)}</td>
+                          <td className="py-2 px-3 text-xs text-slate-900">{order.nom_client || order.email || '—'}</td>
+                          <td className="py-2 px-3">
+                            <StatusBadge status={order.paiement_statut || 'en_attente'} type="commande" />
+                          </td>
+                          <td className="py-2 px-3 text-xs font-semibold text-slate-900 text-right">
+                            {order.total_ttc || order.total_ht ? formatCurrency(order.total_ttc || order.total_ht) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center text-slate-400 text-sm py-8">Aucune commande récente</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Top Sources & Top Clients */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Sources */}
+          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-slate-900">Top Sources</CardTitle>
+              <CardDescription className="text-sm text-slate-600">5 meilleures sources de leads</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="animate-pulse h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              ) : topSources.length > 0 ? (
+                <div className="space-y-3">
+                  {topSources.map((source, index) => (
+                    <div key={source.source} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-[#10B981]">#{index + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-slate-900 text-sm truncate">{source.source}</p>
+                          <p className="text-xs text-slate-500">{source.leads} leads • {source.orders} commandes</p>
+                        </div>
                       </div>
-                      {activity.status && (
-                        <Badge 
-                          variant="outline" 
-                          style={{ 
-                            borderColor: STATUS_COLORS[activity.status] || '#6B7280',
-                            color: STATUS_COLORS[activity.status] || '#6B7280'
-                          }}
-                        >
-                          {activity.status}
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <Badge variant="secondary" className="bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 text-xs">
+                          {source.conversion.toFixed(1)}%
                         </Badge>
-                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">Aucune activité récente</p>
+                <p className="text-center text-slate-400 text-sm py-8">Aucune source disponible</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top Clients */}
+          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-slate-900">Top Clients</CardTitle>
+              <CardDescription className="text-sm text-slate-600">5 clients avec le plus de CA</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="animate-pulse h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              ) : topClients.length > 0 ? (
+                <div className="space-y-3">
+                  {topClients.map((client, index) => (
+                    <div key={client.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-slate-900 text-sm truncate">{client.name}</p>
+                          <p className="text-xs text-slate-500">{client.orders} commande{client.orders > 1 ? 's' : ''}</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <p className="font-semibold text-slate-900 text-sm">{formatCurrency(client.revenue)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-slate-400 text-sm py-8">Aucun client disponible</p>
               )}
             </CardContent>
           </Card>
