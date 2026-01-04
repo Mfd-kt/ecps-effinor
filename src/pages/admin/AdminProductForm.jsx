@@ -152,6 +152,7 @@ const AdminProductForm = () => {
     sur_devis: false,
     stock: 0,
     prime_cee: true,
+    is_best_seller: false,
     actif: true,
     image_1: null,
     image_2: null,
@@ -170,12 +171,15 @@ const AdminProductForm = () => {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const [allProductsForAccessories, setAllProductsForAccessories] = useState([]);
+  const [selectedAccessories, setSelectedAccessories] = useState([]);
+  const [loadingAccessories, setLoadingAccessories] = useState(false);
+  const [savingAccessories, setSavingAccessories] = useState(false);
 
 
   // Fetch categories from database
   const fetchCategories = useCallback(async () => {
     try {
-      logger.log('📦 Chargement des catégories...');
       const { data, error } = await supabase
         .from('categories')
         .select('id, nom, slug')
@@ -184,10 +188,9 @@ const AdminProductForm = () => {
       
       if (error) throw error;
       
-      logger.log(`✅ ${data.length} catégories chargées`);
       setCategories(data || []);
     } catch (error) {
-      logger.error('❌ Erreur chargement catégories:', error);
+      logger.error('Erreur chargement catégories:', error);
       toast({
         title: "Avertissement",
         description: `Impossible de charger les catégories: ${error.message}. Vous pouvez toujours saisir la catégorie manuellement.`,
@@ -200,7 +203,6 @@ const AdminProductForm = () => {
     if (!id) return;
     setLoading(true);
     try {
-      logger.log('📦 Chargement du produit ID:', id);
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -209,7 +211,6 @@ const AdminProductForm = () => {
       
       if (error) throw error;
       
-      logger.log('✅ Produit chargé:', data);
       setFormData(prev => ({ ...prev, ...data }));
       let initialSpecs = data?.caracteristiques || {};
       if (typeof initialSpecs === 'string') {
@@ -241,7 +242,7 @@ const AdminProductForm = () => {
         setIsSlugManuallyEdited(true);
       }
     } catch (error) {
-      logger.error('❌ Erreur chargement:', error);
+      logger.error('Erreur chargement produit:', error);
       toast({ 
         title: "Erreur", 
         description: `Impossible de charger le produit: ${error.message}`, 
@@ -253,10 +254,60 @@ const AdminProductForm = () => {
     }
   }, [id, navigate, toast]);
 
+  // Charger la liste des produits potentiels + les liens accessoires existants
+  const fetchAccessoriesData = useCallback(async () => {
+    if (!isEditing || !id) return;
+
+    try {
+      setLoadingAccessories(true);
+
+      // 1) Tous les produits potentiels (sauf le produit courant)
+      const { data: products, error: productsError } = await supabase
+        .from('products')
+        .select('id, nom, slug, categorie, actif')
+        .neq('id', id)
+        .order('nom', { ascending: true });
+
+      if (productsError) {
+        if (productsError.code === '42P01' || productsError.message?.includes('does not exist')) {
+          // Table products manquante - continuer sans accessoires
+        } else {
+          throw productsError;
+        }
+      }
+
+      setAllProductsForAccessories(products || []);
+
+      // 2) Liens existants product_accessories
+      const { data: links, error: linksError } = await supabase
+        .from('product_accessories')
+        .select('accessory_id')
+        .eq('product_id', id);
+
+      if (linksError) {
+        if (linksError.code === '42P01' || linksError.message?.includes('does not exist')) {
+          setSelectedAccessories([]);
+        } else {
+          throw linksError;
+        }
+      } else {
+        setSelectedAccessories((links || []).map((l) => l.accessory_id));
+      }
+    } catch (error) {
+      logger.error('Erreur chargement accessoires:', error);
+      toast({
+        title: 'Erreur accessoires',
+        description: `Impossible de charger les accessoires du produit: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingAccessories(false);
+    }
+  }, [id, isEditing, toast]);
+
   // Fetch available fiches CEE
   const fetchFichesCEE = useCallback(async () => {
     try {
-      logger.log('📦 Chargement des fiches CEE...');
       const { data, error } = await supabase
         .from('fiches_cee')
         .select('id, numero, titre')
@@ -264,15 +315,13 @@ const AdminProductForm = () => {
         .order('ordre', { ascending: true });
       
       if (error) {
-        logger.warn('⚠️ Erreur chargement fiches CEE (table peut ne pas exister):', error);
         setFichesCEE([]);
         return;
       }
       
-      logger.log(`✅ ${data.length} fiches CEE chargées`);
       setFichesCEE(data || []);
     } catch (error) {
-      logger.error('❌ Erreur chargement fiches CEE:', error);
+      logger.error('Erreur chargement fiches CEE:', error);
       setFichesCEE([]);
     }
   }, []);
@@ -287,14 +336,13 @@ const AdminProductForm = () => {
         .eq('produit_id', id);
       
       if (error) {
-        logger.warn('⚠️ Table produits_fiches_cee peut ne pas exister:', error);
         setSelectedFiches([]);
         return;
       }
       
       setSelectedFiches(data?.map(d => d.fiche_cee_id) || []);
     } catch (error) {
-      logger.error('❌ Erreur chargement liens fiches CEE:', error);
+      logger.error('Erreur chargement liens fiches CEE:', error);
       setSelectedFiches([]);
     }
   }, [id]);
@@ -320,13 +368,11 @@ const AdminProductForm = () => {
           .insert(links);
         
         if (insertError) {
-          logger.warn('⚠️ Erreur insertion liens fiches CEE (table peut ne pas exister):', insertError);
-        } else {
-          logger.log(`✅ ${selectedFiches.length} lien(s) fiche(s) CEE sauvegardé(s)`);
+          // Table peut ne pas exister - fonctionnalité optionnelle
         }
       }
     } catch (error) {
-      logger.warn('⚠️ Erreur sauvegarde liens fiches CEE:', error);
+      // Erreur sauvegarde liens fiches CEE - fonctionnalité optionnelle
       // Don't throw error, just log it - this is optional functionality
     }
   };
@@ -337,8 +383,9 @@ const AdminProductForm = () => {
     if (isEditing) {
       fetchProduct();
       fetchExistingFichesLinks();
+      fetchAccessoriesData();
     }
-  }, [isEditing, fetchProduct, fetchCategories, fetchFichesCEE, fetchExistingFichesLinks]);
+  }, [isEditing, fetchProduct, fetchCategories, fetchFichesCEE, fetchExistingFichesLinks, fetchAccessoriesData]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -366,27 +413,22 @@ const AdminProductForm = () => {
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (files.length > 0) {
-      logger.log(`📁 Fichier sélectionné pour ${name}:`, files[0].name);
       setFileUploads(prev => ({ ...prev, [name]: files[0] }));
     }
   };
 
   const handleRemoveFile = useCallback((fieldName, fileUrl) => {
-    logger.log(`🗑️ Préparation pour suppression de ${fieldName}:`, fileUrl);
-    
     setFormData(prev => ({ ...prev, [fieldName]: null }));
     
     if (fileUrl && typeof fileUrl === 'string' && fileUrl.includes('supabase.co')) {
         try {
             const url = new URL(fileUrl);
-            // Try both 'products' and 'effinor-assets' path patterns for backward compatibility
             const path = url.pathname.split('/effinor-assets/')[1] || url.pathname.split('/products/')[1];
             if (path) {
-                logger.log(`📝 Ajout à la liste de suppression:`, path);
                 setFilesToRemove(prev => [...prev, { path: path, url: fileUrl }]);
             }
         } catch (e) {
-            logger.warn("URL de fichier invalide pour la suppression:", fileUrl);
+            // URL de fichier invalide - ignorer
         }
     }
     
@@ -402,29 +444,12 @@ const AdminProductForm = () => {
     
     const fileName = `${Date.now()}-${slugify(file.name)}`;
     const filePath = `${path}/${fileName}`;
-    // Use the correct bucket name: 'effinor-assets'
     const bucketsToTry = ['effinor-assets'];
-    
-    logger.log(`📤 Tentative d'upload, path: ${filePath}`);
-    logger.log(`📊 Taille du fichier: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
     
     let lastError = null;
     
     for (const bucket of bucketsToTry) {
       try {
-        logger.log(`📦 Tentative avec bucket: ${bucket}`);
-        
-        // Check if bucket exists and is accessible
-        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-        
-        if (listError) {
-          logger.warn(`⚠️ Erreur lors de la liste des buckets:`, listError);
-        } else {
-          const bucketExists = buckets?.some(b => b.name === bucket);
-          if (!bucketExists) {
-            logger.warn(`⚠️ Bucket "${bucket}" n'existe pas. Vérifiez dans Supabase Dashboard > Storage.`);
-          }
-        }
         
         // Upload file
       const { error: uploadError } = await supabase.storage
@@ -446,7 +471,6 @@ const AdminProductForm = () => {
         .from(bucket)
         .getPublicUrl(filePath);
       
-        logger.log(`✅ Fichier uploadé avec succès dans "${bucket}": ${urlData.publicUrl}`);
       return urlData.publicUrl;
       
     } catch (error) {
@@ -464,12 +488,21 @@ const AdminProductForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    logger.log('📝 Soumission du formulaire');
-    
     if (!formData.nom || !formData.categorie || !formData.slug) {
       toast({ 
         title: "Champs requis manquants", 
         description: "Veuillez remplir le nom, le slug et la catégorie.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    // Validation : au moins une image requise
+    const hasImage = formData.image_1 || formData.image_url || fileUploads.image_1;
+    if (!hasImage) {
+      toast({ 
+        title: "Image requise", 
+        description: "Veuillez ajouter au moins une photo du produit (image principale). Les produits sans photo ne peuvent pas être publiés sur le site.", 
         variant: "destructive" 
       });
       return;
@@ -480,37 +513,26 @@ const AdminProductForm = () => {
     
     try {
       if (filesToRemove.length > 0) {
-        logger.log('🗑️ Suppression de', filesToRemove.length, 'fichiers');
         const pathsToDelete = filesToRemove.map(f => f.path);
-        const { error: deleteError } = await supabase.storage.from('effinor-assets').remove(pathsToDelete);
-        if (deleteError) {
-            logger.warn(`⚠️ Erreur lors de la suppression de certains fichiers:`, deleteError);
-        } else {
-            logger.log(`✅ Fichiers supprimés:`, pathsToDelete);
-        }
+        await supabase.storage.from('effinor-assets').remove(pathsToDelete);
         setFilesToRemove([]);
       }
 
       const uploadPath = `produits/${slugify(formData.slug || 'new-product')}`;
-      logger.log(`📤 Chemin d'upload: ${uploadPath}`);
       
       const uploadPromises = Object.keys(fileUploads).map(async key => {
         const file = fileUploads[key];
         if (file) {
           try {
-            logger.log(`⏳ Upload de ${key}...`);
             const url = await uploadFile(file, uploadPath);
             updatedData[key] = url;
             
             if (key === 'image_1') {
               updatedData.image_url = url;
-              logger.log(`🔗 image_url défini à: ${url}`);
             }
-            
-            logger.log(`✅ ${key} uploadé: ${url}`);
           } catch (error) {
-            logger.error(`❌ Erreur upload ${key}:`, error);
-            throw error; // Rethrow to stop the process
+            logger.error(`Erreur upload ${key}:`, error);
+            throw error;
           }
         }
       });
@@ -525,14 +547,10 @@ const AdminProductForm = () => {
       
       if (!dataToSave.image_url && dataToSave.image_1) {
         dataToSave.image_url = dataToSave.image_1;
-        logger.log(`🔗 image_url défini depuis image_1 existante: ${dataToSave.image_url}`);
       }
 
-      // Remove categorie_id if null (column might not exist in DB yet)
-      // Keep categorie (slug) for backward compatibility
       if (!dataToSave.categorie_id || dataToSave.categorie_id === null || dataToSave.categorie_id === '') {
         delete dataToSave.categorie_id;
-        logger.log('⚠️ categorie_id est null, suppression du champ (la colonne n\'existe peut-être pas encore)');
       }
 
       // Build structured caracteristiques payload (category-specific specs)
@@ -564,12 +582,9 @@ const AdminProductForm = () => {
       // Sanitize data before save to prevent XSS attacks
       const sanitizedDataToSave = sanitizeFormData(dataToSave);
 
-      logger.log('💾 Données à sauvegarder:', sanitizedDataToSave);
-
       let savedData, error;
 
       if (isEditing) {
-        logger.log('💾 Mise à jour du produit ID:', id);
         ({ data: savedData, error } = await supabase
           .from('products')
           .update(sanitizedDataToSave)
@@ -577,7 +592,6 @@ const AdminProductForm = () => {
           .select()
           .single());
       } else {
-        logger.log('✨ Création d\'un nouveau produit');
         ({ data: savedData, error } = await supabase
           .from('products')
           .insert([sanitizedDataToSave])
@@ -588,8 +602,6 @@ const AdminProductForm = () => {
       if (error) {
         // Si l'erreur indique qu'une colonne n'existe pas, on retire les nouveaux champs et on réessaie
         if (error.message?.includes('Could not find') && error.message?.includes('column')) {
-          logger.warn('⚠️ Colonnes manquantes détectées, suppression des nouveaux champs et nouvelle tentative...');
-          
           // Supprimer les nouveaux champs de sanitizedDataToSave
           const newFieldsKeys = ['materiaux', 'temperature_couleur', 'indice_rendu_couleurs', 'commande_controle', 
                                   'tension_entree', 'angle_faisceau', 'protection', 'installation', 'dimensions', 'poids_net'];
@@ -613,8 +625,6 @@ const AdminProductForm = () => {
           
           // Si ça fonctionne maintenant, afficher un avertissement
           if (!error && savedData) {
-            logger.log('✅ Produit sauvegardé (sans les nouveaux champs):', savedData);
-            
             // Save fiches CEE links
             if (savedData?.id) {
               await saveFichesLinks(savedData.id);
@@ -641,8 +651,6 @@ const AdminProductForm = () => {
           throw error;
         }
       }
-
-      logger.log('✅ Produit sauvegardé:', savedData);
       
       // Save fiches CEE links
       if (savedData?.id) {
@@ -663,7 +671,7 @@ const AdminProductForm = () => {
       }
 
     } catch (error) {
-      logger.error("❌ Erreur de sauvegarde:", error);
+      logger.error("Erreur de sauvegarde:", error);
       
       // Check if error is about missing columns (new product detail fields)
       if (error.message?.includes('Could not find') && error.message?.includes('column') && 
@@ -680,7 +688,6 @@ const AdminProductForm = () => {
       // Check if error is about categorie_id column not existing
       if (error.message?.includes('categorie_id') || (error.message?.includes('column') && error.message?.includes('not found'))) {
         // Try again without categorie_id
-        logger.log('⚠️ Tentative de sauvegarde sans categorie_id...');
         delete sanitizedDataToSave.categorie_id;
         
         try {
@@ -715,7 +722,7 @@ const AdminProductForm = () => {
             return;
           }
         } catch (retryError) {
-          logger.error("❌ Erreur lors de la tentative de sauvegarde sans categorie_id:", retryError);
+          logger.error("Erreur lors de la tentative de sauvegarde sans categorie_id:", retryError);
         }
       }
       
@@ -726,6 +733,65 @@ const AdminProductForm = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleAccessory = (accessoryId) => {
+    setSelectedAccessories((prev) =>
+      prev.includes(accessoryId)
+        ? prev.filter((id) => id !== accessoryId)
+        : [...prev, accessoryId]
+    );
+  };
+
+  const handleSaveAccessories = async () => {
+    if (!isEditing || !id) return;
+
+    try {
+      setSavingAccessories(true);
+
+      // Supprimer les anciens liens
+      const { error: deleteError } = await supabase
+        .from('product_accessories')
+        .delete()
+        .eq('product_id', id);
+
+      if (deleteError) {
+        if (deleteError.code !== '42P01' && !deleteError.message?.includes('does not exist')) {
+          throw deleteError;
+        }
+      }
+
+      // Insérer les nouveaux liens
+      if (selectedAccessories.length > 0) {
+        const rows = selectedAccessories.map((accessoryId, index) => ({
+          product_id: id,
+          accessory_id: accessoryId,
+          priorite: index + 1,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('product_accessories')
+          .insert(rows);
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+
+      toast({
+        title: 'Accessoires mis à jour',
+        description: 'Les accessoires compatibles pour ce produit ont été mis à jour avec succès.',
+      });
+    } catch (error) {
+      logger.error('Erreur sauvegarde accessoires:', error);
+      toast({
+        title: 'Erreur',
+        description: `Impossible de sauvegarder les accessoires: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingAccessories(false);
     }
   };
 
@@ -913,6 +979,15 @@ const AdminProductForm = () => {
                 />
                 <label htmlFor="actif">Produit actif</label>
               </div>
+              <div className="checkbox-label">
+                <Checkbox 
+                  id="is_best_seller" 
+                  name="is_best_seller" 
+                  checked={!!formData.is_best_seller} 
+                  onCheckedChange={(checked) => handleInputChange({ target: { name: 'is_best_seller', checked, type: 'checkbox' }})} 
+                />
+                <label htmlFor="is_best_seller">Afficher comme best-seller (home)</label>
+              </div>
             </div>
             {/* Caractéristiques spécifiques */}
             {specSchema?.fields?.length > 0 && (
@@ -1046,6 +1121,74 @@ const AdminProductForm = () => {
               />
             </div>
           </div>
+
+          {/* Accessoires liés au produit */}
+          {isEditing && (
+            <div className="form-section">
+              <h2>🔗 Accessoires compatibles</h2>
+              <p className="section-description">
+                Sélectionnez les autres produits à proposer comme accessoires pour ce produit.
+              </p>
+
+              {loadingAccessories ? (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Chargement des accessoires...</span>
+                </div>
+              ) : allProductsForAccessories.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  Aucun autre produit n&apos;est disponible pour être utilisé comme accessoire pour le moment.
+                </p>
+              ) : (
+                <>
+                  <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-md bg-gray-50 px-3 py-2 space-y-1">
+                    {allProductsForAccessories.map((p) => (
+                      <label
+                        key={p.id}
+                        className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer hover:bg-white rounded px-1 py-0.5"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 text-secondary-500 border-gray-300 rounded focus:ring-secondary-500"
+                          checked={selectedAccessories.includes(p.id)}
+                          onChange={() => handleToggleAccessory(p.id)}
+                        />
+                        <span className="font-medium flex-1 truncate">{p.nom}</span>
+                        {p.categorie && (
+                          <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                            {p.categorie}
+                          </span>
+                        )}
+                        {!p.actif && (
+                          <span className="ml-1 text-[10px] text-red-500 uppercase">
+                            Inactif
+                          </span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSaveAccessories}
+                      disabled={savingAccessories || loadingAccessories}
+                    >
+                      {savingAccessories ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        'Enregistrer les accessoires'
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           
           {/* Actions */}
           <div className="form-actions">

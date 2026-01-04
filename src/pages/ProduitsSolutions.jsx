@@ -31,6 +31,7 @@ const ProduitsSolutions = () => {
         .from('products')
         .select('id, nom, description, prix, image_1, image_2, image_3, image_4, image_url, slug, actif, categorie, marque, reference, caracteristiques, puissance')
         .eq('actif', true)
+        .or('image_1.not.is.null,image_url.not.is.null')
         .order('ordre', { ascending: true });
 
       if (error) {

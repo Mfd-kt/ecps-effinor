@@ -270,3 +270,16 @@ SELECT
   AVG(economie_energie_pct) as moyenne_economie_pct
 FROM realisations;
 
+
+
+
+
+
+
+
+
+
+
+
+
+

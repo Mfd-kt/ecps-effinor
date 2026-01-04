@@ -46,3 +46,16 @@ BEGIN
   RAISE NOTICE '✅ Migration terminée: Colonnes images et description_longue ajoutées à categories';
 END $$;
 
+
+
+
+
+
+
+
+
+
+
+
+
+

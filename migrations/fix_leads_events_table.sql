@@ -35,3 +35,17 @@ CREATE INDEX IF NOT EXISTS idx_leads_events_created_at ON leads_events(created_a
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -48,3 +48,16 @@ COMMENT ON COLUMN public.utilisateurs.avatar_url IS 'URL de la photo de profil s
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+

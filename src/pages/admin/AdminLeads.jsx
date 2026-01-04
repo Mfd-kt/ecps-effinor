@@ -424,7 +424,7 @@ const AdminLeads = () => {
         <title>Leads | Effinor Admin</title>
       </Helmet>
 
-      <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-slate-50 pl-0 pr-4 pt-4 pb-4 md:pr-6 md:pt-6 md:pb-6 lg:pr-8 lg:pt-8 lg:pb-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">

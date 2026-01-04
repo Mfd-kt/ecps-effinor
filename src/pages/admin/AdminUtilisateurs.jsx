@@ -239,7 +239,7 @@ const AdminUtilisateurs = () => {
   return (
     <>
       <Helmet><title>Gestion des Utilisateurs | Effinor Admin</title></Helmet>
-      <div className="admin-page p-4 md:p-8">
+      <div className="admin-page pl-0 pr-4 pt-4 pb-4 md:pr-8 md:pt-8 md:pb-8">
         <div className="page-header mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">

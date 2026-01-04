@@ -21,7 +21,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
+import { DashboardFilters } from '@/components/admin/dashboard/DashboardFilters';
 
 // ============================================
 // TYPES & INTERFACES (JSDoc comments)
@@ -90,13 +92,25 @@ const COMMANDE_STATUS_COLORS = {
 // COMPONENTS
 // ============================================
 
-const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-[#10B981]', loading = false, subtitle }) => {
+const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-gradient-to-br from-green-400 to-emerald-500', loading = false, subtitle, gradientFrom, gradientTo }) => {
   const isPositive = trendValue >= 0;
+  
+  // Couleurs par défaut basées sur iconColor
+  const colorMap = {
+    'bg-blue-500': { from: 'from-blue-400', to: 'to-cyan-500', shadow: 'shadow-blue-500/20', text: 'text-blue-600' },
+    'bg-green-500': { from: 'from-green-400', to: 'to-emerald-500', shadow: 'shadow-green-500/20', text: 'text-green-600' },
+    'bg-purple-500': { from: 'from-purple-400', to: 'to-pink-500', shadow: 'shadow-purple-500/20', text: 'text-purple-600' },
+    'bg-emerald-500': { from: 'from-emerald-400', to: 'to-teal-500', shadow: 'shadow-emerald-500/20', text: 'text-emerald-600' },
+    'bg-amber-500': { from: 'from-amber-400', to: 'to-orange-500', shadow: 'shadow-amber-500/20', text: 'text-amber-600' },
+    'bg-orange-500': { from: 'from-orange-400', to: 'to-red-500', shadow: 'shadow-orange-500/20', text: 'text-orange-600' },
+  };
+  
+  const colors = colorMap[iconColor] || { from: 'from-indigo-400', to: 'to-purple-500', shadow: 'shadow-indigo-500/20', text: 'text-indigo-600' };
   
   if (loading) {
     return (
-      <Card className="rounded-lg border border-slate-200 shadow-sm">
-        <CardContent className="p-4">
+      <Card className="rounded-xl border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
+        <CardContent className="p-6">
           <div className="animate-pulse">
             <div className="h-3 bg-gray-200 rounded w-20 mb-3"></div>
             <div className="h-8 bg-gray-200 rounded w-24"></div>
@@ -107,29 +121,31 @@ const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-
   }
   
   return (
-    <Card className="rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white">
-      <CardContent className="p-4">
+    <Card className={`rounded-xl border-0 shadow-lg ${colors.shadow} hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-${colors.from.split('-')[1]}-50/30 h-full`}>
+      <CardContent className="p-4 lg:p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-slate-600 mb-1 truncate">{title}</p>
-            <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 truncate">{title}</p>
+            <p className={`text-2xl lg:text-3xl font-bold bg-gradient-to-r ${colors.from} ${colors.to} bg-clip-text text-transparent mb-2`}>
+              {value}
+            </p>
             {subtitle && (
-              <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+              <p className="text-xs text-gray-600 font-medium truncate mb-2">{subtitle}</p>
             )}
             {trend !== null && trend !== undefined && !isNaN(trendValue) && trendValue !== 0 && (
-              <div className={`flex items-center gap-1 text-xs mt-2 ${isPositive ? 'text-[#10B981]' : 'text-red-600'}`}>
+              <div className={`flex items-center gap-1.5 text-xs mt-2 font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
                 {isPositive ? (
-                  <ArrowUpRight className="h-3 w-3" />
+                  <ArrowUpRight className="h-3.5 w-3.5" />
                 ) : (
-                  <ArrowDownRight className="h-3 w-3" />
+                  <ArrowDownRight className="h-3.5 w-3.5" />
                 )}
-                <span className="font-medium">{Math.abs(trendValue).toFixed(1)}%</span>
-                <span className="text-slate-400">vs précédent</span>
+                <span>{Math.abs(trendValue).toFixed(1)}%</span>
+                <span className="text-gray-400 font-normal">vs précédent</span>
               </div>
             )}
           </div>
-          <div className={`${iconColor}/10 p-2 rounded-lg flex-shrink-0 ml-2`}>
-            <Icon className={`h-5 w-5 ${iconColor.replace('bg-', 'text-')}`} />
+          <div className={`h-12 w-12 lg:h-14 lg:w-14 rounded-xl bg-gradient-to-br ${colors.from} ${colors.to} flex items-center justify-center shadow-lg ${colors.shadow} flex-shrink-0 ml-2 lg:ml-3`}>
+            <Icon className="h-6 w-6 lg:h-7 lg:w-7 text-white" />
           </div>
         </div>
       </CardContent>
@@ -563,92 +579,57 @@ const AdminDashboard = () => {
     return labels[period] || period;
   }, [period]);
 
+  const activeFiltersCount = [
+    period !== '30d',
+    dataType !== 'all',
+    source !== 'all',
+    chartView !== 'daily',
+  ].filter(Boolean).length;
+
   return (
     <>
       <Helmet>
         <title>Tableau de bord | Effinor Admin</title>
       </Helmet>
       
-      <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 pl-0 pr-4 pt-4 pb-4 sm:pr-5 sm:pt-5 sm:pb-5 lg:pr-6 lg:pt-6 lg:pb-6 xl:pr-8 xl:pt-8 xl:pb-8">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div className="mb-6 lg:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 lg:pb-6 border-b border-gray-200">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Tableau de bord</h1>
-              <p className="text-slate-600 mt-1">Vue d'ensemble Leads & Commandes</p>
-            </div>
-            <div className="text-right text-sm text-slate-600">
-              <p>Période sélectionnée : <span className="font-semibold text-slate-900">{periodLabel}</span></p>
-              <p>Dernière mise à jour : <span className="font-semibold text-slate-900">
-                {lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-              </span></p>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                Tableau de bord
+              </h1>
+              <p className="text-sm lg:text-base text-gray-600 mt-2 font-medium">
+                Vue d'ensemble Leads & Commandes
+              </p>
             </div>
           </div>
 
           {/* Filters Bar */}
-          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-slate-500" />
-                  <span className="text-sm font-medium text-slate-700">Filtres :</span>
-                </div>
-                
-                <div className="flex-1 min-w-[200px]">
-                  <Select value={period} onValueChange={setPeriod}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="today">Aujourd'hui</SelectItem>
-                      <SelectItem value="7d">7 derniers jours</SelectItem>
-                      <SelectItem value="30d">30 derniers jours</SelectItem>
-                      <SelectItem value="month">Mois en cours</SelectItem>
-                      <SelectItem value="12m">12 derniers mois</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex-1 min-w-[150px]">
-                  <Select value={dataType} onValueChange={setDataType}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tout</SelectItem>
-                      <SelectItem value="leads">Leads</SelectItem>
-                      <SelectItem value="commandes">Commandes</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex-1 min-w-[200px]">
-                  <Select value={source} onValueChange={setSource}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toutes les sources</SelectItem>
-                      <SelectItem value="Formulaire site">Formulaire site</SelectItem>
-                      <SelectItem value="Facebook Ads">Facebook Ads</SelectItem>
-                      <SelectItem value="Google Ads">Google Ads</SelectItem>
-                      <SelectItem value="Téléphone">Téléphone</SelectItem>
-                      <SelectItem value="Autre">Autre</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button variant="outline" size="sm" onClick={resetFilters}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Réinitialiser
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardFilters
+            period={period}
+            onPeriodChange={setPeriod}
+            dataType={dataType}
+            onDataTypeChange={setDataType}
+            source={source}
+            onSourceChange={setSource}
+            chartView={chartView}
+            onChartViewChange={setChartView}
+            onResetFilters={resetFilters}
+            periodLabel={periodLabel}
+            lastUpdate={lastUpdate}
+            activeFiltersCount={activeFiltersCount}
+          />
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 lg:mb-8">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
+            <div className="h-1 w-1 rounded-full bg-blue-500"></div>
+            Indicateurs clés
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4 lg:gap-6">
           <KPICard
             title="Total Leads"
             value={totalLeads.toLocaleString()}
@@ -709,24 +690,39 @@ const AdminDashboard = () => {
             loading={loading}
             subtitle={`En attente de paiement`}
           />
+          </div>
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="mb-6 lg:mb-8">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
+            <div className="h-1 w-1 rounded-full bg-indigo-500"></div>
+            Analyses et graphiques
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 xl:gap-8">
           {/* Main Chart - 2/3 width */}
-          <Card className="lg:col-span-2 rounded-lg border border-slate-200 shadow-sm bg-white">
-            <CardHeader>
-              <div className="flex items-center justify-between">
+          <Card className="lg:col-span-2 rounded-2xl border-0 shadow-xl shadow-indigo-500/10 bg-gradient-to-br from-white to-indigo-50/30">
+            <CardHeader className="pb-4 bg-gradient-to-r from-indigo-50/50 to-transparent border-b border-indigo-100/50 rounded-t-2xl">
+              <div className="space-y-4">
                 <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">Évolution Leads & Commandes</CardTitle>
-                  <CardDescription className="text-sm text-slate-600">Évolution sur la période sélectionnée</CardDescription>
+                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                      <LineChart className="h-5 w-5 text-white" />
+                    </div>
+                    Évolution Leads & Commandes
+                  </CardTitle>
+                  <CardDescription className="text-sm text-gray-600 mt-2 font-medium">Évolution sur la période sélectionnée</CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant={chartView === 'daily' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setChartView('daily')}
-                    className={chartView === 'daily' ? 'bg-[#10B981] hover:bg-[#10B981]/90' : ''}
+                    className={`rounded-lg font-semibold transition-all ${
+                      chartView === 'daily' 
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg shadow-indigo-500/30' 
+                        : 'border-2 border-gray-200 hover:border-indigo-300'
+                    }`}
                   >
                     Quotidien
                   </Button>
@@ -734,7 +730,11 @@ const AdminDashboard = () => {
                     variant={chartView === 'weekly' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setChartView('weekly')}
-                    className={chartView === 'weekly' ? 'bg-[#10B981] hover:bg-[#10B981]/90' : ''}
+                    className={`rounded-lg font-semibold transition-all ${
+                      chartView === 'weekly' 
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg shadow-indigo-500/30' 
+                        : 'border-2 border-gray-200 hover:border-indigo-300'
+                    }`}
                   >
                     Hebdomadaire
                   </Button>
@@ -742,7 +742,11 @@ const AdminDashboard = () => {
                     variant={chartView === 'monthly' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setChartView('monthly')}
-                    className={chartView === 'monthly' ? 'bg-[#10B981] hover:bg-[#10B981]/90' : ''}
+                    className={`rounded-lg font-semibold transition-all ${
+                      chartView === 'monthly' 
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg shadow-indigo-500/30' 
+                        : 'border-2 border-gray-200 hover:border-indigo-300'
+                    }`}
                   >
                     Mensuel
                   </Button>
@@ -760,32 +764,93 @@ const AdminDashboard = () => {
                   <p className="text-center font-medium">Aucune donnée disponible</p>
                 </div>
               ) : (
-                <div style={{ width: '100%', height: 400 }}>
-                  <ResponsiveContainer>
-                    <ComposedChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis dataKey="name" stroke="#6B7280" />
-                      <YAxis yAxisId="left" stroke="#6B7280" />
-                      <YAxis yAxisId="right" orientation="right" stroke="#6B7280" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                      <Bar 
-                        yAxisId="left" 
-                        dataKey="commandes" 
-                        fill="#3B82F6" 
-                        name="Commandes"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Line 
-                        yAxisId="right" 
-                        type="monotone" 
-                        dataKey="leads" 
-                        stroke="#10B981" 
-                        strokeWidth={3} 
-                        name="Leads"
-                        activeDot={{ r: 8 }}
-                      />
-                    </ComposedChart>
+                <div className="w-full sm:h-[450px] lg:h-[500px]" style={{ height: 400 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    {(() => {
+                      // Calculer les maximums pour chaque série
+                      const maxCommandes = Math.max(...chartData.map(d => d.commandes || 0), 0);
+                      const maxLeads = Math.max(...chartData.map(d => d.leads || 0), 0);
+                      
+                      // Calculer les domaines avec une marge de 20% minimum
+                      const domainCommandes = maxCommandes === 0 
+                        ? [0, 1] 
+                        : [0, Math.ceil(maxCommandes * 1.2)];
+                      
+                      const domainLeads = maxLeads === 0 
+                        ? [0, 1] 
+                        : [0, Math.ceil(maxLeads * 1.2)];
+                      
+                      return (
+                        <ComposedChart 
+                          data={chartData} 
+                          margin={{ top: 20, right: 15, bottom: chartData.length > 7 ? 60 : 40, left: -15 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                          <XAxis 
+                            dataKey="name" 
+                            stroke="#6B7280"
+                            angle={chartData.length > 7 ? -45 : 0}
+                            textAnchor={chartData.length > 7 ? "end" : "middle"}
+                            height={chartData.length > 7 ? 60 : 40}
+                            interval={0}
+                            tick={{ fontSize: 11 }}
+                            dy={chartData.length > 7 ? 10 : 5}
+                          />
+                          <YAxis 
+                            yAxisId="left" 
+                            stroke="#6B7280"
+                            domain={domainCommandes}
+                            allowDecimals={false}
+                            tick={{ fontSize: 11 }}
+                            width={30}
+                            tickMargin={3}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis 
+                            yAxisId="right" 
+                            orientation="right" 
+                            stroke="#6B7280"
+                            domain={domainLeads}
+                            allowDecimals={false}
+                            tick={{ fontSize: 11 }}
+                            width={30}
+                            tickMargin={3}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Legend 
+                            wrapperStyle={{ paddingTop: '20px' }}
+                            iconType="line"
+                            formatter={(value) => (
+                              <span style={{ color: value === 'Leads' ? '#10B981' : '#3B82F6', fontWeight: 500 }}>
+                                {value}
+                              </span>
+                            )}
+                          />
+                          <Bar 
+                            yAxisId="left" 
+                            dataKey="commandes" 
+                            fill="#3B82F6" 
+                            name="Commandes"
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={chartData.length > 15 ? 50 : 80}
+                          />
+                          <Line 
+                            yAxisId="right" 
+                            type="monotone" 
+                            dataKey="leads" 
+                            stroke="#10B981" 
+                            strokeWidth={3} 
+                            name="Leads"
+                            activeDot={{ r: 6 }}
+                            dot={{ r: 3, fill: '#10B981' }}
+                            connectNulls={false}
+                          />
+                        </ComposedChart>
+                      );
+                    })()}
                   </ResponsiveContainer>
                 </div>
               )}
@@ -793,10 +858,15 @@ const AdminDashboard = () => {
           </Card>
 
           {/* Status Breakdown - 1/3 width */}
-          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-slate-900">Répartition par Statut</CardTitle>
-              <CardDescription className="text-sm text-slate-600">Distribution Leads & Commandes</CardDescription>
+          <Card className="rounded-2xl border-0 shadow-xl shadow-purple-500/10 bg-gradient-to-br from-white to-purple-50/30">
+            <CardHeader className="pb-4 bg-gradient-to-r from-purple-50/50 to-transparent border-b border-purple-100/50 rounded-t-2xl">
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                  <BarChart3 className="h-5 w-5 text-white" />
+                </div>
+                Répartition par Statut
+              </CardTitle>
+              <CardDescription className="text-sm text-gray-600 mt-2 font-medium">Distribution Leads & Commandes</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -899,20 +969,31 @@ const AdminDashboard = () => {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* Recent Leads & Orders Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="mb-6 lg:mb-8">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
+            <div className="h-1 w-1 rounded-full bg-indigo-500"></div>
+            Activité récente
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 xl:gap-8">
           {/* Recent Leads */}
-          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
-            <CardHeader>
+          <Card className="rounded-2xl border-0 shadow-xl shadow-blue-500/10 bg-gradient-to-br from-white to-blue-50/30">
+            <CardHeader className="pb-4 bg-gradient-to-r from-blue-50/50 to-transparent border-b border-blue-100/50 rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">Leads récents</CardTitle>
-                  <CardDescription className="text-sm text-slate-600">10 derniers leads</CardDescription>
+                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                    Leads récents
+                  </CardTitle>
+                  <CardDescription className="text-sm text-gray-600 mt-2 font-medium">10 derniers leads</CardDescription>
                 </div>
-                <Link to="/admin/leads">
-                  <Button variant="ghost" size="sm">
+                <Link to="/leads">
+                  <Button variant="ghost" size="sm" className="rounded-lg font-semibold hover:bg-blue-50">
                     Voir tous <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </Link>
@@ -926,27 +1007,27 @@ const AdminDashboard = () => {
                   ))}
                 </div>
               ) : leads.slice(0, 10).length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <table className="w-full min-w-[600px]">
                     <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Date</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Nom</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Source</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Statut</th>
-                        <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600">Montant</th>
+                      <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-transparent">
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Nom</th>
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Source</th>
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Statut</th>
+                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Montant</th>
                       </tr>
                     </thead>
                     <tbody>
                       {leads.slice(0, 10).map((lead) => (
-                        <tr key={lead.id} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="py-2 px-3 text-xs text-slate-600">{formatDate(lead.created_at)}</td>
-                          <td className="py-2 px-3 text-xs text-slate-900">{lead.nom || lead.societe || '—'}</td>
-                          <td className="py-2 px-3 text-xs text-slate-600">{lead.source || '—'}</td>
-                          <td className="py-2 px-3">
+                        <tr key={lead.id} className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-transparent transition-colors">
+                          <td className="py-3 px-4 text-xs text-gray-600 font-medium">{formatDate(lead.created_at)}</td>
+                          <td className="py-3 px-4 text-xs text-gray-900 font-semibold">{lead.nom || lead.societe || '—'}</td>
+                          <td className="py-3 px-4 text-xs text-gray-600">{lead.source || '—'}</td>
+                          <td className="py-3 px-4">
                             <StatusBadge status={lead.statut} type="lead" />
                           </td>
-                          <td className="py-2 px-3 text-xs font-semibold text-slate-900 text-right">
+                          <td className="py-3 px-4 text-xs font-bold text-gray-900 text-right">
                             {lead.montant_cee_estime ? formatCurrency(lead.montant_cee_estime) : '—'}
                           </td>
                         </tr>
@@ -961,15 +1042,20 @@ const AdminDashboard = () => {
           </Card>
 
           {/* Recent Orders */}
-          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
-            <CardHeader>
+          <Card className="rounded-2xl border-0 shadow-xl shadow-purple-500/10 bg-gradient-to-br from-white to-purple-50/30">
+            <CardHeader className="pb-4 bg-gradient-to-r from-purple-50/50 to-transparent border-b border-purple-100/50 rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg font-semibold text-slate-900">Commandes récentes</CardTitle>
-                  <CardDescription className="text-sm text-slate-600">10 dernières commandes</CardDescription>
+                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                      <ShoppingCart className="h-5 w-5 text-white" />
+                    </div>
+                    Commandes récentes
+                  </CardTitle>
+                  <CardDescription className="text-sm text-gray-600 mt-2 font-medium">10 dernières commandes</CardDescription>
                 </div>
-                <Link to="/admin/orders">
-                  <Button variant="ghost" size="sm">
+                <Link to="/commandes">
+                  <Button variant="ghost" size="sm" className="rounded-lg font-semibold hover:bg-purple-50">
                     Voir toutes <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </Link>
@@ -983,27 +1069,27 @@ const AdminDashboard = () => {
                   ))}
                 </div>
               ) : orders.slice(0, 10).length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <table className="w-full min-w-[600px]">
                     <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Date</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Réf.</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Client</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600">Statut</th>
-                        <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600">Total</th>
+                      <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-transparent">
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Réf.</th>
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Client</th>
+                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Statut</th>
+                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {orders.slice(0, 10).map((order) => (
-                        <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="py-2 px-3 text-xs text-slate-600">{formatDate(order.date_creation)}</td>
-                          <td className="py-2 px-3 text-xs text-slate-900 font-mono">{order.reference || order.id.substring(0, 8)}</td>
-                          <td className="py-2 px-3 text-xs text-slate-900">{order.nom_client || order.email || '—'}</td>
-                          <td className="py-2 px-3">
+                        <tr key={order.id} className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-transparent transition-colors">
+                          <td className="py-3 px-4 text-xs text-gray-600 font-medium">{formatDate(order.date_creation)}</td>
+                          <td className="py-3 px-4 text-xs text-gray-900 font-mono font-semibold bg-gray-50 px-2 py-1 rounded">{order.reference || order.id.substring(0, 8)}</td>
+                          <td className="py-3 px-4 text-xs text-gray-900 font-semibold">{order.nom_client || order.email || '—'}</td>
+                          <td className="py-3 px-4">
                             <StatusBadge status={order.paiement_statut || 'en_attente'} type="commande" />
                           </td>
-                          <td className="py-2 px-3 text-xs font-semibold text-slate-900 text-right">
+                          <td className="py-3 px-4 text-xs font-bold text-gray-900 text-right">
                             {order.total_ttc || order.total_ht ? formatCurrency(order.total_ttc || order.total_ht) : '—'}
                           </td>
                         </tr>
@@ -1016,15 +1102,26 @@ const AdminDashboard = () => {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* Top Sources & Top Clients */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="mb-6 lg:mb-8">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
+            <div className="h-1 w-1 rounded-full bg-indigo-500"></div>
+            Performances
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 xl:gap-8">
           {/* Top Sources */}
-          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-slate-900">Top Sources</CardTitle>
-              <CardDescription className="text-sm text-slate-600">5 meilleures sources de leads</CardDescription>
+          <Card className="rounded-2xl border-0 shadow-xl shadow-emerald-500/10 bg-gradient-to-br from-white to-emerald-50/30">
+            <CardHeader className="pb-4 bg-gradient-to-r from-emerald-50/50 to-transparent border-b border-emerald-100/50 rounded-t-2xl">
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <Trophy className="h-5 w-5 text-white" />
+                </div>
+                Top Sources
+              </CardTitle>
+              <CardDescription className="text-sm text-gray-600 mt-2 font-medium">5 meilleures sources de leads</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -1036,18 +1133,23 @@ const AdminDashboard = () => {
               ) : topSources.length > 0 ? (
                 <div className="space-y-3">
                   {topSources.map((source, index) => (
-                    <div key={source.source} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-[#10B981]">#{index + 1}</span>
+                    <div key={source.source} className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50/50 to-transparent rounded-xl border-2 border-transparent hover:border-emerald-200 hover:shadow-md transition-all group">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md transition-transform group-hover:scale-110 ${
+                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white' :
+                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white' :
+                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white' :
+                          'bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700'
+                        }`}>
+                          <span className="text-sm font-bold">#{index + 1}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-900 text-sm truncate">{source.source}</p>
-                          <p className="text-xs text-slate-500">{source.leads} leads • {source.orders} commandes</p>
+                          <p className="font-bold text-gray-900 text-sm truncate">{source.source}</p>
+                          <p className="text-xs text-gray-600 font-medium">{source.leads} leads • {source.orders} commandes</p>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 ml-2">
-                        <Badge variant="secondary" className="bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 text-xs">
+                        <Badge variant="secondary" className="bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 border-0 text-xs font-bold px-3 py-1 shadow-sm">
                           {source.conversion.toFixed(1)}%
                         </Badge>
                       </div>
@@ -1061,10 +1163,15 @@ const AdminDashboard = () => {
           </Card>
 
           {/* Top Clients */}
-          <Card className="rounded-lg border border-slate-200 shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-slate-900">Top Clients</CardTitle>
-              <CardDescription className="text-sm text-slate-600">5 clients avec le plus de CA</CardDescription>
+          <Card className="rounded-2xl border-0 shadow-xl shadow-blue-500/10 bg-gradient-to-br from-white to-blue-50/30">
+            <CardHeader className="pb-4 bg-gradient-to-r from-blue-50/50 to-transparent border-b border-blue-100/50 rounded-t-2xl">
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                Top Clients
+              </CardTitle>
+              <CardDescription className="text-sm text-gray-600 mt-2 font-medium">5 clients avec le plus de CA</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -1076,18 +1183,25 @@ const AdminDashboard = () => {
               ) : topClients.length > 0 ? (
                 <div className="space-y-3">
                   {topClients.map((client, index) => (
-                    <div key={client.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
+                    <div key={client.name} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50/50 to-transparent rounded-xl border-2 border-transparent hover:border-blue-200 hover:shadow-md transition-all group">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md transition-transform group-hover:scale-110 ${
+                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white' :
+                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white' :
+                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white' :
+                          'bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-700'
+                        }`}>
+                          <span className="text-sm font-bold">#{index + 1}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-900 text-sm truncate">{client.name}</p>
-                          <p className="text-xs text-slate-500">{client.orders} commande{client.orders > 1 ? 's' : ''}</p>
+                          <p className="font-bold text-gray-900 text-sm truncate">{client.name}</p>
+                          <p className="text-xs text-gray-600 font-medium">{client.orders} commande{client.orders > 1 ? 's' : ''}</p>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 ml-2">
-                        <p className="font-semibold text-slate-900 text-sm">{formatCurrency(client.revenue)}</p>
+                        <p className="font-bold text-gray-900 text-base bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                          {formatCurrency(client.revenue)}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -1097,6 +1211,7 @@ const AdminDashboard = () => {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
     </>

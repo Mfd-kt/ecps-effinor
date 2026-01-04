@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 const Footer = () => {
   return (
@@ -8,11 +9,8 @@ const Footer = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-[var(--secondary-500)] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">E</span>
-              </div>
-              <span className="text-lg font-bold text-white">EFFINOR</span>
+            <div className="mb-4">
+              <Logo size="lg" showText text="EFFINOR" />
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Votre fournisseur LED professionnel pour l'industrie, le tertiaire et l'agricole.

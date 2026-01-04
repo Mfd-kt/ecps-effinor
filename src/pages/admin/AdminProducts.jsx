@@ -2,14 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Edit, Trash2, Loader2, Copy, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Copy, Eye, EyeOff, ChevronLeft, ChevronRight, PlugZap, Package } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
 import { sanitizeFormData } from '@/utils/sanitize';
 import { getSpecSummary } from '@/utils/productSpecs';
+import { ProductsFilters } from '@/components/admin/products/ProductsFilters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,99 +21,206 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const categoryMap = {
-  'luminaires_industriels': 'Luminaires Industriels',
-  'eclairage_exterieur': 'Éclairage Extérieur',
-  'eclairage_etanche': 'Éclairage Étanche',
-  'accessoires': 'Accessoires',
+const formatCategory = (category, categoriesList = []) => {
+  if (!category) return 'Non catégorisé';
+  const found = categoriesList.find(c => c.slug === category || c.id === category);
+  return found ? found.nom : category;
 };
 
-const formatCategory = (category) => categoryMap[category] || category;
-
-const AdminProductCard = ({ product, onDuplicate, onDelete, onToggleStatus, onEdit }) => {
+const AdminProductCard = ({ product, onDuplicate, onDelete, onToggleStatus, onEdit, onManageAccessories, categoriesList = [] }) => {
   const specSummary = getSpecSummary(product);
 
+  // Toute la carte ouvre la page d'édition admin
+  const handleCardClick = () => {
+    onEdit(product.id);
+  };
+
   return (
-    <div className="product-card" data-product-id={product.id}>
-      <div className="product-image">
+    <div
+      onClick={handleCardClick}
+      className="group bg-white rounded-2xl border-0 shadow-lg shadow-gray-500/10 hover:shadow-2xl hover:shadow-green-500/20 transition-all duration-300 overflow-hidden cursor-pointer block bg-gradient-to-br from-white to-gray-50/50"
+      data-product-id={product.id}
+    >
+      {/* Image Section */}
+      <div className="relative bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 h-52 overflow-hidden">
         <img 
-          src={product.image_url || product.image_1 || `https://via.placeholder.com/400x300/F0F0F0/AAAAAA?text=${encodeURIComponent(product.nom)}`} 
+          src={product.image_url || product.image_1 || '/images/product-placeholder.svg'} 
           alt={product.nom}
+          className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-300"
           onError={(e) => {
-            e.target.src = `https://via.placeholder.com/400x300/F0F0F0/AAAAAA?text=${encodeURIComponent(product.nom)}`;
-            logger.warn(`Erreur de chargement d'image pour produit ${product.id}:`, product.image_url || product.image_1);
+            if (e.target.dataset.fallbackApplied === 'true') {
+              return;
+            }
+            e.target.dataset.fallbackApplied = 'true';
+            e.target.src = '/images/product-placeholder.svg';
           }}
         />
-        {product.prime_cee && (
-          <div className="badge-cee">CEE</div>
-        )}
-      </div>
-      <div className="product-info">
-        <div className="product-header">
-          <p className="product-category">{formatCategory(product.categorie)}</p>
+        {/* Badges overlay */}
+        <div className="absolute top-4 right-4 flex flex-col gap-2">
+          {product.prime_cee && (
+            <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-green-500/30 border-0">
+              CEE
+            </span>
+          )}
           {product.actif ? (
-            <span className="badge-active">Actif</span>
+            <span className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full border-2 border-green-300 shadow-sm">
+              ✓ Actif
+            </span>
           ) : (
-            <span className="badge-inactive">Inactif</span>
-          )}
-        </div>
-        <h3 className="product-name">{product.nom}</h3>
-        {(product.marque || product.reference) && (
-          <p className="text-sm text-gray-600 mb-2">
-            {product.marque && <span className="font-semibold text-gray-900">{product.marque}</span>}
-            {product.marque && product.reference && <span className="mx-1 text-gray-400">—</span>}
-            {product.reference && <span className="text-gray-500">Réf. {product.reference}</span>}
-          </p>
-        )}
-        <p className="product-description">{product.description}</p>
-        
-        <div className="mt-3 text-xs text-gray-600 bg-gray-50 rounded-md px-3 py-2 border border-dashed border-gray-200">
-          {specSummary ? (
-            <span className="font-medium text-gray-700">{specSummary}</span>
-          ) : (
-            <span className="italic text-gray-400">Caractéristiques non renseignées</span>
-          )}
-        </div>
-      </div>
-      <div className="product-footer">
-        <div className="product-price">
-          {product.sur_devis || !product.prix || product.prix === '' || product.prix === null ? (
-            <span className="price-label">Sur devis</span>
-          ) : (
-            <span className="price">
-              {product.prix ? `${parseFloat(product.prix).toFixed(2)}€` : 'N/A'}
+            <span className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 text-xs font-bold px-3 py-1.5 rounded-full border-2 border-gray-300 shadow-sm">
+              ⊘ Inactif
             </span>
           )}
         </div>
-        <div className="product-actions">
-          <Button variant="ghost" size="icon" onClick={() => onToggleStatus(product.id, product.actif)} title={product.actif ? "Désactiver" : "Activer"}>
-            {product.actif ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => onEdit(product.id)} title="Modifier">
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => onDuplicate(product.id)} title="Dupliquer">
-            <Copy className="h-4 w-4" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-800 hover:bg-red-50" title="Supprimer">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce produit ?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Cette action est irréversible. Le produit "{product.nom}" sera définitivement supprimé.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onDelete(product.id)} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+      </div>
+
+      {/* Content Section */}
+      <div className="p-6 space-y-4">
+        {/* Category */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-green-600 uppercase tracking-wider bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1.5 rounded-lg border border-green-200">
+            {formatCategory(product.categorie, categoriesList)}
+          </span>
+        </div>
+
+        {/* Product Name */}
+        <h3 className="text-lg font-bold text-gray-900 line-clamp-2 leading-tight group-hover:text-green-600 transition-colors">
+          {product.nom}
+        </h3>
+
+        {/* Brand & Reference */}
+        {(product.marque || product.reference) && (
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            {product.marque && (
+              <span className="font-bold text-gray-700 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-1.5 rounded-lg border border-indigo-200">
+                {product.marque}
+              </span>
+            )}
+            {product.reference && (
+              <span className="text-gray-600 font-medium font-mono">
+                Réf. {product.reference}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Description */}
+        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed font-medium">
+          {product.description}
+        </p>
+        
+        {/* Specifications */}
+        <div className="bg-gradient-to-r from-gray-50 via-gray-100 to-gray-50 rounded-xl px-4 py-3 border-2 border-gray-200 shadow-sm">
+          {specSummary ? (
+            <p className="text-xs font-semibold text-gray-700 leading-relaxed">
+              {specSummary}
+            </p>
+          ) : (
+            <p className="text-xs italic text-gray-400 font-medium">
+              Caractéristiques non renseignées
+            </p>
+          )}
+        </div>
+
+        {/* Price & Actions */}
+        <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
+          <div className="flex flex-col">
+            {product.sur_devis || !product.prix || product.prix === '' || product.prix === null ? (
+              <span className="text-sm font-bold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">Sur devis</span>
+            ) : (
+              <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                {product.prix ? `${parseFloat(product.prix).toFixed(2)}€` : 'N/A'}
+              </span>
+            )}
+          </div>
+          
+          {/* Les actions ne doivent PAS déclencher la navigation vers la page d'édition */}
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleStatus(product.id, product.actif);
+              }} 
+              title={product.actif ? "Désactiver" : "Activer"}
+              className="h-9 w-9 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all hover:shadow-sm"
+            >
+              {product.actif ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onEdit(product.id);
+              }} 
+              title="Modifier"
+              className="h-9 w-9 rounded-lg hover:bg-green-50 hover:text-green-600 transition-all hover:shadow-sm"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onManageAccessories(product.id);
+              }}
+              title="Gérer les accessoires"
+              className="h-9 w-9 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-all hover:shadow-sm"
+            >
+              <PlugZap className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDuplicate(product.id);
+              }} 
+              title="Dupliquer"
+              className="h-9 w-9 rounded-lg hover:bg-yellow-50 hover:text-yellow-600 transition-all hover:shadow-sm"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300 transition-all" 
+                  title="Supprimer ce produit"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-red-600">⚠️ Supprimer le produit</AlertDialogTitle>
+                  <AlertDialogDescription className="pt-2">
+                    Êtes-vous sûr de vouloir supprimer définitivement le produit <strong>"{product.nom}"</strong> ?
+                    <br />
+                    <span className="text-red-600 font-medium">Cette action est irréversible.</span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => onDelete(product.id)} 
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer définitivement
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
     </div>
@@ -128,26 +234,68 @@ const AdminProducts = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [allProducts, setAllProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({ search: '', category: 'all', status: 'all' });
+  const [filters, setFilters] = useState({ 
+    search: '', 
+    category: 'all', 
+    status: 'all',
+    priceRange: 'all',
+    surDevis: 'all'
+  });
   const [page, setPage] = useState(0);
   const [pageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
+  // Charger les catégories depuis Supabase
+  const fetchCategories = useCallback(async () => {
+    setLoadingCategories(true);
+    try {
+      const { data, error: categoriesError } = await supabase
+        .from('categories')
+        .select('id, nom, slug, ordre')
+        .eq('actif', true)
+        .order('ordre', { ascending: true });
+
+      if (categoriesError) {
+        // Si la table n'existe pas, utiliser un fallback
+        if (categoriesError.message?.includes('relation') || categoriesError.message?.includes('does not exist')) {
+          setCategories([
+            { id: 'luminaires_industriels', nom: 'Luminaires Industriels', slug: 'luminaires_industriels', ordre: 0 },
+            { id: 'eclairage_exterieur', nom: 'Éclairage Extérieur', slug: 'eclairage_exterieur', ordre: 1 },
+            { id: 'eclairage_etanche', nom: 'Éclairage Étanche', slug: 'eclairage_etanche', ordre: 2 },
+            { id: 'accessoires', nom: 'Accessoires', slug: 'accessoires', ordre: 3 },
+          ]);
+        } else {
+          throw categoriesError;
+        }
+      } else {
+        setCategories(data || []);
+      }
+    } catch (err) {
+      logger.error('Erreur chargement catégories:', err);
+      // Fallback en cas d'erreur
+      setCategories([
+        { id: 'luminaires_industriels', nom: 'Luminaires Industriels', slug: 'luminaires_industriels', ordre: 0 },
+        { id: 'eclairage_exterieur', nom: 'Éclairage Extérieur', slug: 'eclairage_exterieur', ordre: 1 },
+        { id: 'eclairage_etanche', nom: 'Éclairage Étanche', slug: 'eclairage_etanche', ordre: 2 },
+        { id: 'accessoires', nom: 'Accessoires', slug: 'accessoires', ordre: 3 },
+      ]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, []);
+
   const fetchProducts = useCallback(async () => {
-    logger.log("Starting to load products...");
     setLoading(true);
     setError(null);
     try {
       // Build query with server-side filters
       let query = supabase
         .from('products')
-        .select('id, nom, description, prix, actif, categorie, slug, image_1, image_url, ordre, marque, reference, caracteristiques, prime_cee', { count: 'exact' });
-      
-      if (import.meta.env.DEV) {
-        console.log('[AdminProducts] Tentative de chargement des produits...');
-      }
+        .select('id, nom, description, prix, actif, categorie, slug, image_1, image_url, ordre, marque, reference, caracteristiques, prime_cee, sur_devis', { count: 'exact' });
       
       // Apply category filter (server-side)
       if (filters.category && filters.category !== 'all') {
@@ -159,24 +307,19 @@ const AdminProducts = () => {
         const isActif = filters.status === 'actif';
         query = query.eq('actif', isActif);
       }
+
+      // Apply sur_devis filter (server-side)
+      if (filters.surDevis && filters.surDevis !== 'all') {
+        const isSurDevis = filters.surDevis === 'oui';
+        query = query.eq('sur_devis', isSurDevis);
+      }
       
       // Apply ordering and pagination
       const { data, error: dbError, count } = await query
         .order('ordre', { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
-      
-      if (import.meta.env.DEV) {
-        console.log('[AdminProducts] Résultat requête Supabase:', { data: data?.length, count, error: dbError });
-      }
         
       if (dbError) {
-        if (import.meta.env.DEV) {
-          console.error('[AdminProducts] Erreur Supabase:', dbError);
-          console.error('[AdminProducts] Code erreur:', dbError.code);
-          console.error('[AdminProducts] Message:', dbError.message);
-          console.error('[AdminProducts] Détails:', dbError.details);
-          console.error('[AdminProducts] Hint:', dbError.hint);
-        }
         
         // Afficher un toast si c'est une erreur RLS
         if (dbError.code === '42501' || dbError.message?.includes('row-level security') || dbError.message?.includes('permission denied')) {
@@ -192,7 +335,6 @@ const AdminProducts = () => {
 
       setAllProducts(data || []);
       setTotalCount(count || 0);
-      logger.log(`Successfully loaded ${data?.length || 0} products (page ${page + 1}) with filters: category=${filters.category}, status=${filters.status}.`);
     } catch (err) {
       const errorMessage = `Chargement des produits échoué: ${err.message}`;
       setError(errorMessage);
@@ -205,48 +347,93 @@ const AdminProducts = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, page, pageSize, filters.category, filters.status]);
+  }, [toast, page, pageSize, filters.category, filters.status, filters.surDevis]);
 
   useEffect(() => {
-    logger.log("AdminProducts component mounted.");
+    fetchCategories();
     fetchProducts();
-  }, [fetchProducts]);
+  }, [fetchCategories, fetchProducts]);
   
   // Reset to page 0 when server-side filters change (not search)
   useEffect(() => {
     setPage(0);
-  }, [filters.category, filters.status]);
+  }, [filters.category, filters.status, filters.surDevis]);
   
   const totalPages = Math.ceil(totalCount / pageSize);
   const canGoPrevious = page > 0;
   const canGoNext = page < totalPages - 1;
 
-  // Client-side search filter (applied to already filtered server results)
+  // Client-side search and price filter (applied to already filtered server results)
   const filteredProducts = useMemo(() => {
-    if (!filters.search || filters.search.trim() === '') {
-      return allProducts;
+    let filtered = allProducts;
+
+    // Search filter
+    if (filters.search && filters.search.trim() !== '') {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(product => {
+        return product.nom.toLowerCase().includes(searchLower) ||
+          (product.description && product.description.toLowerCase().includes(searchLower)) ||
+          (product.marque && product.marque.toLowerCase().includes(searchLower)) ||
+          (product.reference && product.reference.toLowerCase().includes(searchLower)) ||
+          (product.categorie && formatCategory(product.categorie, categories).toLowerCase().includes(searchLower));
+      });
     }
-    
-    const searchLower = filters.search.toLowerCase();
-    return allProducts.filter(product => {
-      return product.nom.toLowerCase().includes(searchLower) ||
-        (product.description && product.description.toLowerCase().includes(searchLower)) ||
-        (product.categorie && formatCategory(product.categorie).toLowerCase().includes(searchLower));
-    });
-  }, [allProducts, filters.search]);
+
+    // Price range filter (client-side)
+    if (filters.priceRange && filters.priceRange !== 'all') {
+      filtered = filtered.filter(product => {
+        if (!product.prix || product.sur_devis) return false;
+        const price = parseFloat(product.prix);
+        switch (filters.priceRange) {
+          case '<50':
+            return price < 50;
+          case '50-100':
+            return price >= 50 && price < 100;
+          case '100-200':
+            return price >= 100 && price < 200;
+          case '200-500':
+            return price >= 200 && price < 500;
+          case '>500':
+            return price >= 500;
+          default:
+            return true;
+        }
+      });
+    }
+
+    return filtered;
+  }, [allProducts, filters.search, filters.priceRange, categories]);
 
   const handleFilterChange = (filterName, value) => {
-    logger.log(`Filter changed: ${filterName}=${value}`);
     setFilters(prev => ({ ...prev, [filterName]: value }));
   };
 
+  const resetFilters = () => {
+    setFilters({ 
+      search: '', 
+      category: 'all', 
+      status: 'all',
+      priceRange: 'all',
+      surDevis: 'all'
+    });
+    setPage(0);
+  };
+
+  const hasActiveFilters = filters.category !== 'all' || 
+    filters.status !== 'all' || 
+    filters.priceRange !== 'all' || 
+    filters.surDevis !== 'all' || 
+    (filters.search && filters.search.trim() !== '');
+
   const handleEdit = (productId) => {
-    logger.log(`Editing product ${productId}`);
     navigate(`/produits/${productId}/edit`);
+  };
+
+  const handleManageAccessories = (productId) => {
+    navigate(`/produits/${productId}/accessoires`);
   };
   
   const handleDuplicateProduct = async (productId) => {
-    logger.log(`Duplicating product ${productId}`);
     const productToDuplicate = allProducts.find(p => p.id === productId);
     if (!productToDuplicate) return;
 
@@ -270,7 +457,6 @@ const AdminProducts = () => {
   };
 
   const handleToggleStatus = async (productId, currentStatus) => {
-    logger.log(`Toggling status for product ${productId} from ${currentStatus}`);
     try {
       const { error } = await supabase.from('products').update({ actif: !currentStatus }).eq('id', productId);
       if (error) throw error;
@@ -282,7 +468,6 @@ const AdminProducts = () => {
   };
 
   const handleDelete = async (productId) => {
-    logger.log(`Deleting product ${productId}`);
     try {
       const { error } = await supabase.from('products').delete().eq('id', productId);
       if (error) throw error;
@@ -341,68 +526,75 @@ const AdminProducts = () => {
         onDelete={handleDelete}
         onToggleStatus={handleToggleStatus}
         onEdit={handleEdit}
+        onManageAccessories={handleManageAccessories}
+        categoriesList={categories}
       />
     ));
   };
 
+  const activeFiltersCount = [
+    filters.search && filters.search.trim() !== '',
+    filters.category !== 'all',
+    filters.status !== 'all',
+    filters.priceRange !== 'all',
+    filters.surDevis !== 'all',
+  ].filter(Boolean).length;
+
   return (
     <>
       <Helmet><title>Gestion des Produits | Effinor Admin</title></Helmet>
-      <div className="admin-page p-4 md:p-8">
-        <div className="page-header">
-          <div>
-            <h1>📦 Gestion des Produits</h1>
-            <p><span id="product-count">{totalCount}</span> produits au catalogue{filters.category !== 'all' || filters.status !== 'all' ? ' (filtrés)' : ''}</p>
+      <div className="admin-page pl-0 pr-4 pt-4 pb-4 md:pr-6 md:pt-6 md:pb-6 lg:pr-8 lg:pt-8 lg:pb-8 bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 min-h-screen">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-gray-200">
+            <div>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/30">
+                  <Package className="h-6 w-6 text-white" />
+                </div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                  Gestion des Produits
+                </h1>
+              </div>
+              <p className="text-sm text-gray-600 ml-16 font-medium">
+                <span className="font-bold text-green-600" id="product-count">{totalCount}</span> produits au catalogue
+                {activeFiltersCount > 0 && (
+                  <span className="ml-2 text-orange-600 font-semibold">({activeFiltersCount} filtre{activeFiltersCount > 1 ? 's' : ''} actif{activeFiltersCount > 1 ? 's' : ''})</span>
+                )}
+              </p>
+            </div>
+            <Link to="/produits/new">
+              <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-200 h-12 px-6 rounded-xl font-bold">
+                <PlusCircle className="mr-2 h-5 w-5" /> Ajouter un produit
+              </Button>
+            </Link>
           </div>
-          <Link to="/admin/products/new">
-            <Button className="btn-primary">
-              <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un produit
-            </Button>
-          </Link>
         </div>
         
-        <div className="filters-bar">
-          <div className="search-box">
-            <Input 
-              type="text" 
-              id="search-products" 
-              placeholder="🔍 Rechercher un produit..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-          </div>
-          
-          <Select onValueChange={(value) => handleFilterChange('category', value)} value={filters.category}>
-              <SelectTrigger className="w-full md:w-[200px] filter-select">
-                  <SelectValue placeholder="Catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les catégories</SelectItem>
-                {Object.entries(categoryMap).map(([slug, name]) => (
-                  <SelectItem key={slug} value={slug}>{name}</SelectItem>
-                ))}
-              </SelectContent>
-          </Select>
-
-          <Select onValueChange={(value) => handleFilterChange('status', value)} value={filters.status}>
-              <SelectTrigger className="w-full md:w-[180px] filter-select">
-                  <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="actif">Actifs</SelectItem>
-                <SelectItem value="inactif">Inactifs</SelectItem>
-              </SelectContent>
-          </Select>
-        </div>
+        {/* Filtres */}
+        <ProductsFilters
+          searchQuery={filters.search}
+          onSearchChange={(value) => handleFilterChange('search', value)}
+          categoryFilter={filters.category}
+          onCategoryFilterChange={(value) => handleFilterChange('category', value)}
+          statusFilter={filters.status}
+          onStatusFilterChange={(value) => handleFilterChange('status', value)}
+          priceRangeFilter={filters.priceRange}
+          onPriceRangeFilterChange={(value) => handleFilterChange('priceRange', value)}
+          surDevisFilter={filters.surDevis}
+          onSurDevisFilterChange={(value) => handleFilterChange('surDevis', value)}
+          onResetFilters={resetFilters}
+          categories={categories}
+          activeFiltersCount={activeFiltersCount}
+        />
         
-        <div id="products-container" className="products-grid">
+        <div id="products-container" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
           {renderContent()}
         </div>
         
         {/* Pagination */}
         {totalCount > 0 && filteredProducts.length > 0 && (
-          <div className="mt-6 flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
+          <div className="mt-6 flex items-center justify-between border-t-2 border-gray-200 bg-white rounded-xl shadow-sm px-6 py-4">
             <div className="flex flex-1 justify-between sm:hidden">
               <Button
                 variant="outline"

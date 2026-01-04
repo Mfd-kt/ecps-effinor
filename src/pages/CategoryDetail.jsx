@@ -10,6 +10,7 @@ import { ArrowRight, CheckCircle2, Loader2, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
+import { getAccessoriesForCategory } from '@/lib/api/products';
 
 // Données pour chaque catégorie
 const categoryData = {
@@ -270,6 +271,9 @@ const CategoryDetail = () => {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingCategory, setLoadingCategory] = useState(true);
+   const [categoryAccessories, setCategoryAccessories] = useState([]);
+  const [loadingAccessories, setLoadingAccessories] = useState(false);
+  const [accessoriesError, setAccessoriesError] = useState(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -286,9 +290,11 @@ const CategoryDetail = () => {
     try {
       setLoadingCategory(true);
       setLoadingProducts(true);
+      setLoadingAccessories(true);
+      setAccessoriesError(null);
       
       // Récupérer la catégorie par slug
-      const { data: categoryData, error: categoryError } = await supabase
+      const { data: categoryDbData, error: categoryError } = await supabase
         .from('categories')
         .select('id, nom, slug, description, description_longue, images')
         .eq('slug', slug)
@@ -305,20 +311,21 @@ const CategoryDetail = () => {
           logger.error('[CategoryDetail] Error fetching category:', categoryError);
         }
       } else {
-        setCategory(categoryData);
+        setCategory(categoryDbData);
       }
 
       setLoadingCategory(false);
 
-      // Récupérer les produits de cette catégorie
+      // Récupérer les produits de cette catégorie (uniquement ceux avec image)
       let productsQuery = supabase
         .from('products')
         .select('id, nom, description, prix, image_1, image_2, image_3, image_4, image_url, slug, actif, categorie, categorie_id, marque, reference, caracteristiques, puissance')
-        .eq('actif', true);
+        .eq('actif', true)
+        .or('image_1.not.is.null,image_url.not.is.null');
 
       // Filtrer par categorie_id si disponible, sinon par categorie (slug)
-      if (categoryData?.id) {
-        productsQuery = productsQuery.eq('categorie_id', categoryData.id);
+      if (categoryDbData?.id) {
+        productsQuery = productsQuery.eq('categorie_id', categoryDbData.id);
       } else {
         productsQuery = productsQuery.eq('categorie', slug);
       }
@@ -336,12 +343,29 @@ const CategoryDetail = () => {
       } else {
         setProducts(productsData || []);
       }
+
+      // Charger les accessoires liés à cette catégorie (via les produits)
+      try {
+        const accessoriesResult = await getAccessoriesForCategory(slug);
+
+        if (!accessoriesResult.success) {
+          setAccessoriesError(accessoriesResult.error || 'Erreur lors du chargement des accessoires de la catégorie.');
+          setCategoryAccessories([]);
+        } else {
+          setCategoryAccessories(accessoriesResult.data || []);
+        }
+      } catch (accessoriesErr) {
+        logger.error('[CategoryDetail] Error fetching category accessories:', accessoriesErr);
+        setAccessoriesError(accessoriesErr.message || 'Erreur lors du chargement des accessoires de la catégorie.');
+        setCategoryAccessories([]);
+      }
     } catch (err) {
       logger.error('[CategoryDetail] Error fetching category/products:', err);
       setProducts([]);
     } finally {
       setLoadingProducts(false);
       setLoadingCategory(false);
+      setLoadingAccessories(false);
     }
   };
 
@@ -441,109 +465,195 @@ const CategoryDetail = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 lg:gap-4">
-                  {products.map((product) => {
-                    const imageUrl = getImageUrl(product.image_1 || product.image_url);
-                    return (
-                    <div
-                      key={product.id}
-                      className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 hover:border-[var(--secondary-500)]/30"
-                    >
-                      <div className="relative">
-                        <div 
-                          className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden cursor-pointer relative z-10"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (imageUrl) {
-                              const allImages = [
-                                product.image_1 || product.image_url,
-                                product.image_2,
-                                product.image_3,
-                                product.image_4
-                              ].filter(Boolean).map(img => getImageUrl(img));
-                              if (allImages.length > 0) {
-                                setGalleryImages(allImages);
-                                setGalleryIndex(0);
-                                setGalleryOpen(true);
-                              }
-                            }
-                          }}
+                    {products.map((product) => {
+                      const imageUrl = getImageUrl(product.image_1 || product.image_url);
+                      return (
+                        <div
+                          key={product.id}
+                          className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 hover:border-[var(--secondary-500)]/30"
                         >
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt={product.nom}
-                              className="w-full h-full object-contain p-3 md:p-4 lg:p-2 max-w-[80%] max-h-[80%] mx-auto group-hover:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                e.target.src = 'https://placehold.co/400x400/e2e8f0/e2e8f0?text=Image';
+                          <div className="relative">
+                            <div
+                              className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden cursor-pointer relative z-10"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (imageUrl) {
+                                  const allImages = [
+                                    product.image_1 || product.image_url,
+                                    product.image_2,
+                                    product.image_3,
+                                    product.image_4
+                                  ]
+                                    .filter(Boolean)
+                                    .map((img) => getImageUrl(img));
+                                  if (allImages.length > 0) {
+                                    setGalleryImages(allImages);
+                                    setGalleryIndex(0);
+                                    setGalleryOpen(true);
+                                  }
+                                }
                               }}
-                            />
-                          ) : (
-                            <div className="text-gray-400 text-xs">Pas d'image</div>
-                          )}
+                            >
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={product.nom}
+                                  className="w-full h-full object-contain p-3 md:p-4 lg:p-2 max-w-[80%] max-h-[80%] mx-auto group-hover:scale-105 transition-transform duration-300"
+                                  onError={(e) => {
+                                    e.target.src = 'https://placehold.co/400x400/e2e8f0/e2e8f0?text=Image';
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-gray-400 text-xs">Pas d&apos;image</div>
+                              )}
+                            </div>
+                          </div>
+                          <Link to={`/produit/${product.slug}`}>
+                            <div className="p-2 md:p-3">
+                              {product.marque && (
+                                <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1 uppercase tracking-wide">
+                                  {product.marque}
+                                </p>
+                              )}
+                              <h3 className="text-xs md:text-sm lg:text-base font-bold text-gray-900 mb-0.5 md:mb-1 group-hover:text-[var(--secondary-500)] transition-colors line-clamp-2">
+                                {product.nom}
+                              </h3>
+                              {product.reference && (
+                                <p className="text-[10px] md:text-xs text-gray-500 mb-1 md:mb-1.5">
+                                  Réf: {product.reference}
+                                </p>
+                              )}
+                              {product.description && (
+                                <p className="text-gray-600 mb-1.5 md:mb-2 line-clamp-2 text-[10px] md:text-xs leading-relaxed">
+                                  {product.description}
+                                </p>
+                              )}
+                              {product.puissance && (
+                                <p className="text-[10px] md:text-xs text-gray-700 mb-1 md:mb-1.5">
+                                  <strong>Puissance:</strong> {product.puissance}W
+                                </p>
+                              )}
+                              {product.prix && (
+                                <p className="text-sm md:text-base lg:text-lg font-bold text-[var(--secondary-500)] mb-1.5 md:mb-2">
+                                  {typeof product.prix === 'number'
+                                    ? `${product.prix.toFixed(2)} €`
+                                    : product.prix}
+                                </p>
+                              )}
+                            </div>
+                          </Link>
+                          <div className="px-2 md:px-3 pb-2 md:pb-3 flex flex-col sm:flex-row gap-1.5 md:gap-2">
+                            <Link to={`/produit/${product.slug}`} className="flex-1">
+                              <Button variant="outline" className="w-full text-[10px] md:text-xs py-1.5 md:py-2 h-auto">
+                                Voir détails
+                                <ArrowRight className="ml-1 h-2.5 w-2.5 md:h-3 md:w-3" />
+                              </Button>
+                            </Link>
+                            <Button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleAddToCart(product);
+                              }}
+                              className="bg-[var(--secondary-500)] hover:bg-[var(--secondary-600)] text-[10px] md:text-xs py-1.5 md:py-2 h-auto px-2 md:px-3 w-full sm:w-auto"
+                            >
+                              <ShoppingCart className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      <Link to={`/produit/${product.slug}`}>
-                        <div className="p-2 md:p-3">
-                          {product.marque && (
-                            <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1 uppercase tracking-wide">
-                              {product.marque}
-                            </p>
-                          )}
-                          <h3 className="text-xs md:text-sm lg:text-base font-bold text-gray-900 mb-0.5 md:mb-1 group-hover:text-[var(--secondary-500)] transition-colors line-clamp-2">
-                            {product.nom}
-                          </h3>
-                          {product.reference && (
-                            <p className="text-[10px] md:text-xs text-gray-500 mb-1 md:mb-1.5">
-                              Réf: {product.reference}
-                            </p>
-                          )}
-                          {product.description && (
-                            <p className="text-gray-600 mb-1.5 md:mb-2 line-clamp-2 text-[10px] md:text-xs leading-relaxed">
-                              {product.description}
-                            </p>
-                          )}
-                          {product.puissance && (
-                            <p className="text-[10px] md:text-xs text-gray-700 mb-1 md:mb-1.5">
-                              <strong>Puissance:</strong> {product.puissance}W
-                            </p>
-                          )}
-                          {product.prix && (
-                            <p className="text-sm md:text-base lg:text-lg font-bold text-[var(--secondary-500)] mb-1.5 md:mb-2">
-                              {typeof product.prix === 'number' 
-                                ? `${product.prix.toFixed(2)} €` 
-                                : product.prix}
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                      <div className="px-2 md:px-3 pb-2 md:pb-3 flex flex-col sm:flex-row gap-1.5 md:gap-2">
-                          <Link
-                            to={`/produit/${product.slug}`}
-                            className="flex-1"
-                          >
-                          <Button variant="outline" className="w-full text-[10px] md:text-xs py-1.5 md:py-2 h-auto">
-                          Voir détails
-                          <ArrowRight className="ml-1 h-2.5 w-2.5 md:h-3 md:w-3" />
-                        </Button>
-                      </Link>
-                      <Button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleAddToCart(product);
-                        }}
-                        className="bg-[var(--secondary-500)] hover:bg-[var(--secondary-600)] text-[10px] md:text-xs py-1.5 md:py-2 h-auto px-2 md:px-3 w-full sm:w-auto"
-                      >
-                        <ShoppingCart className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                      </Button>
-                    </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
+                )}
+              </section>
+            )}
+
+            {/* Accessoires compatibles pour cette catégorie */}
+            {isProduitsSolutions && (
+              <section className="mb-6 md:mb-8">
+                <h2 className="text-base md:text-lg lg:text-xl font-bold text-gray-900 mb-3 md:mb-4">
+                  Accessoires compatibles pour cette catégorie
+                </h2>
+                {loadingAccessories ? (
+                  <div className="flex justify-center items-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin text-[var(--secondary-500)]" />
+                  </div>
+                ) : accessoriesError ? (
+                  <p className="text-xs md:text-sm text-red-500">
+                    {accessoriesError}
+                  </p>
+                ) : categoryAccessories.length === 0 ? (
+                  <p className="text-xs md:text-sm text-gray-500">
+                    Aucun accessoire n&apos;est encore défini pour cette catégorie.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 lg:gap-4">
+                    {categoryAccessories.map((accessory) => {
+                      const imageUrl = getImageUrl(accessory.image_1 || accessory.image_url);
+                      return (
+                        <div
+                          key={accessory.id}
+                          className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 hover:border-[var(--secondary-500)]/30"
+                        >
+                          <Link to={`/produit/${accessory.slug}`}>
+                            <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={accessory.nom}
+                                  className="w-full h-full object-contain p-3 md:p-4 lg:p-2 max-w-[80%] max-h-[80%] mx-auto group-hover:scale-105 transition-transform duration-300"
+                                  onError={(e) => {
+                                    e.target.src = 'https://placehold.co/400x400/e2e8f0/e2e8f0?text=Image';
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-gray-400 text-xs">Pas d&apos;image</div>
+                              )}
+                            </div>
+                          </Link>
+                          <div className="p-2 md:p-3">
+                            <Link to={`/produit/${accessory.slug}`}>
+                              <h3 className="text-xs md:text-sm lg:text-base font-bold text-gray-900 mb-0.5 md:mb-1 group-hover:text-[var(--secondary-500)] transition-colors line-clamp-2">
+                                {accessory.nom}
+                              </h3>
+                            </Link>
+                            {accessory.description && (
+                              <p className="text-gray-600 mb-1.5 md:mb-2 line-clamp-2 text-[10px] md:text-xs leading-relaxed">
+                                {accessory.description}
+                              </p>
+                            )}
+                            {accessory.prix && !accessory.sur_devis && (
+                              <p className="text-sm md:text-base lg:text-lg font-bold text-[var(--secondary-500)] mb-1.5 md:mb-2">
+                                {typeof accessory.prix === 'number'
+                                  ? `${accessory.prix.toFixed(2)} €`
+                                  : accessory.prix}
+                              </p>
+                            )}
+                            {accessory.sur_devis && (
+                              <p className="text-[10px] md:text-xs text-gray-500 mb-1.5">
+                                Prix sur devis
+                              </p>
+                            )}
+                          </div>
+                          <div className="px-2 md:px-3 pb-2 md:pb-3 flex">
+                            <Button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleAddToCart(accessory);
+                              }}
+                              className="bg-[var(--secondary-500)] hover:bg-[var(--secondary-600)] text-[10px] md:text-xs py-1.5 md:py-2 h-auto px-2 md:px-3 w-full"
+                            >
+                              <ShoppingCart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                              Ajouter au panier
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
 
             {/* Galerie d'images de la catégorie */}
             {category?.images && Array.isArray(category.images) && category.images.length > 0 && (
@@ -574,7 +684,7 @@ const CategoryDetail = () => {
                         <img
                           src={imageUrl}
                           alt={image.alt_text || image.legend || `Image ${categoryTitle} ${idx + 1}`}
-                          className="w-full h-full object-cover scale-90 md:scale-100 group-hover:scale-110 transition-transform duration-500"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           onError={(e) => {
                             e.target.src = 'https://placehold.co/800x600/e2e8f0/e2e8f0?text=Image';
                           }}

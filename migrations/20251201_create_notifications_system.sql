@@ -150,3 +150,16 @@ COMMENT ON FUNCTION public.notify_new_commande() IS 'Fonction trigger pour crée
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+

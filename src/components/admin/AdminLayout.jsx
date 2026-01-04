@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { Menu, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 /**
  * Layout admin avec protection d'authentification
@@ -12,6 +14,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
  */
 const AdminLayout = ({ children }) => {
   const { isAuthenticated, loading } = useRequireAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Afficher un loader pendant la vérification
   if (loading) {
@@ -32,14 +35,36 @@ const AdminLayout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <AdminSidebar />
-      {/* Main content area with left margin to account for fixed sidebar (256px = w-64) - only on desktop */}
-      <div className="flex-1 flex flex-col overflow-x-hidden lg:ml-64">
+      {/* Overlay pour mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-x-hidden w-full lg:ml-64">
         {/* Header avec notifications */}
-        <header className="bg-gray-900 border-b border-gray-700 px-4 md:px-6 py-4 flex items-center justify-end sticky top-0 z-20">
-          <AdminHeader />
+        <header className="bg-gray-900 border-b border-gray-700 pl-0 pr-4 md:pr-6 py-4 flex items-center sticky top-0 z-20">
+          {/* Bouton menu mobile */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden text-white hover:bg-gray-800 mr-auto"
+            aria-label="Toggle menu"
+          >
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+          <div className="ml-auto">
+            <AdminHeader />
+          </div>
         </header>
-        <main className="flex-1">
+        <main className="flex-1 overflow-y-auto lg:pl-0">
           {children}
         </main>
       </div>

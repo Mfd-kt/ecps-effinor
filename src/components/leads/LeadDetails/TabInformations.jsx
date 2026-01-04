@@ -7,7 +7,8 @@ import WorkSiteSection from './WorkSiteSection';
 import BuildingsSection from './BuildingsSection';
 import ProjectSection from './ProjectSection';
 import QualificationSection from './QualificationSection';
-import { Building as BuildingIcon, MapPin, Wrench, User } from 'lucide-react';
+import MessageSection from './MessageSection';
+import { Building as BuildingIcon, MapPin, Wrench, User, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 /**
@@ -38,7 +39,7 @@ const TabInformations = ({
         />
       </div>
 
-      <Accordion type="multiple" defaultValue={['contact', 'siege', 'site-travaux', 'projet', 'batiments']} className="w-full space-y-4">
+      <Accordion type="multiple" defaultValue={['contact', 'message', 'siege', 'site-travaux', 'projet', 'batiments']} className="w-full space-y-4">
         
         {/* Section Contact */}
         <AccordionItem value="contact" className="border border-gray-200 rounded-lg px-4">
@@ -50,6 +51,23 @@ const TabInformations = ({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <ContactSection
+              lead={lead}
+              onUpdate={onUpdate}
+              autoSave={autoSave}
+            />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Section Message */}
+        <AccordionItem value="message" className="border border-gray-200 rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              <span className="text-lg font-semibold text-gray-900">Message du client</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <MessageSection
               lead={lead}
               onUpdate={onUpdate}
               autoSave={autoSave}

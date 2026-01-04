@@ -182,3 +182,17 @@ Voir la section `// TESTS MANUELS STRIPE` en fin de fichier `Cart.jsx` (lignes 1
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

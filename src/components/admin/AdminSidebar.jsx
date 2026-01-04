@@ -8,14 +8,22 @@ import { useUser } from '@/contexts/UserContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import UserAvatar from '@/components/common/UserAvatar';
 import { canAccessRoute } from '@/utils/routePermissions';
+import Logo from '@/components/Logo';
 
-const AdminSidebar = () => {
+const AdminSidebar = ({ isOpen = false, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const { profile } = useUser();
   const { notifications } = useNotifications();
+
+  // Fermer le sidebar sur mobile quand on change de route
+  useEffect(() => {
+    if (isOpen && onClose && window.innerWidth < 1024) {
+      onClose();
+    }
+  }, [location.pathname]);
   
   // Compter les notifications non lues par type
   const unreadLeadsCount = notifications.filter(n => n.type === 'lead').length;
@@ -61,8 +69,9 @@ const AdminSidebar = () => {
   const userRole = profile?.role?.slug || '';
   
   // Définir tous les liens possibles
+  // Le dashboard est toujours visible pour tous les utilisateurs authentifiés
   const allNavLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/dashboard', label: 'Dashboard', icon: Home, alwaysVisible: true },
     { href: '/produits', label: 'Produits', icon: Package },
     { href: '/categories', label: 'Catégories', icon: FolderOpen },
     { 
@@ -117,6 +126,11 @@ const AdminSidebar = () => {
   
   // Filtrer les liens selon les permissions - NE PAS RENDRE les liens non autorisés
   const filteredNavLinks = allNavLinks.filter(link => {
+    // Le dashboard est toujours visible si l'utilisateur est authentifié
+    if (link.alwaysVisible) {
+      return true;
+    }
+    
     // Vérifier l'accès à la route principale
     const hasAccess = canAccessRoute(link.href, userRole);
     
@@ -180,18 +194,17 @@ const AdminSidebar = () => {
   }, [location.pathname]);
 
   return (
-    <aside className="w-64 bg-gray-900 text-white flex-col hidden lg:flex fixed left-0 top-0 bottom-0 z-30 overflow-hidden">
+    <aside className={`
+      w-64 bg-gray-900 text-white flex-col fixed left-0 top-0 bottom-0 z-50 overflow-hidden
+      transform transition-transform duration-300 ease-in-out
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      lg:translate-x-0 lg:fixed lg:z-30
+      lg:flex
+    `}>
       <div className="flex flex-col h-full">
         <div className="h-20 flex items-center justify-center border-b border-gray-700 flex-shrink-0">
-        <Link to="/dashboard" className="flex items-center space-x-3">
-          <img 
-            src="https://i.ibb.co/6rT1m18/logo-ecps.png" 
-            alt="Effinor Logo" 
-            className="h-10 w-auto" 
-          />
-          <span className="text-xl font-bold">Effinor Admin</span>
-        </Link>
-      </div>
+          <Logo to="/dashboard" size="md" showText text="Effinor Admin" />
+        </div>
 
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
         {filteredNavLinks.map((link) => {
@@ -259,7 +272,8 @@ const AdminSidebar = () => {
           }
           
           // Double vérification : ne pas rendre si pas d'accès (sécurité supplémentaire)
-          if (!canAccessRoute(link.href, userRole)) {
+          // Sauf pour le dashboard qui est toujours visible
+          if (!link.alwaysVisible && !canAccessRoute(link.href, userRole)) {
             return null;
           }
           

@@ -140,7 +140,7 @@ const RealisationsList = () => {
         <title>Réalisations | Effinor Admin</title>
       </Helmet>
 
-      <div className="admin-page p-4 md:p-8">
+      <div className="admin-page pl-0 pr-4 pt-4 pb-4 md:pr-8 md:pt-8 md:pb-8">
         <div className="page-header mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">🏗️ Réalisations</h1>
@@ -318,4 +318,7 @@ const RealisationsList = () => {
 };
 
 export default RealisationsList;
+
+
+
 

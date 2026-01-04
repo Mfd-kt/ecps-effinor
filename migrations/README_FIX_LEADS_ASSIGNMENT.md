@@ -73,3 +73,16 @@ Après avoir exécuté les 3 migrations, vérifiez :
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+

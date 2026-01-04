@@ -100,3 +100,16 @@ Le code a été modifié pour gérer automatiquement l'absence de ces colonnes :
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+

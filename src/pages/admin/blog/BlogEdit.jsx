@@ -8,11 +8,182 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Save, ArrowLeft, X } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, X, Trash2, ImagePlus, Upload } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getPostById, createPost, updatePost, generateSlugFromTitle } from '@/lib/api/posts';
 import { logger } from '@/utils/logger';
 import { useUser } from '@/contexts/UserContext';
+import { supabase } from '@/lib/supabaseClient';
+
+const slugify = (text) => {
+  if (!text) return '';
+  return text
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-');
+};
+
+const ImageUpload = ({ label, currentUrl, onUrlChange, onFileUpload, disabled }) => {
+  const [preview, setPreview] = useState(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [useUrl, setUseUrl] = useState(!!currentUrl && !currentUrl.includes('supabase.co'));
+
+  useEffect(() => {
+    if (currentUrl) {
+      setPreview(currentUrl);
+    } else {
+      setPreview(null);
+    }
+  }, [currentUrl]);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image');
+      e.target.value = '';
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('L\'image est trop grande. Maximum 5MB');
+      e.target.value = '';
+      return;
+    }
+
+    // Show preview
+    const newPreviewUrl = URL.createObjectURL(file);
+    setPreview(newPreviewUrl);
+    setUseUrl(false);
+
+    // Upload file
+    setUploading(true);
+    try {
+      await onFileUpload(file);
+    } catch (error) {
+      logger.error('Error uploading image:', error);
+      setPreview(currentUrl);
+    } finally {
+      setUploading(false);
+      setFileInputKey(prev => prev + 1);
+    }
+  };
+
+  const handleRemove = () => {
+    setPreview(null);
+    setFileInputKey(prev => prev + 1);
+    onUrlChange('');
+  };
+
+  const imageUrl = preview || currentUrl;
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="mt-2 space-y-3">
+        {/* Toggle between URL and Upload */}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={useUrl ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUseUrl(true)}
+            disabled={disabled}
+          >
+            URL
+          </Button>
+          <Button
+            type="button"
+            variant={!useUrl ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUseUrl(false)}
+            disabled={disabled}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Uploader
+          </Button>
+        </div>
+
+        {useUrl ? (
+          <Input
+            value={currentUrl || ''}
+            onChange={(e) => onUrlChange(e.target.value)}
+            placeholder="https://example.com/image.jpg"
+            disabled={disabled}
+          />
+        ) : (
+          <div>
+            <div className="w-full h-48 border-2 border-dashed rounded-lg flex justify-center items-center relative bg-gray-50 overflow-hidden">
+              {imageUrl ? (
+                <>
+                  <img 
+                    src={imageUrl} 
+                    alt="Aperçu" 
+                    className="max-h-full max-w-full object-contain rounded-md"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 z-10"
+                    onClick={handleRemove}
+                    disabled={disabled || uploading}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <ImagePlus className="mx-auto h-12 w-12 mb-2" />
+                  <span className="text-sm">Aucune image</span>
+                </div>
+              )}
+            </div>
+            <Input
+              key={fileInputKey}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="mt-2"
+              disabled={disabled || uploading}
+            />
+            {uploading && (
+              <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Upload en cours...</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {imageUrl && useUrl && (
+          <div className="mt-2">
+            <img
+              src={imageUrl}
+              alt="Aperçu"
+              className="max-w-full h-48 object-cover rounded-md border"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const BlogEdit = () => {
   const { postId } = useParams();
@@ -71,7 +242,7 @@ const BlogEdit = () => {
         variant: "destructive"
       });
       logger.error('Error fetching post:', err);
-      navigate('/blog');
+      navigate('/admin/blog');
     } finally {
       setLoading(false);
     }
@@ -108,6 +279,50 @@ const BlogEdit = () => {
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0);
     setFormData(prev => ({ ...prev, tags }));
+  };
+
+  const uploadImage = async (file) => {
+    const fileName = `${Date.now()}-${slugify(file.name)}`;
+    const filePath = `blog/${fileName}`;
+    const bucket = 'effinor-assets';
+
+    try {
+      // Upload file
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file, { 
+          upsert: true,
+          contentType: file.type,
+          cacheControl: '3600'
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+      // Update form data with the new URL
+      setFormData(prev => ({ ...prev, cover_image_url: urlData.publicUrl }));
+      
+      toast({
+        title: "Image uploadée",
+        description: "L'image a été uploadée avec succès.",
+      });
+
+      return urlData.publicUrl;
+    } catch (error) {
+      logger.error('Error uploading image:', error);
+      toast({
+        title: "Erreur d'upload",
+        description: `Impossible d'uploader l'image: ${error.message}`,
+        variant: "destructive"
+      });
+      throw error;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -178,7 +393,7 @@ const BlogEdit = () => {
           title: isEditing ? "Article mis à jour" : "Article créé",
           description: `L'article "${formData.title}" a été ${isEditing ? 'mis à jour' : 'créé'} avec succès.`
         });
-        navigate('/blog');
+        navigate('/admin/blog');
       } else {
         throw new Error(result.error || 'Erreur lors de la sauvegarde');
       }
@@ -212,7 +427,7 @@ const BlogEdit = () => {
       </Helmet>
       <div className="admin-page p-4 md:p-8">
         <div className="mb-6">
-          <Link to="/blog">
+          <Link to="/admin/blog">
             <Button variant="ghost" className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la liste
             </Button>
@@ -291,26 +506,13 @@ const BlogEdit = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="cover_image_url">Image de couverture (URL)</Label>
-                    <Input
-                      id="cover_image_url"
-                      value={formData.cover_image_url}
-                      onChange={(e) => handleInputChange('cover_image_url', e.target.value)}
-                      placeholder="https://example.com/image.jpg"
+                    <ImageUpload
+                      label="Image de couverture"
+                      currentUrl={formData.cover_image_url}
+                      onUrlChange={(url) => handleInputChange('cover_image_url', url)}
+                      onFileUpload={uploadImage}
                       disabled={!canEdit}
                     />
-                    {formData.cover_image_url && (
-                      <div className="mt-2">
-                        <img
-                          src={formData.cover_image_url}
-                          alt="Aperçu"
-                          className="max-w-full h-40 object-cover rounded-md border"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -443,7 +645,7 @@ const BlogEdit = () => {
                           </>
                         )}
                       </Button>
-                      <Link to="/blog">
+                      <Link to="/admin/blog">
                         <Button variant="outline" className="w-full">
                           Annuler
                         </Button>

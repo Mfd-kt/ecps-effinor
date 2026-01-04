@@ -86,3 +86,17 @@ Ensuite, allez dans **Supabase Dashboard → Edge Functions → create-stripe-ch
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

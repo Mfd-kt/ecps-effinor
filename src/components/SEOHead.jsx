@@ -22,6 +22,10 @@ const SEOHead = ({
 
   return (
     <Helmet>
+      {/* Langue du site */}
+      <html lang="fr" />
+      <meta httpEquiv="content-language" content="fr" />
+      
       {/* Meta tags de base */}
       <title>{title}</title>
       <meta name="description" content={description} />
@@ -37,6 +41,8 @@ const SEOHead = ({
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
+      <meta property="og:locale" content="fr_FR" />
+      <meta property="og:site_name" content="Effinor" />
 
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />

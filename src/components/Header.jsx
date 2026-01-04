@@ -7,6 +7,7 @@ import { useBanner } from '@/contexts/BannerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
+import Logo from '@/components/Logo';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -140,14 +141,7 @@ const Header = () => {
       <div className="container mx-auto px-3 md:px-4">
         <div className="flex items-center justify-between h-16 lg:h-20 gap-2 md:gap-3 lg:gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 md:space-x-3 flex-shrink-0">
-            <div className="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 bg-[var(--secondary-500)] rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm md:text-base lg:text-lg">E</span>
-            </div>
-            <div className="hidden sm:block">
-              <span className="text-sm md:text-base lg:text-lg font-bold text-white">EFFINOR</span>
-            </div>
-          </Link>
+          <Logo size="md" className="flex-shrink-0" />
 
           {/* Navigation principale - Centrée */}
           <nav className="hidden lg:flex items-center justify-center flex-1 max-w-4xl mx-4">

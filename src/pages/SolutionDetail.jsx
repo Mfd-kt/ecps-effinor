@@ -255,3 +255,16 @@ const SolutionDetail = () => {
 
 export default SolutionDetail;
 
+
+
+
+
+
+
+
+
+
+
+
+
+

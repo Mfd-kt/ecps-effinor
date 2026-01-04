@@ -118,7 +118,7 @@ const BlogList = () => {
   };
 
   const handleEdit = (postId) => {
-    navigate(`/blog/${postId}`);
+    navigate(`/admin/blog/${postId}`);
   };
 
   const handleDelete = async (postId) => {
@@ -175,7 +175,7 @@ const BlogList = () => {
               : "Cliquez sur 'Nouvel article' pour commencer."}
           </p>
           {canEdit && (filters.status === 'all' && !filters.searchQuery) && (
-            <Link to="/blog/new">
+            <Link to="/admin/blog/new">
               <Button className="mt-4">
                 <PlusCircle className="mr-2 h-4 w-4" /> Nouvel article
               </Button>
@@ -298,7 +298,7 @@ const BlogList = () => {
       <Helmet>
         <title>Gestion du Blog | Effinor Admin</title>
       </Helmet>
-      <div className="admin-page p-4 md:p-8">
+      <div className="admin-page pl-0 pr-4 pt-4 pb-4 md:pr-8 md:pt-8 md:pb-8">
         <div className="page-header mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">📝 Gestion du Blog</h1>
@@ -308,7 +308,7 @@ const BlogList = () => {
             </p>
           </div>
           {canEdit && (
-            <Link to="/blog/new">
+            <Link to="/admin/blog/new">
               <Button className="btn-primary">
                 <PlusCircle className="mr-2 h-4 w-4" /> Nouvel article
               </Button>

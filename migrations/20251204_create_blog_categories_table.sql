@@ -126,3 +126,16 @@ BEGIN
   RAISE NOTICE '   - Policies créées: ✅';
 END $$;
 
+
+
+
+
+
+
+
+
+
+
+
+
+

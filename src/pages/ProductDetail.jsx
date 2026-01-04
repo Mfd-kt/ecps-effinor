@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getDisplaySpecsForProduct } from '@/utils/productSpecs';
+import { getAccessoriesForProduct } from '@/lib/api/products';
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -29,6 +30,9 @@ const ProductDetail = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('description');
   const [imageZoom, setImageZoom] = useState(false);
+  const [accessories, setAccessories] = useState([]);
+  const [loadingAccessories, setLoadingAccessories] = useState(false);
+  const [accessoriesError, setAccessoriesError] = useState(null);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
@@ -83,6 +87,11 @@ const ProductDetail = () => {
         
         logger.log("Product loaded successfully:", data);
         
+        // Vérifier que le produit a au moins une image
+        if (!data.image_1 && !data.image_url) {
+          throw new Error("Ce produit n'est pas disponible car il n'a pas de photo. Veuillez contacter l'administrateur.");
+        }
+        
         const mainImageUrl = getImageUrl(data.image_1 || data.image_url);
         setProduct(data);
         setMainImage(mainImageUrl);
@@ -96,6 +105,36 @@ const ProductDetail = () => {
 
     loadProduct();
   }, [slug, getImageUrl]);
+
+  // Charger les accessoires du produit une fois le produit disponible
+  useEffect(() => {
+    const loadAccessories = async () => {
+      if (!product?.id) return;
+
+      setLoadingAccessories(true);
+      setAccessoriesError(null);
+
+      try {
+        const result = await getAccessoriesForProduct(product.id);
+
+        if (!result.success) {
+          setAccessoriesError(result.error || "Erreur lors du chargement des accessoires.");
+          setAccessories([]);
+          return;
+        }
+
+        setAccessories(result.data || []);
+      } catch (err) {
+        logger.error('[ProductDetail] Error loading accessories:', err);
+        setAccessoriesError(err.message || "Erreur lors du chargement des accessoires.");
+        setAccessories([]);
+      } finally {
+        setLoadingAccessories(false);
+      }
+    };
+
+    loadAccessories();
+  }, [product?.id]);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -164,6 +203,154 @@ const ProductDetail = () => {
     [product]
   );
 
+  // Calculate categoryName early, even if product might be null
+  const categoryName = product ? formatCategory(product.categorie) : '';
+
+  // Schema.org JSON-LD pour le produit (défini avant les early returns)
+  const productSchema = useMemo(() => {
+    if (!product) return null;
+
+    const mainImageUrl = getImageUrl(product.image_1 || product.image_url);
+    const allImages = [
+      product.image_1,
+      product.image_2,
+      product.image_3,
+      product.image_4,
+      product.image_url
+    ]
+      .filter(Boolean)
+      .map(img => getImageUrl(img))
+      .filter(Boolean);
+
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const price = product.prix ? parseFloat(product.prix) : null;
+    const availability = product.actif ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+    const priceCurrency = 'EUR';
+
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.nom,
+      description: product.description || `Découvrez ${product.nom} sur Effinor. Solutions LED professionnelles haute performance.`,
+      image: allImages.length > 0 ? allImages : (mainImageUrl ? [mainImageUrl] : []),
+      brand: {
+        '@type': 'Brand',
+        name: product.marque || 'Effinor'
+      },
+      sku: product.reference || product.slug || product.id,
+      mpn: product.reference || undefined,
+      category: categoryName,
+      url: currentUrl,
+      ...(price && !product.sur_devis ? {
+        offers: {
+          '@type': 'Offer',
+          price: price,
+          priceCurrency: priceCurrency,
+          availability: availability,
+          priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 an
+          itemCondition: 'https://schema.org/NewCondition',
+          seller: {
+            '@type': 'Organization',
+            name: 'Effinor',
+            url: typeof window !== 'undefined' ? window.location.origin : ''
+          }
+        }
+      } : {
+        offers: {
+          '@type': 'Offer',
+          availability: availability,
+          priceSpecification: {
+            '@type': 'UnitPriceSpecification',
+            priceCurrency: priceCurrency,
+            valueAddedTaxIncluded: false
+          }
+        }
+      })
+    };
+
+    // Ajouter les propriétés additionnelles si disponibles
+    if (product.puissance) {
+      schema.additionalProperty = schema.additionalProperty || [];
+      schema.additionalProperty.push({
+        '@type': 'PropertyValue',
+        name: 'Puissance',
+        value: `${product.puissance}W`
+      });
+    }
+
+    if (product.luminosite) {
+      schema.additionalProperty = schema.additionalProperty || [];
+      schema.additionalProperty.push({
+        '@type': 'PropertyValue',
+        name: 'Flux lumineux',
+        value: `${product.luminosite}lm`
+      });
+    }
+
+    if (product.caracteristiques) {
+      try {
+        const specs = typeof product.caracteristiques === 'string' 
+          ? JSON.parse(product.caracteristiques) 
+          : product.caracteristiques;
+        
+        if (specs && typeof specs === 'object') {
+          schema.additionalProperty = schema.additionalProperty || [];
+          Object.entries(specs).forEach(([key, value]) => {
+            if (value && (typeof value === 'string' || typeof value === 'number')) {
+              schema.additionalProperty.push({
+                '@type': 'PropertyValue',
+                name: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                value: String(value)
+              });
+            }
+          });
+        }
+      } catch (e) {
+        logger.warn('Error parsing caracteristiques for schema:', e);
+      }
+    }
+
+    return schema;
+  }, [product, categoryName, getImageUrl]);
+
+  // Breadcrumb Schema.org (défini avant les early returns)
+  const breadcrumbSchema = useMemo(() => {
+    if (!product) return null;
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Accueil',
+          item: `${baseUrl}/`
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Produits & Solutions',
+          item: `${baseUrl}/produits-solutions`
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: categoryName,
+          item: `${baseUrl}/produits-solutions/${product.categorie}`
+        },
+        {
+          '@type': 'ListItem',
+          position: 4,
+          name: product.nom,
+          item: typeof window !== 'undefined' ? window.location.href : ''
+        }
+      ]
+    };
+  }, [product, categoryName]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
@@ -191,9 +378,9 @@ const ProductDetail = () => {
             <div className="text-6xl mb-4">😕</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Produit non trouvé</h1>
             <p className="text-gray-600 mb-6">{error || "Le produit demandé n'existe pas ou n'est plus disponible."}</p>
-            <Link to="/boutique">
+            <Link to="/produits-solutions">
               <Button className="bg-secondary-500 hover:bg-secondary-600 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la boutique
+                <ArrowLeft className="mr-2 h-4 w-4" /> Retour aux produits
               </Button>
             </Link>
           </motion.div>
@@ -202,7 +389,6 @@ const ProductDetail = () => {
     );
   }
 
-  const categoryName = formatCategory(product.categorie);
   const schemaType = specSchema?.type || null;
   const schemaLabel = specSchema?.label || categoryName;
   const fallbackKpiSpecs = [
@@ -225,8 +411,45 @@ const ProductDetail = () => {
   return (
     <>
       <Helmet>
+        {/* Langue du site */}
+        <html lang="fr" />
+        <meta httpEquiv="content-language" content="fr" />
+        
         <title>{`${product.nom} | Effinor - Luminaires LED Professionnels`}</title>
         <meta name="description" content={product.description || `Découvrez ${product.nom} sur Effinor. Solutions LED professionnelles haute performance pour l'industrie et le tertiaire.`} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="product" />
+        <meta property="og:title" content={`${product.nom} | Effinor`} />
+        <meta property="og:description" content={product.description || `Découvrez ${product.nom} sur Effinor.`} />
+        {product.image_1 || product.image_url ? (
+          <meta property="og:image" content={getImageUrl(product.image_1 || product.image_url)} />
+        ) : null}
+        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.href : ''} />
+        <meta property="og:locale" content="fr_FR" />
+        <meta property="og:site_name" content="Effinor" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${product.nom} | Effinor`} />
+        <meta name="twitter:description" content={product.description || `Découvrez ${product.nom} sur Effinor.`} />
+        {product.image_1 || product.image_url ? (
+          <meta name="twitter:image" content={getImageUrl(product.image_1 || product.image_url)} />
+        ) : null}
+        
+        {/* Schema.org JSON-LD - Product */}
+        {productSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(productSchema, null, 2)}
+          </script>
+        )}
+        
+        {/* Schema.org JSON-LD - Breadcrumb */}
+        {breadcrumbSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(breadcrumbSchema, null, 2)}
+          </script>
+        )}
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -240,11 +463,11 @@ const ProductDetail = () => {
                 </li>
                 <li className="text-gray-400">/</li>
                 <li>
-                  <Link to="/boutique" className="hover:text-secondary-600 transition-colors font-medium">Boutique</Link>
+                  <Link to="/produits-solutions" className="hover:text-secondary-600 transition-colors font-medium">Produits & Solutions</Link>
                 </li>
                 <li className="text-gray-400">/</li>
                 <li>
-                  <Link to={`/boutique?categorie=${product.categorie}`} className="hover:text-secondary-600 transition-colors font-medium">{categoryName}</Link>
+                  <Link to={`/produits-solutions/${product.categorie}`} className="hover:text-secondary-600 transition-colors font-medium">{categoryName}</Link>
                 </li>
                 <li className="text-gray-400">/</li>
                 <li className="text-gray-900 font-semibold truncate max-w-xs">{product.nom}</li>
@@ -692,6 +915,100 @@ const ProductDetail = () => {
                   </div>
                 ))}
               </dl>
+            </section>
+          )}
+
+          {/* Accessoires compatibles */}
+          {(!loadingAccessories && accessoriesError && !accessories.length) && (
+            <section className="bg-white rounded-2xl border border-gray-200 p-4 mb-8">
+              <p className="text-xs md:text-sm text-gray-500">
+                Les accessoires compatibles seront bientôt disponibles pour ce produit.
+              </p>
+            </section>
+          )}
+
+          {accessories.length > 0 && (
+            <section className="mb-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 md:mb-4">
+                <h2 className="text-base md:text-lg lg:text-xl font-bold text-gray-900">
+                  Accessoires compatibles
+                </h2>
+                <p className="text-xs md:text-sm text-gray-500">
+                  Accessoires recommandés pour compléter parfaitement ce produit.
+                </p>
+              </div>
+
+              {loadingAccessories ? (
+                <div className="flex justify-center items-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-secondary-500" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                  {accessories.map((accessory) => {
+                    const accImageUrl = getImageUrl(accessory.image_1 || accessory.image_url);
+
+                    return (
+                      <div
+                        key={accessory.id}
+                        className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 hover:border-secondary-500/30"
+                      >
+                        <Link to={`/produit/${accessory.slug}`}>
+                          <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                            {accImageUrl ? (
+                              <img
+                                src={accImageUrl}
+                                alt={accessory.nom}
+                                className="w-full h-full object-contain p-3 md:p-4 max-w-[80%] max-h-[80%] mx-auto group-hover:scale-105 transition-transform duration-300"
+                                onError={(e) => {
+                                  e.target.src = 'https://placehold.co/400x400/e2e8f0/e2e8f0?text=Image';
+                                }}
+                              />
+                            ) : (
+                              <div className="text-gray-400 text-xs">Pas d'image</div>
+                            )}
+                          </div>
+                        </Link>
+                        <div className="p-2 md:p-3">
+                          <Link to={`/produit/${accessory.slug}`}>
+                            <h3 className="text-xs md:text-sm font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-secondary-500 transition-colors">
+                              {accessory.nom}
+                            </h3>
+                          </Link>
+                          {accessory.description && (
+                            <p className="text-[10px] md:text-xs text-gray-600 mb-1.5 line-clamp-2">
+                              {accessory.description}
+                            </p>
+                          )}
+                          {accessory.prix && !accessory.sur_devis && (
+                            <p className="text-xs md:text-sm font-semibold text-secondary-500 mb-1.5">
+                              {typeof accessory.prix === 'number'
+                                ? `${accessory.prix.toFixed(2)} €`
+                                : accessory.prix}
+                            </p>
+                          )}
+                          {accessory.sur_devis && (
+                            <p className="text-[10px] md:text-xs text-gray-500 mb-1.5">
+                              Prix sur devis
+                            </p>
+                          )}
+                        </div>
+                        <div className="px-2 md:px-3 pb-2 md:pb-3">
+                          <Button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleAddToCart(accessory);
+                            }}
+                            className="w-full bg-secondary-500 hover:bg-secondary-600 text-[10px] md:text-xs py-1.5 md:py-2 h-auto"
+                          >
+                            <ShoppingCart className="h-3 w-3 mr-1" />
+                            Ajouter au panier
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
 

@@ -313,10 +313,10 @@ const PaymentSuccess = () => {
               </div>
               <div className="flex flex-col md:flex-row gap-3">
                 <Link
-                  to="/boutique"
+                  to="/produits-solutions"
                   className="w-full inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition"
                 >
-                  ← Retourner à la boutique
+                  ← Retourner aux produits
                 </Link>
                 <Link
                   to="/contact"
@@ -395,10 +395,10 @@ const PaymentSuccess = () => {
               {/* Boutons d'action */}
               <div className="flex flex-col md:flex-row gap-3">
                 <Link
-                  to="/boutique"
+                  to="/produits-solutions"
                   className="w-full inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition"
                 >
-                  ← Retourner à la boutique
+                  ← Retourner aux produits
                 </Link>
                 <Link
                   to="/contact"

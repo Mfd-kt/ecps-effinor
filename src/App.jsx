@@ -4,7 +4,6 @@ import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Home from '@/pages/Home';
-import Boutique from '@/pages/Boutique';
 import ProductDetail from '@/pages/ProductDetail';
 import Cart from '@/pages/Cart';
 import CEEEligibilityForm from '@/pages/CEEEligibilityForm';
@@ -35,6 +34,7 @@ import AdminLogin from '@/pages/admin/AdminLogin';
 import AdminProducts from '@/pages/admin/AdminProducts';
 import AdminProductNew from '@/pages/admin/AdminProductNew';
 import AdminProductEdit from '@/pages/admin/AdminProductEdit';
+import AdminProductAccessories from '@/pages/admin/AdminProductAccessories';
 import AdminCategories from '@/pages/admin/AdminCategories';
 import AdminOrders from '@/pages/admin/AdminOrders';
 import AdminOrderDetail from '@/pages/admin/AdminOrderDetail';
@@ -64,7 +64,8 @@ import AuthCallback from '@/pages/AuthCallback';
 import SignUp from '@/pages/SignUp';
 import ResetPassword from '@/pages/ResetPassword';
 import CookieConsent from '@/components/CookieConsent';
-import { useVisitorTracking } from '@/hooks/useVisitorTracking';
+import { trackPageView } from '@/lib/visitorTracker';
+import { useScrollTracking } from '@/hooks/useScrollTracking';
 import RequireAdmin from '@/components/admin/RequireAdmin';
 import RequireRole from '@/components/admin/RequireRole';
 import RoleBasedRoute from '@/components/admin/RoleBasedRoute';
@@ -75,7 +76,25 @@ import { useBanner } from '@/contexts/BannerContext';
 import LoginDirect from '@/pages/LoginDirect';
 import ScrollToTop from '@/components/ScrollToTop';
 import { logger } from '@/utils/logger';
+import { useLocation } from 'react-router-dom';
 import '@/styles/global-design-system.css';
+
+// Composant pour tracker les pages
+const TrackingWrapper = ({ children }) => {
+  const location = useLocation();
+  useScrollTracking(); // Track le scroll profond
+
+  useEffect(() => {
+    // Attendre un peu pour que la page soit chargée
+    const timer = setTimeout(() => {
+      trackPageView();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname, location.search]);
+
+  return <>{children}</>;
+};
 
 const MainLayout = ({ children }) => {
   const { isBannerVisible } = useBanner();
@@ -125,8 +144,6 @@ const AuthRedirectHandler = () => {
 };
 
 function App() {
-  useVisitorTracking();
-
   return (
     <>
       <ScrollToTop />
@@ -325,6 +342,17 @@ function App() {
             </RequireRole>
           }
         />
+
+        <Route
+          path="/produits/:productId/accessoires"
+          element={
+            <RequireRole roles={['super_admin', 'admin']}>
+              <AdminLayout>
+                <AdminProductAccessories />
+              </AdminLayout>
+            </RequireRole>
+          }
+        />
         
         <Route
           path="/categories"
@@ -464,10 +492,11 @@ function App() {
         <Route
           path="/*"
           element={
-            <MainLayout>
-              <Routes>
+            <TrackingWrapper>
+              <MainLayout>
+                <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/boutique" element={<Boutique />} />
+                <Route path="/boutique" element={<Navigate to="/produits-solutions" replace />} />
                 <Route path="/produit/:slug" element={<ProductDetail />} />
                 <Route path="/panier" element={<Cart />} />
                 <Route path="/formulaire-complet" element={<CEEEligibilityForm />} />
@@ -497,6 +526,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </MainLayout>
+            </TrackingWrapper>
           }
         />
       </Routes>

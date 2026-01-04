@@ -56,3 +56,16 @@ Dans les logs de la fonction Edge Function, vous devriez voir :
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+

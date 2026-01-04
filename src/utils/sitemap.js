@@ -82,3 +82,16 @@ ${urls.map(url => `  <url>
   return xml;
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+

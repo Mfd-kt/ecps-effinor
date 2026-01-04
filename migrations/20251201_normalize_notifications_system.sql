@@ -487,3 +487,16 @@ COMMENT ON FUNCTION public.notify_order_created() IS 'Fonction trigger pour cré
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
