@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Package, ShoppingCart, Users, LogOut, Activity, FileText, FolderOpen, ChevronDown, ChevronRight, Cog, BookOpen, Globe, Image, Building2 } from 'lucide-react';
+import { Home, Users, LogOut, Activity, FileText, ChevronDown, ChevronRight, Cog, BookOpen, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +27,6 @@ const AdminSidebar = ({ isOpen = false, onClose }) => {
   
   // Compter les notifications non lues par type
   const unreadLeadsCount = notifications.filter(n => n.type === 'lead').length;
-  const unreadCommandesCount = notifications.filter(n => n.type === 'commande').length;
 
   const handleLogout = async () => {
     try {
@@ -72,14 +71,6 @@ const AdminSidebar = ({ isOpen = false, onClose }) => {
   // Le dashboard est toujours visible pour tous les utilisateurs authentifiés
   const allNavLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: Home, alwaysVisible: true },
-    { href: '/produits', label: 'Produits', icon: Package },
-    { href: '/categories', label: 'Catégories', icon: FolderOpen },
-    { 
-      href: '/commandes', 
-      label: 'Commandes', 
-      icon: ShoppingCart,
-      badgeCount: unreadCommandesCount > 0 ? unreadCommandesCount : null
-    },
     { 
       href: '/leads', 
       label: 'Leads', 
@@ -118,7 +109,6 @@ const AdminSidebar = ({ isOpen = false, onClose }) => {
       children: [
         { href: '/paramètres/roles', label: 'Rôles & Permissions' },
         { href: '/paramètres/lead-statuses', label: 'Statuts Leads' },
-        { href: '/paramètres/order-statuses', label: 'Statuts Commandes' },
       ]
     },
     { href: '/visiteurs', label: 'Visiteurs', icon: Activity },

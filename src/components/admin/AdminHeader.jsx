@@ -65,7 +65,7 @@ const AdminHeader = () => {
     if ((notification.type === 'lead_created' || notification.type === 'lead_assigned') && notification.entity_id) {
       navigate(`/leads/${notification.entity_id}`);
     } else if (notification.type === 'order_created' && notification.entity_id) {
-      navigate(`/commandes/${notification.entity_id}`);
+      navigate('/dashboard');
     }
   };
 

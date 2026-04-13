@@ -40,9 +40,20 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
       }
       
       // Si pas de données mais qu'il y a type_batiment et surface, créer un bâtiment
+      // Mapper le type de bâtiment vers le format interne
       if (leadData.type_batiment || leadData.surface_m2) {
+        const buildingTypeMap = {
+          'Bureau': 'offices',
+          'Commerce': 'retail',
+          'Industrie': 'factory',
+          'Entrepôt': 'warehouse',
+          'Autre': 'other'
+        };
+        const typeText = leadData.type_batiment || '';
+        const mappedType = buildingTypeMap[typeText] || 'warehouse';
+        
         return [{
-          type: leadData.type_batiment || 'warehouse',
+          type: mappedType,
           surface: leadData.surface_m2 || '',
           ceilingHeight: leadData.hauteur_plafond || '',
           heating: false,
@@ -160,14 +171,44 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
       const totalSurface = updatedBuildings.reduce((sum, b) => sum + (parseFloat(b.surface) || 0), 0);
       const buildingTypesStr = updatedBuildings.map(b => b.type).filter(Boolean).join(', ');
       
-      await autoSave('formulaire_data', JSON.stringify(updatedFormData));
-      if (totalSurface > 0) await autoSave('surface_m2', totalSurface);
-      if (buildingTypesStr) await autoSave('type_batiment', buildingTypesStr);
+      // Supabase accepte directement les objets JavaScript pour les colonnes JSONB
+      // Pas besoin de JSON.stringify() - Supabase le convertira automatiquement
+      const updates = {
+        formulaire_data: updatedFormData, // Passer l'objet directement
+      };
+      
+      if (totalSurface > 0) {
+        updates.surface_m2 = totalSurface;
+      }
+      if (buildingTypesStr) {
+        updates.type_batiment = buildingTypesStr;
+      }
+      
+      // Utiliser saveImmediately pour sauvegarder immédiatement (sans debounce)
+      if (saveImmediately) {
+        await saveImmediately(updates);
+      } else if (autoSave) {
+        // Si pas de saveImmediately, utiliser autoSave avec l'objet complet
+        await autoSave(updates);
+      }
       
       setEditingIndex(null);
       setEditingBuilding(null);
+      
+      // Afficher un message de succès et mettre à jour le lead
+      if (onUpdate) {
+        onUpdate({ ...lead, formulaire_data: updatedFormData });
+      }
+      
+      console.log('✅ Bâtiment sauvegardé avec succès:', {
+        buildingIndex: index,
+        building: updatedBuildings[index],
+        totalBuildings: updatedBuildings.length
+      });
     } catch (error) {
       console.error('Error saving building:', error);
+      // Afficher une erreur à l'utilisateur
+      alert('Erreur lors de la sauvegarde du bâtiment. Veuillez réessayer.');
     }
   };
 
@@ -211,10 +252,11 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
       };
       
       // Sauvegarder immédiatement (sans debounce pour l'ajout)
+      // Supabase accepte directement les objets JavaScript pour les colonnes JSONB
       if (saveImmediately) {
-        await saveImmediately({ formulaire_data: JSON.stringify(updatedFormData) });
+        await saveImmediately({ formulaire_data: updatedFormData }); // Passer l'objet directement
       } else if (autoSave) {
-        await autoSave('formulaire_data', JSON.stringify(updatedFormData));
+        await autoSave({ formulaire_data: updatedFormData }); // Passer l'objet directement
       }
     } catch (error) {
       console.error('Error saving new building:', error);
@@ -257,8 +299,9 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
       const buildingTypesStr = updatedBuildings.map(b => b.type).filter(Boolean).join(', ');
       
       // Sauvegarder immédiatement (sans debounce pour la suppression)
+      // Supabase accepte directement les objets JavaScript pour les colonnes JSONB
       const updatesToSave = {
-        formulaire_data: JSON.stringify(updatedFormData),
+        formulaire_data: updatedFormData, // Passer l'objet directement
         surface_m2: totalSurface > 0 ? totalSurface : 0,
         type_batiment: buildingTypesStr || null
       };
@@ -266,17 +309,7 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
       if (saveImmediately) {
         await saveImmediately(updatesToSave);
       } else if (autoSave) {
-        await autoSave('formulaire_data', JSON.stringify(updatedFormData));
-        if (totalSurface > 0) {
-          await autoSave('surface_m2', totalSurface);
-        } else {
-          await autoSave('surface_m2', 0);
-        }
-        if (buildingTypesStr) {
-          await autoSave('type_batiment', buildingTypesStr);
-        } else {
-          await autoSave('type_batiment', null);
-        }
+        await autoSave(updatesToSave); // Passer l'objet complet directement
       }
     } catch (error) {
       console.error('Error deleting building:', error);
@@ -546,7 +579,7 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
                         <div className="p-3 bg-white rounded border">
                           <div className="flex items-center gap-2 mb-3">
                             <Sun className="h-4 w-4 text-yellow-500" />
-                            <Label>Éclairage extérieur</Label>
+                            <Label>Éclairage / équipements extérieurs (si concerné)</Label>
                           </div>
                           <div className="space-y-3">
                             <div className="flex items-center space-x-2">
@@ -565,14 +598,14 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
                                 }}
                               />
                               <Label htmlFor={`ext-light-cee-${index}`}>
-                                Les luminaires extérieurs ont été changés par les CEE
+                                Renouvellement des équipements extérieurs pris en charge dans le cadre CEE
                               </Label>
                             </div>
                             
                             {!editingBuilding.exteriorLighting?.changedByCEE && (
                               <div className="ml-6 space-y-3 border-l-2 border-gray-200 pl-4">
                                 <div>
-                                  <Label className="text-sm">Type de luminaires actuels</Label>
+                                  <Label className="text-sm">Type d&apos;équipements actuels</Label>
                                   <Input
                                     type="text"
                                     value={editingBuilding.exteriorLighting?.type || ''}
@@ -581,7 +614,7 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
                                       extLight.type = e.target.value;
                                       setEditingBuilding({ ...editingBuilding, exteriorLighting: extLight });
                                     }}
-                                    placeholder="Ex: Projecteurs halogènes, LED extérieurs..."
+                                    placeholder="Ex : projecteurs, bornes, ligne existante..."
                                   />
                                 </div>
                                 <div>
@@ -595,7 +628,7 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
                                       extLight.quantity = e.target.value;
                                       setEditingBuilding({ ...editingBuilding, exteriorLighting: extLight });
                                     }}
-                                    placeholder="Nombre de luminaires"
+                                    placeholder="Nombre d&apos;équipements"
                                   />
                                 </div>
                               </div>
@@ -603,7 +636,7 @@ const BuildingsSection = ({ lead, onUpdate, autoSave, saveImmediately }) => {
                             
                             {editingBuilding.exteriorLighting?.changedByCEE && (
                               <div className="ml-6 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
-                                ✓ Luminaires extérieurs déjà remplacés par CEE
+                                ✓ Équipements extérieurs déjà renouvelés (CEE)
                               </div>
                             )}
                           </div>

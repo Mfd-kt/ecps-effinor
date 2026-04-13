@@ -651,17 +651,17 @@ const CommercialDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Recent Orders */}
+          {/* Historique commandes (lecture seule — module e-commerce retiré du back-office) */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Commandes récentes</CardTitle>
-                  <CardDescription>Vos 5 dernières commandes</CardDescription>
+                  <CardDescription>Données historiques — le suivi e-commerce n&apos;est plus disponible dans l&apos;interface. Priorité aux leads.</CardDescription>
                 </div>
-                <Link to="/commandes">
+                <Link to="/leads">
                   <Button variant="ghost" size="sm">
-                    Voir tout <ArrowUpRight className="h-4 w-4 ml-1" />
+                    Voir les leads <ArrowUpRight className="h-4 w-4 ml-1" />
                   </Button>
                 </Link>
               </div>
@@ -674,10 +674,9 @@ const CommercialDashboard = () => {
               ) : recentOrders.length > 0 ? (
                 <div className="space-y-3">
                   {recentOrders.map((order) => (
-                    <Link
+                    <div
                       key={order.id}
-                      to={`/commandes/${order.id}`}
-                      className="block p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                      className="block p-3 rounded-lg border border-slate-200 bg-slate-50/50"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
@@ -704,7 +703,7 @@ const CommercialDashboard = () => {
                           </p>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               ) : (

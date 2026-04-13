@@ -1,11 +1,16 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Megaphone, Phone, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useBanner } from '@/contexts/BannerContext';
+import { inferEffinorSourceFromPath, trackCtaStudy, trackPhoneClick } from '@/lib/effinorAnalytics';
+import { buildLeadFormHrefForPage } from '@/lib/leadFormDestination';
 
 const TopNotificationBar = () => {
   const { isBannerVisible, closeBanner } = useBanner();
+  const location = useLocation();
+  const src = inferEffinorSourceFromPath(location.pathname);
+  const formTopBanner = buildLeadFormHrefForPage(location.pathname, { cta: 'top_banner' });
 
   return (
     <AnimatePresence>
@@ -27,11 +32,23 @@ const TopNotificationBar = () => {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <a href="tel:+33978455063" className="font-semibold hover:underline">
+              <a
+                href="tel:+33978455063"
+                onClick={() =>
+                  trackPhoneClick({ effinor_source: src, effinor_cta_location: 'top_banner' })
+                }
+                className="font-semibold hover:underline"
+              >
                 <Phone className="inline h-4 w-4 mr-1"/>
                 09 78 45 50 63
               </a>
-              <Link to="/formulaire-complet" className="cta-btn hidden sm:inline-flex">
+              <Link
+                to={formTopBanner}
+                onClick={() =>
+                  trackCtaStudy({ effinor_source: src, effinor_cta_location: 'top_banner' })
+                }
+                className="cta-btn hidden sm:inline-flex"
+              >
                 J'en profite
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Link>

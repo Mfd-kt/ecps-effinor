@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Send, Loader2 } from 'lucide-react';
+import { EffinorButton } from '@/components/ds/EffinorButton';
 
 const FormNavigation = ({ 
   currentStep, 
@@ -17,42 +18,38 @@ const FormNavigation = ({
     <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
       <div>
         {!isFirstStep && (
-          <button
+          <EffinorButton
             type="button"
-            className="btn-secondary"
+            variant="secondary"
+            size="sm"
             onClick={onPrevious}
             disabled={isSubmitting}
           >
-            <ChevronLeft className="mr-2 h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" />
             Précédent
-          </button>
+          </EffinorButton>
         )}
       </div>
       <div>
         {isLastStep ? (
-          <button
+          <EffinorButton
             type="button"
-            className="btn-primary"
+            variant="primary"
             onClick={onSubmit}
             disabled={!isValid || isSubmitting}
           >
             {isSubmitting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="mr-2 h-4 w-4" />
+              <Send className="h-4 w-4" />
             )}
             {isSubmitting ? 'Envoi en cours...' : 'Envoyer ma demande'}
-          </button>
+          </EffinorButton>
         ) : (
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={onNext}
-            disabled={!isValid}
-          >
+          <EffinorButton type="button" variant="primary" onClick={onNext} disabled={!isValid}>
             Suivant
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </button>
+            <ChevronRight className="h-4 w-4" />
+          </EffinorButton>
         )}
       </div>
     </div>

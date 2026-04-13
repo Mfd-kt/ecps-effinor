@@ -4,23 +4,23 @@ import { ShieldCheck, Award, Truck, CheckCircle2 } from 'lucide-react';
 const itemsDefault = [
   {
     icon: ShieldCheck,
-    title: 'Certifications & conformité',
-    text: 'Tous nos luminaires LED sont conformes CE, RoHS et répondent aux normes françaises et européennes. Produits testés et certifiés pour une utilisation en environnement industriel et tertiaire.',
+    title: 'Conformité et exigence projet',
+    text: 'Nous travaillons sur des solutions et des opérations adaptées aux usages réels du bâtiment : exigences techniques, contexte tertiaire ou industriel, et cohérence avec les dispositifs CEE.',
   },
   {
     icon: Award,
-    title: 'Expertise éclairage professionnel',
-    text: 'Bénéficiez de l\'accompagnement de spécialistes de l\'éclairage LED industriel. De l\'audit énergétique à la mise en service, nous vous conseillons pour optimiser vos installations.',
+    title: 'Expertise efficacité énergétique',
+    text: 'De la première saisie web au suivi commercial, nous structurons l’information pour faciliter la décision et le dimensionnement (PAC, déstratification, volumes).',
   },
   {
     icon: Truck,
-    title: 'Logistique rapide & maîtrisée',
-    text: 'Stock permanent en France, expéditions sous 48h et livraisons adaptées à vos contraintes chantier. Suivi de commande en temps réel et coordination avec vos équipes.',
+    title: 'Pilotage et réactivité',
+    text: 'Des parcours courts côté site, un suivi des leads et des relances possibles pour ne pas laisser un projet technique en suspens.',
   },
   {
     icon: CheckCircle2,
-    title: 'Garantie & pérennité',
-    text: 'Produits sélectionnés pour leur robustesse et leur durée de vie exceptionnelle. Garantie fabricant jusqu\'à 5 ans, support technique réactif et pièces détachées disponibles.',
+    title: 'Pérennité et clarté',
+    text: 'Un positionnement assumé sur le chauffage et le confort thermique — sans dispersion sur des gammes hors périmètre — pour des échanges plus simples avec vos équipes.',
   },
 ];
 
@@ -31,11 +31,11 @@ const HomeTrustSection = ({ title, subtitle, items = itemsDefault }) => {
         <div className="max-w-[95%] sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto">
           <header className="text-center mb-4 md:mb-6">
             <h2 className="text-base md:text-lg lg:text-xl font-semibold text-white">
-              {title || 'Pourquoi choisir Effinor Lighting ?'}
+              {title || 'Pourquoi choisir Effinor ?'}
             </h2>
             <p className="mt-1 text-[11px] md:text-xs lg:text-sm text-gray-200">
               {subtitle ||
-                "Votre partenaire de confiance pour l'éclairage LED professionnel. Qualité certifiée, disponibilité immédiate, expertise projet et accompagnement personnalisé pour tous vos chantiers industriels et tertiaires."}
+                'Un partenaire pour vos projets pompe à chaleur et déstratification, avec une approche CEE structurée et un accompagnement transparent.'}
             </p>
           </header>
 
@@ -51,18 +51,12 @@ const HomeTrustSection = ({ title, subtitle, items = itemsDefault }) => {
                     {Icon ? (
                       <Icon className="w-5 h-5 text-secondary-400" />
                     ) : (
-                      <span className="text-secondary-400 text-sm font-semibold">
-                        ✓
-                      </span>
+                      <span className="text-secondary-400 text-sm font-semibold">✓</span>
                     )}
                   </div>
                   <div>
-                    <h3 className="text-sm md:text-base font-semibold mb-0.5 text-white">
-                      {item.title}
-                    </h3>
-                    <p className="text-[11px] md:text-xs text-gray-200 leading-relaxed">
-                      {item.text}
-                    </p>
+                    <h3 className="text-sm md:text-base font-semibold mb-0.5 text-white">{item.title}</h3>
+                    <div className="text-[11px] md:text-xs text-gray-200 leading-relaxed">{item.text}</div>
                   </div>
                 </div>
               );
@@ -75,5 +69,3 @@ const HomeTrustSection = ({ title, subtitle, items = itemsDefault }) => {
 };
 
 export default HomeTrustSection;
-
-

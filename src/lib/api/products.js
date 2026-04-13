@@ -26,6 +26,87 @@ const BEST_SELLER_CATEGORIES = [
 ];
 
 /**
+ * Récupérer les produits associés à un secteur d'activité
+ * @param {string} secteurSlug - Le slug du secteur (ex: 'industrie-logistique')
+ * @returns {Promise<{success: boolean, data: any[], error?: string}>}
+ */
+export async function getProductsBySector(secteurSlug) {
+  if (!secteurSlug) {
+    return { success: true, data: [] };
+  }
+
+  try {
+    // 1) Récupérer les liaisons produit-secteur
+    const { data: links, error: linksError } = await supabase
+      .from('product_sectors')
+      .select('product_id, ordre')
+      .eq('secteur_slug', secteurSlug)
+      .order('ordre', { ascending: true });
+
+    if (linksError) {
+      // Si la table n'existe pas encore, retourner vide
+      if (linksError.code === '42P01' || linksError.message?.includes('does not exist')) {
+        return { success: true, data: [] };
+      }
+      throw linksError;
+    }
+
+    if (!links || links.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const productIds = links.map((l) => l.product_id).filter(Boolean);
+    if (productIds.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    // 2) Charger les produits (uniquement ceux actifs avec image)
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select(
+        'id, nom, slug, prix, categorie, actif, image_1, image_2, image_3, image_4, image_url, description, sur_devis, marque, reference, caracteristiques, puissance'
+      )
+      .in('id', productIds)
+      .eq('actif', true)
+      .or('image_1.not.is.null,image_url.not.is.null');
+
+    if (productsError) {
+      if (productsError.code === '42P01' || productsError.message?.includes('does not exist')) {
+        return { success: true, data: [] };
+      }
+      throw productsError;
+    }
+
+    // 3) Remettre dans l'ordre défini par ordre / product_id
+    const productsById = new Map((products || []).map((p) => [p.id, p]));
+    const orderMap = new Map(links.map((l) => [l.product_id, l.ordre ?? 0]));
+
+    const orderedProducts = links
+      .map((link) => {
+        const prod = productsById.get(link.product_id);
+        if (!prod) return null;
+        return {
+          ...prod,
+          secteur_ordre: link.ordre ?? 0
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const orderA = orderMap.get(a.id) ?? 0;
+        const orderB = orderMap.get(b.id) ?? 0;
+        return orderA - orderB;
+      });
+
+    return {
+      success: true,
+      data: orderedProducts
+    };
+  } catch (error) {
+    return buildError(error, `Erreur lors du chargement des produits pour le secteur ${secteurSlug}`);
+  }
+}
+
+/**
  * Charger les accessoires pour un produit donné.
  *
  * Un "accessoire" est lui-même un produit dans la table `products`,

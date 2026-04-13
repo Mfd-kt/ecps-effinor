@@ -245,6 +245,7 @@ const AdminProducts = () => {
     priceRange: 'all',
     surDevis: 'all'
   });
+  const [searchDebounced, setSearchDebounced] = useState(''); // Recherche avec debounce pour requêtes serveur
   const [page, setPage] = useState(0);
   const [pageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
@@ -297,6 +298,14 @@ const AdminProducts = () => {
         .from('products')
         .select('id, nom, description, prix, actif, categorie, slug, image_1, image_url, ordre, marque, reference, caracteristiques, prime_cee, sur_devis', { count: 'exact' });
       
+      // Apply search filter (server-side) - recherche multi-colonnes avec ilike
+      if (searchDebounced && searchDebounced.trim() !== '') {
+        const searchTerm = `%${searchDebounced.trim()}%`;
+        // Recherche dans nom, description, marque, reference, slug, categorie
+        // Supabase OR syntax: column.ilike.value,column2.ilike.value (sans guillemets autour des valeurs)
+        query = query.or(`nom.ilike.${searchTerm},description.ilike.${searchTerm},marque.ilike.${searchTerm},reference.ilike.${searchTerm},slug.ilike.${searchTerm},categorie.ilike.${searchTerm}`);
+      }
+      
       // Apply category filter (server-side)
       if (filters.category && filters.category !== 'all') {
         query = query.eq('categorie', filters.category);
@@ -312,6 +321,30 @@ const AdminProducts = () => {
       if (filters.surDevis && filters.surDevis !== 'all') {
         const isSurDevis = filters.surDevis === 'oui';
         query = query.eq('sur_devis', isSurDevis);
+      }
+
+      // Apply price range filter (server-side)
+      if (filters.priceRange && filters.priceRange !== 'all') {
+        // Exclure les produits sur devis pour le filtre prix
+        query = query.eq('sur_devis', false);
+        // Appliquer le filtre prix selon la plage
+        switch (filters.priceRange) {
+          case '<50':
+            query = query.lt('prix', 50);
+            break;
+          case '50-100':
+            query = query.gte('prix', 50).lt('prix', 100);
+            break;
+          case '100-200':
+            query = query.gte('prix', 100).lt('prix', 200);
+            break;
+          case '200-500':
+            query = query.gte('prix', 200).lt('prix', 500);
+            break;
+          case '>500':
+            query = query.gte('prix', 500);
+            break;
+        }
       }
       
       // Apply ordering and pagination
@@ -347,62 +380,34 @@ const AdminProducts = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, page, pageSize, filters.category, filters.status, filters.surDevis]);
+  }, [toast, page, pageSize, filters.category, filters.status, filters.surDevis, filters.priceRange, searchDebounced]);
 
   useEffect(() => {
     fetchCategories();
     fetchProducts();
   }, [fetchCategories, fetchProducts]);
   
-  // Reset to page 0 when server-side filters change (not search)
+  // Debounce pour la recherche (500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounced(filters.search);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+  
+  // Reset to page 0 when server-side filters change (including search and price)
   useEffect(() => {
     setPage(0);
-  }, [filters.category, filters.status, filters.surDevis]);
+  }, [filters.category, filters.status, filters.surDevis, filters.priceRange, searchDebounced]);
   
   const totalPages = Math.ceil(totalCount / pageSize);
   const canGoPrevious = page > 0;
   const canGoNext = page < totalPages - 1;
 
-  // Client-side search and price filter (applied to already filtered server results)
+  // Les produits sont déjà filtrés côté serveur, pas besoin de filtrage client supplémentaire
   const filteredProducts = useMemo(() => {
-    let filtered = allProducts;
-
-    // Search filter
-    if (filters.search && filters.search.trim() !== '') {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(product => {
-        return product.nom.toLowerCase().includes(searchLower) ||
-          (product.description && product.description.toLowerCase().includes(searchLower)) ||
-          (product.marque && product.marque.toLowerCase().includes(searchLower)) ||
-          (product.reference && product.reference.toLowerCase().includes(searchLower)) ||
-          (product.categorie && formatCategory(product.categorie, categories).toLowerCase().includes(searchLower));
-      });
-    }
-
-    // Price range filter (client-side)
-    if (filters.priceRange && filters.priceRange !== 'all') {
-      filtered = filtered.filter(product => {
-        if (!product.prix || product.sur_devis) return false;
-        const price = parseFloat(product.prix);
-        switch (filters.priceRange) {
-          case '<50':
-            return price < 50;
-          case '50-100':
-            return price >= 50 && price < 100;
-          case '100-200':
-            return price >= 100 && price < 200;
-          case '200-500':
-            return price >= 200 && price < 500;
-          case '>500':
-            return price >= 500;
-          default:
-            return true;
-        }
-      });
-    }
-
-    return filtered;
-  }, [allProducts, filters.search, filters.priceRange, categories]);
+    return allProducts;
+  }, [allProducts]);
 
   const handleFilterChange = (filterName, value) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
@@ -423,7 +428,7 @@ const AdminProducts = () => {
     filters.status !== 'all' || 
     filters.priceRange !== 'all' || 
     filters.surDevis !== 'all' || 
-    (filters.search && filters.search.trim() !== '');
+    (searchDebounced && searchDebounced.trim() !== '');
 
   const handleEdit = (productId) => {
     navigate(`/produits/${productId}/edit`);
@@ -469,12 +474,62 @@ const AdminProducts = () => {
 
   const handleDelete = async (productId) => {
     try {
-      const { error } = await supabase.from('products').delete().eq('id', productId);
-      if (error) throw error;
-      toast({ title: "Produit supprimé", description: "Le produit a été supprimé avec succès." });
+      // Step 1: Supprimer tous les liens product_accessories où ce produit est impliqué
+      // (soit comme produit principal, soit comme accessoire)
+      const { error: linksError } = await supabase
+        .from('product_accessories')
+        .delete()
+        .or(`product_id.eq.${productId},accessory_id.eq.${productId}`);
+      
+      if (linksError) {
+        // Si la table n'existe pas ou autre erreur non-critique, on continue quand même
+        // (la table pourrait ne pas exister dans certains environnements)
+        if (linksError.code !== '42P01' && !linksError.message?.includes('does not exist')) {
+          logger.warn('Erreur lors de la suppression des liens accessoires:', linksError);
+          // On continue quand même, peut-être que les liens n'existent pas
+        }
+      }
+
+      // Step 2: Supprimer le produit lui-même
+      const { error: deleteError } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId);
+      
+      if (deleteError) {
+        // Vérifier si c'est une erreur de contrainte FK
+        if (deleteError.code === '23503' || deleteError.message?.includes('foreign key constraint')) {
+          const errorMsg = deleteError.message || 'Erreur de contrainte';
+          // Extraire le nom de la table référencée si possible
+          let detailMsg = 'Ce produit est encore référencé dans d\'autres tables.';
+          if (errorMsg.includes('product_accessories')) {
+            detailMsg = 'Ce produit est encore utilisé comme accessoire d\'un autre produit. Supprimez d\'abord les liens dans la gestion des accessoires.';
+          } else if (errorMsg.includes('commandes_lignes')) {
+            detailMsg = 'Ce produit est encore présent dans des commandes. Vous ne pouvez pas le supprimer.';
+          }
+          toast({ 
+            title: "Erreur de suppression", 
+            description: detailMsg,
+            variant: "destructive" 
+          });
+        } else {
+          throw deleteError;
+        }
+        return;
+      }
+
+      toast({ 
+        title: "Produit supprimé", 
+        description: "Le produit et ses liens d'accessoires ont été supprimés avec succès." 
+      });
       fetchProducts();
     } catch (error) {
-      toast({ title: "Erreur de suppression", description: `La suppression a échoué: ${error.message}`, variant: "destructive" });
+      logger.error('Erreur lors de la suppression du produit:', error);
+      toast({ 
+        title: "Erreur de suppression", 
+        description: `La suppression a échoué: ${error.message || 'Erreur inconnue'}`,
+        variant: "destructive" 
+      });
     }
   };
 
@@ -497,7 +552,15 @@ const AdminProducts = () => {
         </div>
       );
     }
-    if (allProducts.length === 0) {
+    // Vérifier si on a des filtres actifs pour déterminer le message approprié
+    const hasActiveFilters = filters.category !== 'all' || 
+      filters.status !== 'all' || 
+      filters.priceRange !== 'all' || 
+      filters.surDevis !== 'all' || 
+      (searchDebounced && searchDebounced.trim() !== '');
+
+    if (allProducts.length === 0 && !hasActiveFilters && totalCount === 0) {
+        // Aucun produit du tout dans la base (sans filtres)
         return (
             <div className="empty-state col-span-full text-center py-20">
                 <span className="text-6xl" role="img" aria-label="box">📦</span>
@@ -509,12 +572,25 @@ const AdminProducts = () => {
             </div>
         );
     }
-    if (filteredProducts.length === 0) {
+    if (allProducts.length === 0 && hasActiveFilters) {
+      // Aucun produit trouvé avec les filtres actifs
       return (
         <div className="empty-state col-span-full text-center py-20">
           <span className="text-6xl" role="img" aria-label="search">🕵️</span>
           <h3 className="text-2xl font-semibold mt-4">Aucun produit trouvé</h3>
-          <p className="text-gray-600 my-2">Ajustez vos filtres ou créez un nouveau produit.</p>
+          <p className="text-gray-600 my-2">
+            {searchDebounced && searchDebounced.trim() !== '' 
+              ? `Aucun produit ne correspond à "${searchDebounced}".`
+              : 'Aucun produit ne correspond à vos critères de filtrage.'}
+          </p>
+          <p className="text-sm text-gray-500 my-2">Ajustez vos filtres ou créez un nouveau produit.</p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={resetFilters}
+          >
+            Réinitialiser les filtres
+          </Button>
         </div>
       );
     }
@@ -533,7 +609,7 @@ const AdminProducts = () => {
   };
 
   const activeFiltersCount = [
-    filters.search && filters.search.trim() !== '',
+    searchDebounced && searchDebounced.trim() !== '',
     filters.category !== 'all',
     filters.status !== 'all',
     filters.priceRange !== 'all',

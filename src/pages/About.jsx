@@ -2,197 +2,275 @@ import React from 'react';
 import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Award, Target, Users, Globe, CheckCircle2, Building2, Factory, Store, MapPin, Zap, Shield, FileCheck, Lightbulb, TrendingUp, Phone, Calculator } from 'lucide-react';
+import {
+  CheckCircle2,
+  Building2,
+  Factory,
+  Store,
+  MapPin,
+  TrendingUp,
+  Users,
+  Award,
+  ArrowRight,
+  Phone,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { trackCtaStudy, trackCtaCallback } from '@/lib/effinorAnalytics';
+import { IMAGES } from '@/config/images';
+
+const fadeUp = {
+  initial: { opacity: 0, y: 30 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true },
+  transition: { duration: 0.6 },
+};
 
 const About = () => {
-  const values = [
-    {
-      icon: Award,
-      title: 'Excellence',
-      description: 'Produits certifiés CE et conformes aux normes les plus strictes. Sélection rigoureuse de nos fournisseurs et contrôles qualité systématiques.'
-    },
-    {
-      icon: Target,
-      title: 'Performance',
-      description: 'Solutions LED haute efficacité pour optimiser vos économies d\'énergie. Jusqu\'à 35% d\'économies constatées en moyenne sur vos factures.'
-    },
-    {
-      icon: Users,
-      title: 'Accompagnement',
-      description: 'Équipe d\'experts photométriques à votre écoute. Études DIALux gratuites et conseil personnalisé pour chaque projet.'
-    },
-    {
-      icon: Globe,
-      title: 'Engagement',
-      description: 'Solutions durables pour un avenir énergétique responsable. Réduction de l\'empreinte carbone et transition énergétique réussie.'
-    }
-  ];
-
   const stats = [
-    { icon: TrendingUp, number: '+1 200', label: 'projets accompagnés', color: 'text-blue-600' },
-    { icon: Users, number: '180+', label: 'clients professionnels', color: 'text-green-600' },
-    { icon: Award, number: '4,8/5', label: 'satisfaction client', color: 'text-yellow-600' },
-    { icon: Zap, number: '35%', label: 'd\'économies d\'énergie moyenne', color: 'text-purple-600' }
-  ];
-
-  const whyChooseUs = [
     {
-      icon: Calculator,
-      title: 'Expertise photométrique DIALux',
-      description: 'Études photométriques gratuites réalisées par nos ingénieurs pour dimensionner précisément votre installation LED professionnelle.'
-    },
-    {
-      icon: Shield,
-      title: 'Produits certifiés CE/ROHS',
-      description: 'Tous nos luminaires LED professionnels sont certifiés CE, conformes aux normes européennes et garantis constructeur.'
-    },
-    {
-      icon: Award,
-      title: 'Qualité premium garantie',
-      description: 'Sélection rigoureuse de nos fournisseurs, tests photométriques systématiques et contrôle qualité à chaque étape.'
-    },
-    {
-      icon: FileCheck,
-      title: 'Garantie professionnelle',
-      description: 'Garantie constructeur jusqu\'à 5 ans sur sélection, avec SAV réactif et pièces détachées disponibles.'
+      icon: TrendingUp,
+      number: '500+',
+      label: 'dossiers qualifiés',
+      color: 'text-blue-600',
     },
     {
       icon: Users,
-      title: 'Installation & conseil expert',
-      description: 'Accompagnement complet de l\'étude à l\'installation, avec conseil technique personnalisé pour chaque projet.'
+      number: '10+ ans',
+      label: "d'expertise Groupe Effinor",
+      color: 'text-green-600',
     },
     {
-      icon: Phone,
-      title: 'SAV réactif',
-      description: 'Support technique disponible et intervention rapide pour garantir la continuité de votre activité professionnelle.'
-    }
+      icon: Award,
+      number: '2 offres',
+      label: 'PAC & déstratification',
+      color: 'text-yellow-600',
+    },
+    {
+      icon: MapPin,
+      number: 'France',
+      label: "intervention nationale",
+      color: 'text-purple-600',
+    },
   ];
 
   const domains = [
-    { icon: Factory, title: 'Entrepôts logistiques', description: 'Éclairage LED haute performance pour entrepôts, centres de distribution et plateformes logistiques.' },
-    { icon: Building2, title: 'Sites industriels', description: 'Solutions LED robustes pour usines, ateliers de production et environnements industriels exigeants.' },
-    { icon: Store, title: 'Commerces & retail', description: 'Éclairage LED professionnel pour magasins, grandes surfaces et espaces commerciaux.' },
-    { icon: Building2, title: 'Collectivités', description: 'Solutions LED durables pour bâtiments publics, écoles, hôpitaux et administrations.' },
-    { icon: Building2, title: 'Tertiaire & bureaux', description: 'Éclairage LED confort visuel pour bureaux, open spaces et espaces de travail modernes.' },
-    { icon: MapPin, title: 'Éclairage extérieur pro', description: 'Projecteurs LED IP65+ pour parkings, cours, façades et éclairage extérieur professionnel.' }
+    {
+      icon: Factory,
+      title: 'Industrie & logistique',
+      description:
+        "Entrepôts et ateliers à grand volume : déstratification pour améliorer le confort et réduire les coûts de chauffage.",
+      img: IMAGES.inline.entrepotLogistique,
+      imgAlt: 'Entrepôt logistique avec racks de stockage hauts et chariots élévateurs',
+    },
+    {
+      icon: Building2,
+      title: 'Tertiaire & bureaux',
+      description:
+        "Bureaux, établissements, bâtiments d'activité : pompe à chaleur et déstratification pour maîtriser les charges.",
+      img: IMAGES.inline.bureauxOpenSpace,
+      imgAlt: 'Open space tertiaire moderne — bureaux avec hauteur sous plafond',
+    },
+    {
+      icon: Store,
+      title: 'Commerces & accueil public',
+      description:
+        "Confort client, maîtrise des charges, image : solutions adaptées aux sites à fort passage.",
+      img: IMAGES.inline.centreCommercialRetail,
+      imgAlt: 'Centre commercial multi-niveaux — espace retail et accueil public',
+    },
+    {
+      icon: Building2,
+      title: 'Copropriétés & résidentiel collectif',
+      description:
+        "Pompe à chaleur pour copropriétés et logements collectifs : confort, économies et accompagnement complet.",
+      img: IMAGES.inline.coproprieteImmeuble,
+      imgAlt: 'Résidence de copropriété moderne — immeubles collectifs avec balcons',
+    },
+    {
+      icon: Building2,
+      title: 'Établissements & ERP',
+      description:
+        "Écoles, établissements de santé, ERP : solutions dimensionnées selon les exigences spécifiques de chaque usage.",
+      img: IMAGES.inline.etablissementERP,
+      imgAlt: 'Établissement recevant du public — grande surface commerciale avec plafond apparent',
+    },
+    {
+      icon: MapPin,
+      title: 'Intervention nationale',
+      description:
+        "Nous intervenons sur tout le territoire français avec la même approche : étude, préconisation, accompagnement.",
+    },
   ];
 
   const processSteps = [
     {
       step: '1',
-      title: 'Étude & diagnostic',
-      description: 'Analyse de votre installation actuelle, relevé photométrique et identification des opportunités d\'optimisation énergétique.'
+      title: 'Analyse de votre bâtiment',
+      description:
+        'Nous recueillons les informations essentielles : surface, usage, équipements actuels, contraintes spécifiques.',
     },
     {
       step: '2',
-      title: 'Simulation photométrique',
-      description: 'Étude DIALux gratuite pour dimensionner précisément votre projet LED et visualiser les résultats avant installation.'
+      title: 'Étude personnalisée',
+      description:
+        'Un bilan adapté à votre situation, avec une estimation des économies potentielles et des solutions adaptées.',
     },
     {
       step: '3',
-      title: 'Proposition technique',
-      description: 'Devis détaillé avec sélection de produits adaptés, plan d\'installation et calcul précis du retour sur investissement.'
+      title: 'Préconisation adaptée',
+      description:
+        'Nous vous recommandons la solution la plus pertinente pour votre bâtiment et vos objectifs.',
     },
     {
       step: '4',
-      title: 'Installation ou accompagnement',
-      description: 'Installation par nos équipes certifiées ou accompagnement pour vos équipes internes, avec formation et support technique.'
-    }
+      title: 'Mise en œuvre',
+      description:
+        'Installation par des professionnels qualifiés, dans le respect de vos délais et de vos contraintes.',
+    },
+    {
+      step: '5',
+      title: 'Suivi',
+      description:
+        "Un accompagnement jusqu’à la clôture du projet, y compris les démarches CEE si applicable.",
+    },
   ];
 
-  const certifications = [
-    { title: 'Conformité CE', description: 'Tous nos produits respectent la directive européenne sur la sécurité des équipements électriques.' },
-    { title: 'ROHS', description: 'Conformité aux restrictions sur les substances dangereuses pour un éclairage LED respectueux de l\'environnement.' },
-    { title: 'Efficacité énergétique', description: 'Luminaires LED haute performance certifiés, avec fiches techniques détaillées et garanties constructeur.' },
-    { title: 'Garantie constructeur', description: 'Garantie jusqu\'à 5 ans sur sélection, avec SAV réactif et disponibilité des pièces détachées.' }
+  const reassuranceItems = [
+    'Un interlocuteur unique',
+    'Une étude adaptée à votre situation',
+    'Une solution dimensionnée',
+    'Un accompagnement administratif (CEE)',
+    'Un suivi après mise en œuvre',
   ];
 
   return (
     <>
       <Helmet>
-        <title>À propos - EFFINOR | Expert en éclairage LED professionnel et solutions d'efficacité énergétique</title>
-        <meta name="description" content="EFFINOR, expert en éclairage LED professionnel et solutions d'efficacité énergétique. +1 200 projets accompagnés, études photométriques DIALux gratuites, produits certifiés CE. Solutions LED pour entrepôts, industriels, commerces et collectivités." />
-        <meta name="keywords" content="éclairage LED professionnel, solutions LED, efficacité énergétique, relamping LED, étude photométrique, éclairage industriel, projecteurs LED pro, panneaux LED pro, DIALux, LED entrepôt, LED industriel" />
+        <title>Effinor : spécialiste chauffage, PAC et déstratification | À propos</title>
+        <meta
+          name="description"
+          content="Découvrez Effinor, spécialiste des solutions de chauffage, pompe à chaleur et déstratification pour bâtiments tertiaires et industriels."
+        />
+        <meta
+          name="keywords"
+          content="effinor, pompe à chaleur, déstratification, CEE, chauffage tertiaire, entrepôt, copropriété"
+        />
       </Helmet>
 
-      {/* Hero Section - Full Width Background */}
-      <div className="w-full bg-primary-900 text-white py-8 md:py-12 lg:py-16 pt-24 md:pt-32">
+      {/* ── HERO ── */}
+      <div
+        className="w-full relative bg-dark-section py-10 md:py-16 pt-24 md:pt-32 overflow-hidden"
+        style={{ backgroundImage: `url(${IMAGES.hero.about})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-900/78 via-primary-900/68 to-slate-900/72" />
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-center max-w-4xl mx-auto"
+            className="max-w-3xl mx-auto text-center relative z-10"
           >
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 md:mb-6 text-white">
-              Expert en éclairage LED professionnel et solutions d'efficacité énergétique
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">
+              À propos d&apos;Effinor
             </h1>
-            <p className="text-base md:text-lg lg:text-xl xl:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed px-4">
-              Accompagnons votre transition énergétique avec des solutions LED haute performance, certifiées et garanties. Réduisez vos coûts jusqu'à 35% tout en améliorant la qualité de votre éclairage professionnel.
+            <p className="text-base md:text-lg lg:text-xl text-white/90 leading-relaxed mb-8 max-w-2xl mx-auto">
+              Un interlocuteur unique pour réduire vos coûts de chauffage. Effinor accompagne les entreprises,
+              copropriétés et gestionnaires de bâtiments dans leurs projets de pompe à chaleur et de
+              déstratification, avec une approche claire : performance, confort et maîtrise des coûts.
             </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                to="/contact"
+                onClick={() => trackCtaStudy({ effinor_source: 'about', effinor_cta_location: 'hero' })}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--secondary-500)] text-white font-semibold px-6 py-3 hover:bg-[var(--secondary-600)] transition-colors"
+              >
+                Demander une étude gratuite
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/contact"
+                onClick={() => trackCtaCallback({ effinor_source: 'about', effinor_cta_location: 'hero' })}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 bg-white/10 font-semibold px-6 py-3 hover:bg-white/15 transition-colors"
+              >
+                Être rappelé
+              </Link>
+            </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto py-6 md:py-8 lg:py-12 px-4 overflow-x-hidden">
-        <div className="max-w-[95%] sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto">
-          
-          {/* Section: Notre mission */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="bg-white rounded-lg shadow-md p-4 md:p-6 lg:p-8 xl:p-12 mb-6 md:mb-8 lg:mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-4 md:mb-6">Notre mission</h2>
-            <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
-              <p className="text-lg leading-relaxed">
-                Accompagner les entreprises et collectivités dans leur <strong>transition énergétique</strong> en proposant des <strong>solutions d'éclairage LED professionnel</strong> haute performance, économiques et respectueuses de l'environnement.
+      {/* ── CONTENU PRINCIPAL ── */}
+      <div className="container mx-auto py-8 md:py-12 px-4">
+        <div className="max-w-5xl mx-auto space-y-10 md:space-y-14">
+
+          {/* ── MISSION ── */}
+          <motion.div {...fadeUp} className="bg-white rounded-xl shadow-md p-6 md:p-10">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Notre mission</h2>
+            <div className="space-y-4 text-gray-700 leading-relaxed">
+              <p>
+                Aider les <strong>entreprises, institutionnels et copropriétés</strong> à réduire durablement
+                leurs dépenses de chauffage et le gaspillage thermique dans les bâtiments à grand volume.
               </p>
-              <p className="leading-relaxed">
-                Nous croyons que l'<strong>efficacité énergétique</strong> est un levier majeur de compétitivité et de responsabilité environnementale. Notre expertise en <strong>relamping LED</strong> permet aux professionnels de réduire significativement leurs coûts d'exploitation tout en améliorant la qualité de leur éclairage.
+              <p>
+                Nous intervenons avec deux leviers principaux : la <strong>pompe à chaleur</strong> et la{' '}
+                <strong>déstratification d&apos;air</strong>, en intégrant lorsque c&apos;est possible les
+                dispositifs CEE pour optimiser le financement.
+              </p>
+              <p>
+                Notre objectif est simple : proposer des solutions adaptées à votre bâtiment, compréhensibles et
+                rentables.
               </p>
             </div>
           </motion.div>
 
-          {/* Section: Qui sommes-nous ? */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="bg-white rounded-lg shadow-md p-4 md:p-6 lg:p-8 xl:p-12 mb-6 md:mb-8 lg:mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-4 md:mb-6">Qui sommes-nous ?</h2>
-            <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
-              <p className="text-lg leading-relaxed">
-                <strong>EFFINOR</strong> est une division spécialisée du <strong>Groupe Effinor</strong>, expert reconnu dans les solutions d'<strong>efficacité énergétique</strong> pour les professionnels depuis plus de 10 ans.
+          {/* ── DIFFÉRENCIATION ── */}
+          <motion.div {...fadeUp} className="bg-slate-50 rounded-xl border border-slate-200 p-6 md:p-10">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-4">
+              Une approche claire, sans discours flou
+            </h2>
+            <div className="space-y-4 text-gray-700 leading-relaxed">
+              <p>Nous ne proposons pas un catalogue de solutions énergétiques.</p>
+              <p>
+                Nous analysons votre bâtiment, vos contraintes et vos objectifs pour vous orienter vers les
+                solutions réellement pertinentes.
               </p>
-              <p className="leading-relaxed">
-                Forts de notre expérience dans le domaine de l'<strong>efficacité énergétique</strong>, nous avons développé une expertise unique dans l'<strong>éclairage LED industriel et professionnel</strong>. Notre équipe d'ingénieurs photométriques réalise des <strong>études photométriques DIALux</strong> pour dimensionner précisément chaque projet et garantir des résultats optimaux.
+              <p className="font-medium text-gray-900">Chaque projet est étudié avec une logique simple :</p>
+              <ul className="space-y-2 pt-1">
+                {['Réduire les coûts', 'Améliorer le confort', 'Sécuriser le projet'].map((item) => (
+                  <li key={item} className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-5 h-5 text-[var(--secondary-500)] flex-shrink-0 mt-0.5" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </motion.div>
+
+          {/* ── QUI SOMMES-NOUS ── */}
+          <motion.div {...fadeUp} className="bg-white rounded-xl shadow-md p-6 md:p-10">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Qui sommes-nous ?</h2>
+            <div className="space-y-4 text-gray-700 leading-relaxed">
+              <p>
+                Effinor est une marque spécialisée dans les projets liés au chauffage, aux grands volumes et
+                à l&apos;optimisation énergétique des bâtiments.
               </p>
-              <p className="leading-relaxed">
-                Nous intervenons sur l'ensemble du territoire français et européen, accompagnant les entreprises de toutes tailles dans leur <strong>relamping LED</strong> : de l'audit énergétique initial à l'installation complète, en passant par la simulation photométrique et le conseil technique personnalisé.
+              <p>
+                Nous intervenons principalement sur des projets tertiaires, industriels et résidentiels
+                collectifs, où les enjeux de consommation et de confort sont majeurs.
               </p>
-              <p className="leading-relaxed">
-                Notre approche combine <strong>expertise technique</strong>, <strong>produits LED certifiés</strong> de qualité premium et <strong>accompagnement complet</strong> pour garantir la réussite de chaque projet d'éclairage professionnel.
+              <p>
+                Nos équipes travaillent avec une approche terrain et opérationnelle, en lien direct avec les
+                contraintes réelles des bâtiments et des exploitants.
               </p>
             </div>
           </motion.div>
 
-          {/* Section: Nos chiffres clés */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-6 md:mb-8 text-center">Nos chiffres clés</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* ── PROJETS CONCRETS / STATS ── */}
+          <motion.div {...fadeUp}>
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-6 text-center">
+              Des projets concrets
+            </h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {stats.map((stat, index) => (
                 <motion.div
                   key={index}
@@ -200,216 +278,164 @@ const About = () => {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-xl transition-shadow"
+                  className="bg-white rounded-xl shadow-md p-5 text-center"
                 >
-                  <div className={`w-16 h-16 ${stat.color} bg-opacity-10 rounded-lg flex items-center justify-center mx-auto mb-4`}>
-                    <stat.icon className={`h-8 w-8 ${stat.color}`} />
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50`}>
+                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
-                  <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{stat.number}</div>
-                  <div className="text-gray-600 text-sm md:text-base">{stat.label}</div>
+                  <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">{stat.number}</div>
+                  <div className="text-gray-600 text-sm leading-snug">{stat.label}</div>
                 </motion.div>
               ))}
             </div>
           </motion.div>
 
-          {/* Section: Pourquoi choisir EFFINOR ? */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="bg-white rounded-lg shadow-md p-4 md:p-6 lg:p-8 xl:p-12 mb-6 md:mb-8 lg:mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-6 md:mb-8">Pourquoi choisir EFFINOR ?</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {whyChooseUs.map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="flex items-start space-x-4 p-4 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="w-12 h-12 bg-secondary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <item.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{item.title}</h3>
-                    <p className="text-gray-600 leading-relaxed">{item.description}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Section: Nos valeurs */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-6 md:mb-8 text-center">Nos valeurs</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {values.map((value, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow"
-                >
-                  <div className="w-12 h-12 bg-secondary-600 rounded-lg flex items-center justify-center mb-4">
-                    <value.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">{value.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{value.description}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Section: Notre engagement qualité */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="bg-white rounded-lg shadow-md p-4 md:p-6 lg:p-8 xl:p-12 mb-6 md:mb-8 lg:mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-4 md:mb-6">Notre engagement qualité</h2>
-            <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
-              <p className="leading-relaxed">
-                Tous nos produits d'<strong>éclairage LED professionnel</strong> sont <strong>certifiés CE</strong> et répondent aux normes européennes les plus strictes en matière de sécurité électrique et de performance énergétique. Nous sélectionnons rigoureusement nos fournisseurs selon des critères d'excellence : qualité des composants, efficacité lumineuse, durabilité et conformité réglementaire.
-              </p>
-              <p className="leading-relaxed">
-                Chaque gamme de produits est testée en laboratoire pour garantir une qualité optimale et une durabilité exceptionnelle. Nos <strong>tests photométriques</strong> vérifient l'efficacité lumineuse, la répartition de la lumière, la température de couleur et la durée de vie des <strong>luminaires LED professionnels</strong>.
-              </p>
-              <p className="leading-relaxed">
-                Notre équipe technique réalise des <strong>études photométriques DIALux gratuites</strong> pour dimensionner précisément vos besoins et optimiser votre installation. Ces simulations permettent de visualiser les résultats avant installation, d'optimiser le nombre de luminaires nécessaires et de garantir un éclairage uniforme et performant.
-              </p>
-              <p className="leading-relaxed">
-                Nous garantissons la <strong>conformité aux normes</strong> (CE, ROHS, efficacité énergétique) et la traçabilité complète de nos produits, avec fiches techniques détaillées et garanties constructeur jusqu'à 5 ans sur sélection.
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Section: Nos domaines d'intervention */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-6 md:mb-8 text-center">Nos domaines d'intervention</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* ── DOMAINES D'INTERVENTION ── */}
+          <motion.div {...fadeUp}>
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-6 text-center">
+              Nos domaines d&apos;intervention
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {domains.map((domain, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow"
+                  transition={{ duration: 0.5, delay: index * 0.08 }}
+                  className={`rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow ${domain.img ? 'relative' : 'bg-white p-5'}`}
+                  style={domain.img ? { minHeight: '180px' } : {}}
                 >
-                  <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center mb-4">
-                    <domain.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{domain.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{domain.description}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Section: Notre process en 4 étapes */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="bg-white rounded-lg shadow-md p-4 md:p-6 lg:p-8 xl:p-12 mb-6 md:mb-8 lg:mb-12"
-          >
-            <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-6 md:mb-8 text-center">Notre process en 4 étapes</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {processSteps.map((step, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="relative"
-                >
-                  <div className="bg-secondary-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold mb-4">
-                    {step.step}
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">{step.title}</h3>
-                  <p className="text-gray-600 leading-relaxed text-sm">{step.description}</p>
-                  {index < processSteps.length - 1 && (
-                    <div className="hidden lg:block absolute top-6 left-1/2 w-full h-0.5 bg-gray-200 -z-10" style={{ transform: 'translateX(50%)' }} />
+                  {domain.img ? (
+                    <>
+                      <img
+                        src={domain.img}
+                        alt={domain.imgAlt || domain.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={domain.imgPosition ? { objectPosition: domain.imgPosition } : undefined}
+                        loading="lazy"
+                        width="600"
+                        height="400"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/50 to-slate-900/10" />
+                      <div className="relative z-10 p-5 h-full flex flex-col justify-end">
+                        <div className="w-8 h-8 bg-[var(--secondary-500)] rounded-lg flex items-center justify-center mb-2">
+                          <domain.icon className="h-4 w-4 text-white" />
+                        </div>
+                        <h3 className="font-semibold text-white mb-1 leading-snug">{domain.title}</h3>
+                        <p className="text-white/75 text-xs leading-relaxed">{domain.description}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center mb-3">
+                        <domain.icon className="h-5 w-5 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-2">{domain.title}</h3>
+                      <p className="text-gray-600 text-sm leading-relaxed">{domain.description}</p>
+                    </>
                   )}
                 </motion.div>
               ))}
             </div>
           </motion.div>
 
-          {/* Section: Certifications & garanties */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="bg-white rounded-lg shadow-md p-8 md:p-12 mb-12"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">Certifications & garanties</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {certifications.map((cert, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="flex items-start space-x-4 p-4 rounded-lg border border-gray-200 hover:border-secondary-500 transition-colors"
-                >
-                  <CheckCircle2 className="h-6 w-6 text-secondary-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{cert.title}</h3>
-                    <p className="text-gray-600 leading-relaxed">{cert.description}</p>
-                  </div>
-                </motion.div>
-              ))}
+          {/* ── VISUEL TERRAIN ── */}
+          <motion.div {...fadeUp} className="rounded-2xl overflow-hidden shadow-lg">
+            <div className="relative h-56 md:h-72">
+              <img
+                src={IMAGES.about.team}
+                alt="Équipe Effinor en réunion projet"
+                className="w-full h-full object-cover"
+                loading="lazy"
+                width="1200"
+                height="500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-slate-900/20" />
+              <div className="absolute inset-0 flex items-center px-6 md:px-10">
+                <div className="max-w-md">
+                  <p className="text-sm font-medium text-[var(--secondary-400)] mb-1">Notre approche</p>
+                  <p className="text-white text-lg md:text-xl font-semibold leading-snug">
+                    Une équipe orientée terrain, avec une logique opérationnelle et des réponses concrètes.
+                  </p>
+                </div>
+              </div>
             </div>
           </motion.div>
 
-          {/* Section: CTA Final */}
+          {/* ── MÉTHODE ── */}
+          <motion.div {...fadeUp} className="bg-white rounded-xl shadow-md p-6 md:p-10">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-6 text-center">
+              Une méthode simple et structurée
+            </h2>
+            <ol className="space-y-4">
+              {processSteps.map((step, index) => (
+                <li
+                  key={index}
+                  className="flex gap-4 border border-gray-200 rounded-xl bg-slate-50 p-4"
+                >
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--secondary-500)]/15 text-[var(--secondary-700)] font-bold flex items-center justify-center text-sm">
+                    {step.step}
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{step.title}</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{step.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </motion.div>
+
+          {/* ── RÉASSURANCE ── */}
+          <motion.div {...fadeUp} className="bg-slate-50 rounded-xl border border-slate-200 p-6 md:p-10">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-5">
+              Un projet encadré de A à Z
+            </h2>
+            <ul className="space-y-3">
+              {reassuranceItems.map((item) => (
+                <li key={item} className="flex gap-3 items-start">
+                  <CheckCircle2 className="w-5 h-5 text-[var(--secondary-500)] flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-700 leading-relaxed">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* ── CTA FINAL ── */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="bg-gradient-to-r from-primary-900 to-primary-800 rounded-lg shadow-xl p-8 md:p-12 text-center"
+            {...fadeUp}
+            className="bg-gradient-to-r from-primary-900 to-primary-800 bg-dark-section rounded-xl shadow-xl p-8 md:p-12 text-center"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Prêt à réduire vos coûts d'éclairage jusqu'à 35% ?</h2>
-            <p className="text-xl text-white mb-8 max-w-2xl mx-auto">
-              Contactez nos experts en éclairage LED professionnel pour une étude photométrique gratuite et un devis personnalisé.
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">
+              Parlons de votre bâtiment
+            </h2>
+            <p className="text-white/85 mb-8 max-w-xl mx-auto leading-relaxed">
+              Obtenez une étude personnalisée et identifiez les solutions adaptées à votre situation.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/contact">
-                <Button size="lg" className="bg-white text-primary-900 hover:bg-gray-100 font-semibold px-8 py-6 text-lg">
-                  <Phone className="mr-2 h-5 w-5" />
-                  Contactez nos experts
+              <Link
+                to="/contact"
+                onClick={() => trackCtaStudy({ effinor_source: 'about', effinor_cta_location: 'about_cta_block' })}
+              >
+                <Button
+                  size="lg"
+                  className="bg-white text-primary-900 hover:bg-gray-100 font-semibold px-8 py-6 text-base"
+                >
+                  <ArrowRight className="mr-2 h-5 w-5" />
+                  Demander une étude gratuite
                 </Button>
               </Link>
-              <Link to="/formulaire-complet">
-                <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-primary-900 font-semibold px-8 py-6 text-lg bg-transparent">
-                  <Calculator className="mr-2 h-5 w-5" />
-                  Demander une étude photométrique gratuite
+              <Link
+                to="/contact"
+                onClick={() => trackCtaCallback({ effinor_source: 'about', effinor_cta_location: 'about_cta_block' })}
+              >
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-2 border-white text-white hover:bg-white hover:text-primary-900 font-semibold px-8 py-6 text-base bg-transparent"
+                >
+                  <Phone className="mr-2 h-5 w-5" />
+                  Être rappelé
                 </Button>
               </Link>
             </div>

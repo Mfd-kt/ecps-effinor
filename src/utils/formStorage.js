@@ -53,3 +53,60 @@ export const clearFormData = () => {
     return false;
   }
 };
+
+/**
+ * Récupère les données du formulaire depuis les paramètres d'URL
+ * @returns {Object} Données du formulaire depuis l'URL
+ */
+export const getFormDataFromUrl = () => {
+  try {
+    if (typeof window === 'undefined') return {};
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const formData = {};
+    
+    // Récupérer les champs depuis l'URL
+    const nom = urlParams.get('nom');
+    const prenom = urlParams.get('prenom');
+    const email = urlParams.get('email');
+    const telephone = urlParams.get('telephone');
+    const code_postal = urlParams.get('code_postal');
+    const societe = urlParams.get('societe');
+    const leadId = urlParams.get('leadId');
+    
+    // Construire l'objet de données avec décodage URL
+    if (nom) {
+      formData.nom = decodeURIComponent(nom);
+    }
+    if (prenom) {
+      formData.prenom = decodeURIComponent(prenom);
+    }
+    if (email) {
+      formData.email = decodeURIComponent(email);
+    }
+    if (telephone) {
+      formData.telephone = decodeURIComponent(telephone);
+    }
+    if (code_postal) {
+      formData.code_postal = decodeURIComponent(code_postal);
+    }
+    if (societe) {
+      formData.societe = decodeURIComponent(societe);
+    }
+    if (leadId) {
+      formData.leadId = leadId;
+      // Stocker le leadId dans localStorage pour la sauvegarde progressive
+      localStorage.setItem('current_lead_id', leadId);
+    }
+    
+    // Log de debug en développement
+    if (import.meta.env.DEV && Object.keys(formData).length > 0) {
+      logger.debug('📥 Données récupérées depuis l\'URL:', formData);
+    }
+    
+    return formData;
+  } catch (error) {
+    logger.error('Error getting form data from URL:', error);
+    return {};
+  }
+};

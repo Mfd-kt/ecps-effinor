@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://luminaires-cee.groupe-effinor.fr/sitemap.xml

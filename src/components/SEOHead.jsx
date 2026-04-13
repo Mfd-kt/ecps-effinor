@@ -1,5 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet';
+import { getSiteUrl, DEFAULT_OG_IMAGE } from '@/lib/siteUrl';
 
 /**
  * Composant pour injecter les meta tags SEO dans le <head>
@@ -10,15 +11,21 @@ const SEOHead = ({
   metaDescription,
   ogImage,
   isIndexable = true,
+  canonicalUrl,
   h1,
   intro
 }) => {
   // Valeurs par défaut
-  const title = metaTitle || 'Effinor - Spécialiste français de l\'éclairage LED professionnel';
-  const description = metaDescription || 'Effinor propose des solutions d\'éclairage LED professionnel pour l\'industrie, le tertiaire, la logistique et les collectivités.';
-  const image = ogImage || 'https://i.ibb.co/6rT1m18/logo-ecps.png';
-  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://effinor.fr';
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : siteUrl;
+  const title = metaTitle || 'Effinor - Expert en efficacité énergétique pour professionnels | Économies jusqu\'à 80%';
+  const description = metaDescription || 'Effinor propose des solutions complètes d\'efficacité énergétique : éclairage LED, ventilation, chauffage, refroidissement, bornes de recharge. Réduisez vos factures jusqu\'à 80%, ROI < 2 ans.';
+  const image = ogImage || DEFAULT_OG_IMAGE;
+  const siteUrl = getSiteUrl();
+  // Canonical: par défaut, on retire les query params (UTM) et le hash pour éviter le duplicate content
+  const canonical =
+    canonicalUrl ||
+    (typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : siteUrl);
 
   return (
     <Helmet>
@@ -37,7 +44,7 @@ const SEOHead = ({
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content="website" />
-      <meta property="og:url" content={currentUrl} />
+      <meta property="og:url" content={canonical} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
@@ -46,13 +53,13 @@ const SEOHead = ({
 
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:url" content={currentUrl} />
+      <meta name="twitter:url" content={canonical} />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
 
       {/* Canonical URL */}
-      <link rel="canonical" href={currentUrl} />
+      <link rel="canonical" href={canonical} />
     </Helmet>
   );
 };

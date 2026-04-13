@@ -1,14 +1,14 @@
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
+import { getSiteUrl } from '@/lib/siteUrl';
 
 /**
  * Génère un sitemap.xml dynamique basé sur les données de la base
  * @returns {string} - Contenu XML du sitemap
  */
 export const generateSitemap = async () => {
-  const baseUrl = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : 'https://effinor.fr';
+  const baseUrl =
+    typeof window !== 'undefined' ? window.location.origin : getSiteUrl();
 
   const urls = [];
 

@@ -222,7 +222,9 @@ const ProductDetail = () => {
       .map(img => getImageUrl(img))
       .filter(Boolean);
 
-    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const currentUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : '';
     const price = product.prix ? parseFloat(product.prix) : null;
     const availability = product.actif ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
     const priceCurrency = 'EUR';
@@ -425,7 +427,10 @@ const ProductDetail = () => {
         {product.image_1 || product.image_url ? (
           <meta property="og:image" content={getImageUrl(product.image_1 || product.image_url)} />
         ) : null}
-        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.href : ''} />
+        <meta
+          property="og:url"
+          content={typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : ''}
+        />
         <meta property="og:locale" content="fr_FR" />
         <meta property="og:site_name" content="Effinor" />
         
@@ -665,9 +670,8 @@ const ProductDetail = () => {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm text-secondary-700 font-medium mb-2">Prix TTC</p>
-                    <p className="text-4xl font-bold text-secondary-900 mb-1">{parseFloat(product.prix).toFixed(2)} €</p>
-                    <p className="text-sm text-secondary-600">Prix HT disponible sur demande</p>
+                    <p className="text-4xl font-bold text-secondary-900 mb-1">{parseFloat(product.prix).toFixed(2)} € HT</p>
+                    <p className="text-sm text-secondary-600">soit {(parseFloat(product.prix) * 1.20).toFixed(2)} € TTC</p>
                   </div>
                 )}
               </div>
@@ -728,7 +732,7 @@ const ProductDetail = () => {
               </div>
 
               {/* Contact Quick */}
-              <div className="bg-gradient-to-r from-primary-900 to-primary-800 text-white rounded-2xl p-6 shadow-xl">
+              <div className="bg-gradient-to-r from-primary-900 to-primary-800 bg-dark-section rounded-2xl p-6 shadow-xl">
                 <div className="flex items-center gap-4">
                   <div className="bg-white/20 rounded-full p-3">
                     <Phone className="w-6 h-6" />
@@ -980,11 +984,18 @@ const ProductDetail = () => {
                             </p>
                           )}
                           {accessory.prix && !accessory.sur_devis && (
-                            <p className="text-xs md:text-sm font-semibold text-secondary-500 mb-1.5">
-                              {typeof accessory.prix === 'number'
-                                ? `${accessory.prix.toFixed(2)} €`
-                                : accessory.prix}
-                            </p>
+                            <div className="mb-1.5">
+                              <p className="text-xs md:text-sm font-semibold text-secondary-500">
+                                {typeof accessory.prix === 'number'
+                                  ? `${accessory.prix.toFixed(2)} € HT`
+                                  : accessory.prix}
+                              </p>
+                              <p className="text-[10px] md:text-xs text-gray-500">
+                                {typeof accessory.prix === 'number'
+                                  ? `soit ${(accessory.prix * 1.20).toFixed(2)} € TTC`
+                                  : ''}
+                              </p>
+                            </div>
                           )}
                           {accessory.sur_devis && (
                             <p className="text-[10px] md:text-xs text-gray-500 mb-1.5">
@@ -1018,10 +1029,10 @@ const ProductDetail = () => {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-primary-900 text-white rounded-3xl shadow-2xl p-8 lg:p-12 mb-12"
+            className="bg-primary-900 bg-dark-section rounded-3xl shadow-2xl p-8 lg:p-12 mb-12"
           >
             <div className="text-center mb-10">
-              <h2 className="text-3xl lg:text-4xl font-bold mb-4 text-white">Pourquoi choisir Effinor ?</h2>
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">Pourquoi choisir Effinor ?</h2>
               <p className="text-lg text-white/90 max-w-2xl mx-auto">
                 Des solutions LED professionnelles pour optimiser votre efficacité énergétique
               </p>
@@ -1043,7 +1054,7 @@ const ProductDetail = () => {
                   <div className="bg-secondary-500/30 rounded-full p-4 w-16 h-16 flex items-center justify-center mb-4">
                     <item.icon className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-white">{item.title}</h3>
+                  <h3 className="text-xl font-bold mb-2">{item.title}</h3>
                   <p className="text-white/90 text-sm leading-relaxed">{item.desc}</p>
                 </motion.div>
               ))}

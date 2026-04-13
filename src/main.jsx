@@ -9,6 +9,9 @@ import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { BannerProvider } from '@/contexts/BannerContext';
 import AuthErrorBoundary from '@/components/admin/AuthErrorBoundary';
 import '@/index.css';
+import { bootstrapEffinorAnalyticsListeners } from '@/lib/effinorAnalytics';
+
+bootstrapEffinorAnalyticsListeners();
 
 // Wrapper component to pass user from AuthContext to UserProvider
 const AppWithUser = () => {

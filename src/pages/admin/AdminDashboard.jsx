@@ -1,29 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
-import { 
-  TrendingUp, Users, ShoppingCart, FileText, 
-  CheckCircle2, Clock, Send, Trophy, Filter, 
-  RefreshCw, ArrowUpRight, ArrowDownRight,
-  Activity, BarChart3, LineChart, DollarSign, Calendar, 
-  AlertCircle, Eye, X, ChevronRight
-} from 'lucide-react';
-import { 
-  ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend, PieChart as RechartsPieChart, 
-  Pie, Cell, Area, AreaChart
-} from 'recharts';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUser } from '@/contexts/UserContext';
 import { logger } from '@/utils/logger';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
 import { DashboardFilters } from '@/components/admin/dashboard/DashboardFilters';
+import { DashboardKPIs } from '@/components/admin/dashboard/DashboardKPIs';
+import { DashboardCharts } from '@/components/admin/dashboard/DashboardCharts';
+import { DashboardRecentActivity } from '@/components/admin/dashboard/DashboardRecentActivity';
+import { DashboardTopPerformers } from '@/components/admin/dashboard/DashboardTopPerformers';
 
 // ============================================
 // TYPES & INTERFACES (JSDoc comments)
@@ -91,93 +77,6 @@ const COMMANDE_STATUS_COLORS = {
 // ============================================
 // COMPONENTS
 // ============================================
-
-const KPICard = ({ title, value, trend, trendValue, icon: Icon, iconColor = 'bg-gradient-to-br from-green-400 to-emerald-500', loading = false, subtitle, gradientFrom, gradientTo }) => {
-  const isPositive = trendValue >= 0;
-  
-  // Couleurs par défaut basées sur iconColor
-  const colorMap = {
-    'bg-blue-500': { from: 'from-blue-400', to: 'to-cyan-500', shadow: 'shadow-blue-500/20', text: 'text-blue-600' },
-    'bg-green-500': { from: 'from-green-400', to: 'to-emerald-500', shadow: 'shadow-green-500/20', text: 'text-green-600' },
-    'bg-purple-500': { from: 'from-purple-400', to: 'to-pink-500', shadow: 'shadow-purple-500/20', text: 'text-purple-600' },
-    'bg-emerald-500': { from: 'from-emerald-400', to: 'to-teal-500', shadow: 'shadow-emerald-500/20', text: 'text-emerald-600' },
-    'bg-amber-500': { from: 'from-amber-400', to: 'to-orange-500', shadow: 'shadow-amber-500/20', text: 'text-amber-600' },
-    'bg-orange-500': { from: 'from-orange-400', to: 'to-red-500', shadow: 'shadow-orange-500/20', text: 'text-orange-600' },
-  };
-  
-  const colors = colorMap[iconColor] || { from: 'from-indigo-400', to: 'to-purple-500', shadow: 'shadow-indigo-500/20', text: 'text-indigo-600' };
-  
-  if (loading) {
-    return (
-      <Card className="rounded-xl border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50">
-        <CardContent className="p-6">
-          <div className="animate-pulse">
-            <div className="h-3 bg-gray-200 rounded w-20 mb-3"></div>
-            <div className="h-8 bg-gray-200 rounded w-24"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  return (
-    <Card className={`rounded-xl border-0 shadow-lg ${colors.shadow} hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-${colors.from.split('-')[1]}-50/30 h-full`}>
-      <CardContent className="p-4 lg:p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 truncate">{title}</p>
-            <p className={`text-2xl lg:text-3xl font-bold bg-gradient-to-r ${colors.from} ${colors.to} bg-clip-text text-transparent mb-2`}>
-              {value}
-            </p>
-            {subtitle && (
-              <p className="text-xs text-gray-600 font-medium truncate mb-2">{subtitle}</p>
-            )}
-            {trend !== null && trend !== undefined && !isNaN(trendValue) && trendValue !== 0 && (
-              <div className={`flex items-center gap-1.5 text-xs mt-2 font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                {isPositive ? (
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                ) : (
-                  <ArrowDownRight className="h-3.5 w-3.5" />
-                )}
-                <span>{Math.abs(trendValue).toFixed(1)}%</span>
-                <span className="text-gray-400 font-normal">vs précédent</span>
-              </div>
-            )}
-          </div>
-          <div className={`h-12 w-12 lg:h-14 lg:w-14 rounded-xl bg-gradient-to-br ${colors.from} ${colors.to} flex items-center justify-center shadow-lg ${colors.shadow} flex-shrink-0 ml-2 lg:ml-3`}>
-            <Icon className="h-6 w-6 lg:h-7 lg:w-7 text-white" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const StatusBadge = ({ status, type = 'lead' }) => {
-  if (type === 'lead') {
-    const color = STATUS_COLORS[status] || '#6B7280';
-    return (
-      <Badge 
-        variant="outline" 
-        className="text-xs"
-        style={{ borderColor: color, color: color, backgroundColor: `${color}10` }}
-      >
-        {status.replace('_', ' ')}
-      </Badge>
-    );
-  } else {
-    const color = COMMANDE_STATUS_COLORS[status] || '#6B7280';
-    return (
-      <Badge 
-        variant="outline" 
-        className="text-xs"
-        style={{ borderColor: color, color: color, backgroundColor: `${color}10` }}
-      >
-        {status.replace('_', ' ')}
-      </Badge>
-    );
-  }
-};
 
 // ============================================
 // MAIN COMPONENT
@@ -255,6 +154,13 @@ const AdminDashboard = () => {
     return { prevStartDate, prevEndDate };
   };
 
+  // Helper to safely convert Supabase numeric values (DECIMAL can be strings)
+  const toNumber = (value) => {
+    if (value === null || value === undefined || value === '') return 0;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   // Fetch all data
   const fetchData = async () => {
     setLoading(true);
@@ -263,12 +169,13 @@ const AdminDashboard = () => {
       const startISO = startDate.toISOString();
       const endISO = endDate.toISOString();
 
-      // Fetch leads
+      // Fetch leads - ordered by most recent first
       let leadsQuery = supabase
         .from('leads')
         .select('id, created_at, nom, societe, email, telephone, statut, source, montant_cee_estime, responsable_id, commercial_assigne_id')
         .gte('created_at', startISO)
-        .lte('created_at', endISO);
+        .lte('created_at', endISO)
+        .order('created_at', { ascending: false });
       
       // Filter by assigned commercial if user is a commercial
       if (profile?.role?.slug === 'commercial' && profile?.id) {
@@ -279,15 +186,53 @@ const AdminDashboard = () => {
         leadsQuery = leadsQuery.eq('source', source);
       }
       
-      const { data: allLeads, error: leadsError } = await leadsQuery;
-      if (leadsError) throw leadsError;
+      let { data: allLeads, error: leadsError } = await leadsQuery;
+      
+      // Fallback if columns don't exist
+      if (leadsError && (leadsError.message?.includes('column') || leadsError.code === '42703')) {
+        logger.warn('Error fetching leads with full columns, trying fallback');
+        let fallbackLeadsQuery = supabase
+          .from('leads')
+          .select('id, created_at, nom, societe, email, telephone, statut, source')
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+        
+        if (profile?.role?.slug === 'commercial' && profile?.id) {
+          try {
+            fallbackLeadsQuery = fallbackLeadsQuery.eq('commercial_assigne_id', profile.id);
+          } catch (e) {
+            // Column might not exist, ignore
+          }
+        }
+        
+        if (source !== 'all') {
+          fallbackLeadsQuery = fallbackLeadsQuery.eq('source', source);
+        }
+        
+        const { data: fallbackLeads, error: fallbackError } = await fallbackLeadsQuery;
+        if (fallbackError) {
+          throw fallbackError;
+        }
+        // Map fallback data with default values
+        allLeads = (fallbackLeads || []).map(l => ({
+          ...l,
+          montant_cee_estime: 0,
+          responsable_id: null,
+          commercial_assigne_id: null
+        }));
+        leadsError = null;
+      } else if (leadsError) {
+        throw leadsError;
+      }
 
-      // Fetch orders
+      // Fetch orders - ordered by most recent first
       let ordersQuery = supabase
         .from('commandes')
         .select('id, date_creation, reference, nom_client, email, total_ttc, total_ht, paiement_statut, mode_suivi, source, commercial_assigne_id')
         .gte('date_creation', startISO)
-        .lte('date_creation', endISO);
+        .lte('date_creation', endISO)
+        .order('date_creation', { ascending: false });
       
       // Filter by assigned commercial if user is a commercial
       // Note: commandes table might not have commercial_assigne_id yet, so we check if it exists
@@ -305,18 +250,54 @@ const AdminDashboard = () => {
         ordersQuery = ordersQuery.eq('source', source);
       }
       
-      const { data: allOrders, error: ordersError } = await ordersQuery;
-      if (ordersError) {
-        // Fallback if columns don't exist
-        logger.warn('Error fetching orders, trying fallback');
-        const { data: fallbackOrders } = await supabase
+      let { data: allOrders, error: ordersError } = await ordersQuery;
+      
+      // Fallback if columns don't exist (similar to AdminOrders.jsx pattern)
+      if (ordersError && (ordersError.message?.includes('column') || ordersError.code === '42703' || ordersError.message?.includes('date_creation'))) {
+        logger.warn('Error fetching orders with full columns, trying fallback');
+        let fallbackOrdersQuery = supabase
           .from('commandes')
           .select('id, date_creation, reference, nom_client, email')
           .gte('date_creation', startISO)
           .lte('date_creation', endISO);
-        setOrders((fallbackOrders || []).map(o => ({ ...o, total_ttc: 0, paiement_statut: 'en_attente' })));
-      } else {
-        setOrders(allOrders || []);
+        
+        // Try ordering by date_creation, fallback to id if it doesn't exist
+        try {
+          fallbackOrdersQuery = fallbackOrdersQuery.order('date_creation', { ascending: false });
+        } catch (e) {
+          fallbackOrdersQuery = fallbackOrdersQuery.order('id', { ascending: false });
+        }
+        
+        if (source !== 'all') {
+          try {
+            fallbackOrdersQuery = fallbackOrdersQuery.eq('source', source);
+          } catch (e) {
+            // Column might not exist, ignore
+          }
+        }
+        
+        const { data: fallbackOrders, error: fallbackError } = await fallbackOrdersQuery;
+        if (fallbackError) {
+          // If even fallback fails, set empty array
+          logger.error('Fallback query also failed:', fallbackError);
+          allOrders = [];
+        } else {
+          // Map fallback data with default values
+          allOrders = (fallbackOrders || []).map(o => ({
+            ...o,
+            total_ttc: 0,
+            total_ht: 0,
+            paiement_statut: 'en_attente',
+            mode_suivi: null,
+            source: o.source || 'Autre',
+            commercial_assigne_id: null
+          }));
+        }
+        ordersError = null;
+      } else if (ordersError) {
+        // For other errors, log and set empty array
+        logger.error('Error fetching orders:', ordersError);
+        allOrders = [];
       }
 
       // Filter by data type
@@ -324,9 +305,7 @@ const AdminDashboard = () => {
       const filteredOrders = dataType === 'leads' ? [] : (allOrders || []);
 
       setLeads(filteredLeads);
-      if (!ordersError) {
-        setOrders(filteredOrders);
-      }
+      setOrders(filteredOrders);
 
       // Calculate KPIs
       setTotalLeads(filteredLeads.length);
@@ -339,8 +318,11 @@ const AdminDashboard = () => {
       // Orders
       setTotalOrders(filteredOrders.length);
       
-      // Revenue
-      const revenue = (filteredOrders || []).reduce((sum, o) => sum + (o.total_ttc || o.total_ht || 0), 0);
+      // Revenue - safely parse numeric values (Supabase DECIMAL can be strings)
+      const revenue = (filteredOrders || []).reduce((sum, o) => {
+        const amount = toNumber(o.total_ttc) || toNumber(o.total_ht) || 0;
+        return sum + amount;
+      }, 0);
       setTotalRevenue(revenue);
       setAvgBasket(filteredOrders.length > 0 ? revenue / filteredOrders.length : 0);
       
@@ -354,57 +336,146 @@ const AdminDashboard = () => {
       ).length;
       setPendingOrders(pending);
 
-      // Trends (compare with previous period)
+      // Trends (compare with previous period) - apply same filters as current view
       const { prevStartDate, prevEndDate } = getPreviousPeriod();
-      const { count: prevLeadsCount } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', prevStartDate.toISOString())
-        .lte('created_at', prevEndDate.toISOString());
-      
-      const { count: prevOrdersCount } = await supabase
-        .from('commandes')
-        .select('*', { count: 'exact', head: true })
-        .gte('date_creation', prevStartDate.toISOString())
-        .lte('date_creation', prevEndDate.toISOString());
+      const prevStartISO = prevStartDate.toISOString();
+      const prevEndISO = prevEndDate.toISOString();
+
+      // Only calculate trends if relevant data type is shown
+      let prevLeadsCount = 0;
+      let prevOrdersCount = 0;
+
+      if (dataType === 'all' || dataType === 'leads') {
+        // Apply same filters as main query
+        let prevLeadsQuery = supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', prevStartISO)
+          .lte('created_at', prevEndISO);
+        
+        // Filter by assigned commercial if user is a commercial
+        if (profile?.role?.slug === 'commercial' && profile?.id) {
+          try {
+            prevLeadsQuery = prevLeadsQuery.eq('commercial_assigne_id', profile.id);
+          } catch (e) {
+            // Column might not exist, ignore
+          }
+        }
+        
+        // Filter by source if specified
+        if (source !== 'all') {
+          try {
+            prevLeadsQuery = prevLeadsQuery.eq('source', source);
+          } catch (e) {
+            // Column might not exist, ignore
+          }
+        }
+        
+        const { count, error: prevLeadsError } = await prevLeadsQuery;
+        if (prevLeadsError && (prevLeadsError.message?.includes('column') || prevLeadsError.code === '42703')) {
+          // Fallback: try without filters if columns don't exist
+          const { count: fallbackCount } = await supabase
+            .from('leads')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', prevStartISO)
+            .lte('created_at', prevEndISO);
+          prevLeadsCount = fallbackCount || 0;
+        } else {
+          prevLeadsCount = count || 0;
+        }
+      }
+
+      if (dataType === 'all' || dataType === 'commandes') {
+        // Apply same filters as main query
+        let prevOrdersQuery = supabase
+          .from('commandes')
+          .select('*', { count: 'exact', head: true })
+          .gte('date_creation', prevStartISO)
+          .lte('date_creation', prevEndISO);
+        
+        // Filter by assigned commercial if user is a commercial
+        if (profile?.role?.slug === 'commercial' && profile?.id) {
+          try {
+            prevOrdersQuery = prevOrdersQuery.eq('commercial_assigne_id', profile.id);
+          } catch (e) {
+            // Column might not exist, ignore
+          }
+        }
+        
+        // Filter by source if specified
+        if (source !== 'all') {
+          try {
+            prevOrdersQuery = prevOrdersQuery.eq('source', source);
+          } catch (e) {
+            // Column might not exist, ignore
+          }
+        }
+        
+        const { count, error: prevOrdersError } = await prevOrdersQuery;
+        if (prevOrdersError && (prevOrdersError.message?.includes('column') || prevOrdersError.code === '42703' || prevOrdersError.message?.includes('date_creation'))) {
+          // Fallback: try without filters if columns don't exist
+          const { count: fallbackCount } = await supabase
+            .from('commandes')
+            .select('*', { count: 'exact', head: true })
+            .gte('date_creation', prevStartISO)
+            .lte('date_creation', prevEndISO);
+          prevOrdersCount = fallbackCount || 0;
+        } else {
+          prevOrdersCount = count || 0;
+        }
+      }
 
       const leadsTrendValue = (prevLeadsCount || 0) > 0 
-        ? ((filteredLeads.length - (prevLeadsCount || 0)) / (prevLeadsCount || 0) * 100)
-        : 0;
+        ? ((filteredLeads.length - prevLeadsCount) / prevLeadsCount * 100)
+        : (filteredLeads.length > 0 ? 100 : 0); // If no previous data but current has data, show 100% increase
       setLeadsTrend(leadsTrendValue);
 
       const ordersTrendValue = (prevOrdersCount || 0) > 0
-        ? ((filteredOrders.length - (prevOrdersCount || 0)) / (prevOrdersCount || 0) * 100)
-        : 0;
+        ? ((filteredOrders.length - prevOrdersCount) / prevOrdersCount * 100)
+        : (filteredOrders.length > 0 ? 100 : 0); // If no previous data but current has data, show 100% increase
       setOrdersTrend(ordersTrendValue);
 
-      // Chart data
-      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      // Chart data - inclusive range (startDate to endDate)
+      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1; // +1 to include endDate
       const periodMap = new Map();
       
       if (chartView === 'daily' && daysDiff <= 90) {
+        // Include all days from startDate to endDate (inclusive)
         for (let i = 0; i < daysDiff; i++) {
           const d = new Date(startDate);
           d.setDate(d.getDate() + i);
-          const key = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-          periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
+          // Only include if date is <= endDate
+          if (d <= endDate) {
+            const key = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+            periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
+          }
         }
       } else if (chartView === 'weekly') {
+        // Calculate weeks inclusively from startDate to endDate
         const weeks = Math.ceil(daysDiff / 7);
         for (let i = 0; i < weeks; i++) {
           const d = new Date(startDate);
           d.setDate(d.getDate() + (i * 7));
-          const weekNum = Math.ceil((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
-          const key = `Sem. ${weekNum}`;
-          periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
+          // Only include if week start is <= endDate
+          if (d <= endDate) {
+            const weekNum = i + 1; // Start at 1, not 0
+            const key = `Sem. ${weekNum}`;
+            periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
+          }
         }
       } else {
-        const months = Math.ceil(daysDiff / 30);
-        for (let i = 0; i < months; i++) {
-          const d = new Date(startDate);
-          d.setMonth(d.getMonth() + i);
-          const key = d.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
-          periodMap.set(key, { name: key, leads: 0, commandes: 0, date: d });
+        // Monthly view - include all months from startDate to endDate
+        const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+        const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+        let currentMonth = new Date(startMonth);
+        let monthIndex = 0;
+        
+        while (currentMonth <= endMonth) {
+          const key = currentMonth.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
+          periodMap.set(key, { name: key, leads: 0, commandes: 0, date: new Date(currentMonth) });
+          // Move to next month
+          currentMonth.setMonth(currentMonth.getMonth() + 1);
+          monthIndex++;
         }
       }
 
@@ -415,7 +486,9 @@ const AdminDashboard = () => {
         if (chartView === 'daily') {
           key = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
         } else if (chartView === 'weekly') {
-          const weekNum = Math.ceil((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+          // Calculate which week (1-based) this date falls into
+          const daysSinceStart = Math.floor((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const weekNum = Math.floor(daysSinceStart / 7) + 1; // Start at 1, not 0
           key = `Sem. ${weekNum}`;
         } else {
           key = date.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
@@ -431,7 +504,9 @@ const AdminDashboard = () => {
         if (chartView === 'daily') {
           key = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
         } else if (chartView === 'weekly') {
-          const weekNum = Math.ceil((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+          // Calculate which week (1-based) this date falls into
+          const daysSinceStart = Math.floor((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const weekNum = Math.floor(daysSinceStart / 7) + 1; // Start at 1, not 0
           key = `Sem. ${weekNum}`;
         } else {
           key = date.toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
@@ -486,7 +561,8 @@ const AdminDashboard = () => {
         const stats = sourceMap.get(src);
         if (stats) {
           stats.orders++;
-          stats.revenue += (order.total_ttc || order.total_ht || 0);
+          const amount = toNumber(order.total_ttc) || toNumber(order.total_ht) || 0;
+          stats.revenue += amount;
         }
       });
       sourceMap.forEach((stats, src) => {
@@ -504,7 +580,8 @@ const AdminDashboard = () => {
         const client = clientMap.get(clientName);
         if (client) {
           client.orders++;
-          client.revenue += (order.total_ttc || order.total_ht || 0);
+          const amount = toNumber(order.total_ttc) || toNumber(order.total_ht) || 0;
+          client.revenue += amount;
         }
       });
       setTopClients(Array.from(clientMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5));
@@ -550,22 +627,6 @@ const AdminDashboard = () => {
       month: 'short',
       year: 'numeric'
     });
-  };
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border border-slate-200 rounded-lg shadow-lg">
-          <p className="font-semibold mb-2 text-slate-900">{payload[0].payload.name}</p>
-          {payload.map((entry, index) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.name}: {entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
   };
 
   const periodLabel = useMemo(() => {
@@ -624,595 +685,47 @@ const AdminDashboard = () => {
         </div>
 
         {/* KPI Cards */}
-        <div className="mb-6 lg:mb-8">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
-            <div className="h-1 w-1 rounded-full bg-blue-500"></div>
-            Indicateurs clés
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4 lg:gap-6">
-          <KPICard
-            title="Total Leads"
-            value={totalLeads.toLocaleString()}
-            trend={leadsTrend}
-            trendValue={leadsTrend}
-            icon={Users}
-            iconColor="bg-blue-500"
-            loading={loading}
-            subtitle={`Période sélectionnée`}
-          />
-          <KPICard
-            title="Leads qualifiés"
-            value={qualifiedLeads.toLocaleString()}
-            trend={null}
-            trendValue={0}
-            icon={CheckCircle2}
-            iconColor="bg-green-500"
-            loading={loading}
-            subtitle={`${qualifiedPercentage.toFixed(1)}% des leads`}
-          />
-          <KPICard
-            title="Total Commandes"
-            value={totalOrders.toLocaleString()}
-            trend={ordersTrend}
-            trendValue={ordersTrend}
-            icon={ShoppingCart}
-            iconColor="bg-purple-500"
-            loading={loading}
-            subtitle={`Période sélectionnée`}
-          />
-          <KPICard
-            title="CA Commandes (TTC)"
-            value={formatCurrency(totalRevenue)}
-            trend={null}
-            trendValue={0}
-            icon={DollarSign}
-            iconColor="bg-emerald-500"
-            loading={loading}
-            subtitle={`Panier moyen : ${formatCurrency(avgBasket)}`}
-          />
-          <KPICard
-            title="Taux de conversion"
-            value={conversionRate > 0 ? `${conversionRate.toFixed(1)}%` : '—'}
-            trend={null}
-            trendValue={0}
-            icon={TrendingUp}
-            iconColor="bg-amber-500"
-            loading={loading}
-            subtitle={`Lead → Commande`}
-          />
-          <KPICard
-            title="Commandes en attente"
-            value={pendingOrders.toLocaleString()}
-            trend={null}
-            trendValue={0}
-            icon={Clock}
-            iconColor="bg-orange-500"
-            loading={loading}
-            subtitle={`En attente de paiement`}
-          />
-          </div>
-        </div>
+        <DashboardKPIs
+          loading={loading}
+          totalLeads={totalLeads}
+          leadsTrend={leadsTrend}
+          qualifiedLeads={qualifiedLeads}
+          qualifiedPercentage={qualifiedPercentage}
+          totalOrders={totalOrders}
+          ordersTrend={ordersTrend}
+          totalRevenue={totalRevenue}
+          avgBasket={avgBasket}
+          conversionRate={conversionRate}
+          pendingOrders={pendingOrders}
+          formatCurrency={formatCurrency}
+        />
 
         {/* Charts Row */}
-        <div className="mb-6 lg:mb-8">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
-            <div className="h-1 w-1 rounded-full bg-indigo-500"></div>
-            Analyses et graphiques
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 xl:gap-8">
-          {/* Main Chart - 2/3 width */}
-          <Card className="lg:col-span-2 rounded-2xl border-0 shadow-xl shadow-indigo-500/10 bg-gradient-to-br from-white to-indigo-50/30">
-            <CardHeader className="pb-4 bg-gradient-to-r from-indigo-50/50 to-transparent border-b border-indigo-100/50 rounded-t-2xl">
-              <div className="space-y-4">
-                <div>
-                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                      <LineChart className="h-5 w-5 text-white" />
-                    </div>
-                    Évolution Leads & Commandes
-                  </CardTitle>
-                  <CardDescription className="text-sm text-gray-600 mt-2 font-medium">Évolution sur la période sélectionnée</CardDescription>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={chartView === 'daily' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setChartView('daily')}
-                    className={`rounded-lg font-semibold transition-all ${
-                      chartView === 'daily' 
-                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg shadow-indigo-500/30' 
-                        : 'border-2 border-gray-200 hover:border-indigo-300'
-                    }`}
-                  >
-                    Quotidien
-                  </Button>
-                  <Button
-                    variant={chartView === 'weekly' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setChartView('weekly')}
-                    className={`rounded-lg font-semibold transition-all ${
-                      chartView === 'weekly' 
-                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg shadow-indigo-500/30' 
-                        : 'border-2 border-gray-200 hover:border-indigo-300'
-                    }`}
-                  >
-                    Hebdomadaire
-                  </Button>
-                  <Button
-                    variant={chartView === 'monthly' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setChartView('monthly')}
-                    className={`rounded-lg font-semibold transition-all ${
-                      chartView === 'monthly' 
-                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 shadow-lg shadow-indigo-500/30' 
-                        : 'border-2 border-gray-200 hover:border-indigo-300'
-                    }`}
-                  >
-                    Mensuel
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="h-[400px] flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10B981]"></div>
-                </div>
-              ) : chartData.length === 0 ? (
-                <div className="h-[400px] flex flex-col items-center justify-center text-slate-500">
-                  <BarChart3 className="h-12 w-12 text-slate-300 mb-4" />
-                  <p className="text-center font-medium">Aucune donnée disponible</p>
-                </div>
-              ) : (
-                <div className="w-full sm:h-[450px] lg:h-[500px]" style={{ height: 400 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    {(() => {
-                      // Calculer les maximums pour chaque série
-                      const maxCommandes = Math.max(...chartData.map(d => d.commandes || 0), 0);
-                      const maxLeads = Math.max(...chartData.map(d => d.leads || 0), 0);
-                      
-                      // Calculer les domaines avec une marge de 20% minimum
-                      const domainCommandes = maxCommandes === 0 
-                        ? [0, 1] 
-                        : [0, Math.ceil(maxCommandes * 1.2)];
-                      
-                      const domainLeads = maxLeads === 0 
-                        ? [0, 1] 
-                        : [0, Math.ceil(maxLeads * 1.2)];
-                      
-                      return (
-                        <ComposedChart 
-                          data={chartData} 
-                          margin={{ top: 20, right: 15, bottom: chartData.length > 7 ? 60 : 40, left: -15 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                          <XAxis 
-                            dataKey="name" 
-                            stroke="#6B7280"
-                            angle={chartData.length > 7 ? -45 : 0}
-                            textAnchor={chartData.length > 7 ? "end" : "middle"}
-                            height={chartData.length > 7 ? 60 : 40}
-                            interval={0}
-                            tick={{ fontSize: 11 }}
-                            dy={chartData.length > 7 ? 10 : 5}
-                          />
-                          <YAxis 
-                            yAxisId="left" 
-                            stroke="#6B7280"
-                            domain={domainCommandes}
-                            allowDecimals={false}
-                            tick={{ fontSize: 11 }}
-                            width={30}
-                            tickMargin={3}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis 
-                            yAxisId="right" 
-                            orientation="right" 
-                            stroke="#6B7280"
-                            domain={domainLeads}
-                            allowDecimals={false}
-                            tick={{ fontSize: 11 }}
-                            width={30}
-                            tickMargin={3}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Legend 
-                            wrapperStyle={{ paddingTop: '20px' }}
-                            iconType="line"
-                            formatter={(value) => (
-                              <span style={{ color: value === 'Leads' ? '#10B981' : '#3B82F6', fontWeight: 500 }}>
-                                {value}
-                              </span>
-                            )}
-                          />
-                          <Bar 
-                            yAxisId="left" 
-                            dataKey="commandes" 
-                            fill="#3B82F6" 
-                            name="Commandes"
-                            radius={[4, 4, 0, 0]}
-                            maxBarSize={chartData.length > 15 ? 50 : 80}
-                          />
-                          <Line 
-                            yAxisId="right" 
-                            type="monotone" 
-                            dataKey="leads" 
-                            stroke="#10B981" 
-                            strokeWidth={3} 
-                            name="Leads"
-                            activeDot={{ r: 6 }}
-                            dot={{ r: 3, fill: '#10B981' }}
-                            connectNulls={false}
-                          />
-                        </ComposedChart>
-                      );
-                    })()}
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Status Breakdown - 1/3 width */}
-          <Card className="rounded-2xl border-0 shadow-xl shadow-purple-500/10 bg-gradient-to-br from-white to-purple-50/30">
-            <CardHeader className="pb-4 bg-gradient-to-r from-purple-50/50 to-transparent border-b border-purple-100/50 rounded-t-2xl">
-              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                  <BarChart3 className="h-5 w-5 text-white" />
-                </div>
-                Répartition par Statut
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-600 mt-2 font-medium">Distribution Leads & Commandes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-8">
-                  <div className="h-[180px] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10B981]"></div>
-                  </div>
-                  <div className="h-[180px] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#10B981]"></div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  {/* Leads Status */}
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Leads</h4>
-                    {leadsStatusBreakdown.length > 0 ? (
-                      <>
-                        <div style={{ width: '100%', height: 150 }}>
-                          <ResponsiveContainer>
-                            <RechartsPieChart>
-                              <Pie
-                                data={leadsStatusBreakdown}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                                outerRadius={60}
-                                fill="#8884d8"
-                                dataKey="value"
-                              >
-                                {leadsStatusBreakdown.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                            </RechartsPieChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          {leadsStatusBreakdown.map((item) => (
-                            <div key={item.name} className="flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                <span className="text-slate-600 capitalize">{item.name.replace('_', ' ')}</span>
-                              </div>
-                              <span className="font-semibold text-slate-900">{item.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-center text-slate-400 text-sm py-8">Aucun lead</p>
-                    )}
-                  </div>
-
-                  {/* Orders Status */}
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Commandes</h4>
-                    {ordersStatusBreakdown.length > 0 ? (
-                      <>
-                        <div style={{ width: '100%', height: 150 }}>
-                          <ResponsiveContainer>
-                            <RechartsPieChart>
-                              <Pie
-                                data={ordersStatusBreakdown}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                                outerRadius={60}
-                                fill="#8884d8"
-                                dataKey="value"
-                              >
-                                {ordersStatusBreakdown.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                            </RechartsPieChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          {ordersStatusBreakdown.map((item) => (
-                            <div key={item.name} className="flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                <span className="text-slate-600 capitalize">{item.name.replace('_', ' ')}</span>
-                              </div>
-                              <span className="font-semibold text-slate-900">{item.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-center text-slate-400 text-sm py-8">Aucune commande</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          </div>
-        </div>
+        <DashboardCharts
+          loading={loading}
+          chartData={chartData}
+          chartView={chartView}
+          setChartView={setChartView}
+          leadsStatusBreakdown={leadsStatusBreakdown}
+          ordersStatusBreakdown={ordersStatusBreakdown}
+        />
 
         {/* Recent Leads & Orders Tables */}
-        <div className="mb-6 lg:mb-8">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
-            <div className="h-1 w-1 rounded-full bg-indigo-500"></div>
-            Activité récente
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 xl:gap-8">
-          {/* Recent Leads */}
-          <Card className="rounded-2xl border-0 shadow-xl shadow-blue-500/10 bg-gradient-to-br from-white to-blue-50/30">
-            <CardHeader className="pb-4 bg-gradient-to-r from-blue-50/50 to-transparent border-b border-blue-100/50 rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                      <Users className="h-5 w-5 text-white" />
-                    </div>
-                    Leads récents
-                  </CardTitle>
-                  <CardDescription className="text-sm text-gray-600 mt-2 font-medium">10 derniers leads</CardDescription>
-                </div>
-                <Link to="/leads">
-                  <Button variant="ghost" size="sm" className="rounded-lg font-semibold hover:bg-blue-50">
-                    Voir tous <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="animate-pulse h-16 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              ) : leads.slice(0, 10).length > 0 ? (
-                <div className="overflow-x-auto -mx-4 sm:mx-0">
-                  <table className="w-full min-w-[600px]">
-                    <thead>
-                      <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-transparent">
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Nom</th>
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Source</th>
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Statut</th>
-                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Montant</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leads.slice(0, 10).map((lead) => (
-                        <tr key={lead.id} className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-transparent transition-colors">
-                          <td className="py-3 px-4 text-xs text-gray-600 font-medium">{formatDate(lead.created_at)}</td>
-                          <td className="py-3 px-4 text-xs text-gray-900 font-semibold">{lead.nom || lead.societe || '—'}</td>
-                          <td className="py-3 px-4 text-xs text-gray-600">{lead.source || '—'}</td>
-                          <td className="py-3 px-4">
-                            <StatusBadge status={lead.statut} type="lead" />
-                          </td>
-                          <td className="py-3 px-4 text-xs font-bold text-gray-900 text-right">
-                            {lead.montant_cee_estime ? formatCurrency(lead.montant_cee_estime) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-center text-slate-400 text-sm py-8">Aucun lead récent</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Orders */}
-          <Card className="rounded-2xl border-0 shadow-xl shadow-purple-500/10 bg-gradient-to-br from-white to-purple-50/30">
-            <CardHeader className="pb-4 bg-gradient-to-r from-purple-50/50 to-transparent border-b border-purple-100/50 rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                      <ShoppingCart className="h-5 w-5 text-white" />
-                    </div>
-                    Commandes récentes
-                  </CardTitle>
-                  <CardDescription className="text-sm text-gray-600 mt-2 font-medium">10 dernières commandes</CardDescription>
-                </div>
-                <Link to="/commandes">
-                  <Button variant="ghost" size="sm" className="rounded-lg font-semibold hover:bg-purple-50">
-                    Voir toutes <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="animate-pulse h-16 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              ) : orders.slice(0, 10).length > 0 ? (
-                <div className="overflow-x-auto -mx-4 sm:mx-0">
-                  <table className="w-full min-w-[600px]">
-                    <thead>
-                      <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-transparent">
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Date</th>
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Réf.</th>
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Client</th>
-                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Statut</th>
-                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.slice(0, 10).map((order) => (
-                        <tr key={order.id} className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-transparent transition-colors">
-                          <td className="py-3 px-4 text-xs text-gray-600 font-medium">{formatDate(order.date_creation)}</td>
-                          <td className="py-3 px-4 text-xs text-gray-900 font-mono font-semibold bg-gray-50 px-2 py-1 rounded">{order.reference || order.id.substring(0, 8)}</td>
-                          <td className="py-3 px-4 text-xs text-gray-900 font-semibold">{order.nom_client || order.email || '—'}</td>
-                          <td className="py-3 px-4">
-                            <StatusBadge status={order.paiement_statut || 'en_attente'} type="commande" />
-                          </td>
-                          <td className="py-3 px-4 text-xs font-bold text-gray-900 text-right">
-                            {order.total_ttc || order.total_ht ? formatCurrency(order.total_ttc || order.total_ht) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-center text-slate-400 text-sm py-8">Aucune commande récente</p>
-              )}
-            </CardContent>
-          </Card>
-          </div>
-        </div>
+        <DashboardRecentActivity
+          loading={loading}
+          leads={leads}
+          orders={orders}
+          formatDate={formatDate}
+          formatCurrency={formatCurrency}
+        />
 
         {/* Top Sources & Top Clients */}
-        <div className="mb-6 lg:mb-8">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 lg:mb-6 flex items-center gap-2">
-            <div className="h-1 w-1 rounded-full bg-indigo-500"></div>
-            Performances
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 xl:gap-8">
-          {/* Top Sources */}
-          <Card className="rounded-2xl border-0 shadow-xl shadow-emerald-500/10 bg-gradient-to-br from-white to-emerald-50/30">
-            <CardHeader className="pb-4 bg-gradient-to-r from-emerald-50/50 to-transparent border-b border-emerald-100/50 rounded-t-2xl">
-              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                  <Trophy className="h-5 w-5 text-white" />
-                </div>
-                Top Sources
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-600 mt-2 font-medium">5 meilleures sources de leads</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="animate-pulse h-12 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              ) : topSources.length > 0 ? (
-                <div className="space-y-3">
-                  {topSources.map((source, index) => (
-                    <div key={source.source} className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50/50 to-transparent rounded-xl border-2 border-transparent hover:border-emerald-200 hover:shadow-md transition-all group">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md transition-transform group-hover:scale-110 ${
-                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white' :
-                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white' :
-                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white' :
-                          'bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700'
-                        }`}>
-                          <span className="text-sm font-bold">#{index + 1}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 text-sm truncate">{source.source}</p>
-                          <p className="text-xs text-gray-600 font-medium">{source.leads} leads • {source.orders} commandes</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <Badge variant="secondary" className="bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 border-0 text-xs font-bold px-3 py-1 shadow-sm">
-                          {source.conversion.toFixed(1)}%
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-slate-400 text-sm py-8">Aucune source disponible</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Top Clients */}
-          <Card className="rounded-2xl border-0 shadow-xl shadow-blue-500/10 bg-gradient-to-br from-white to-blue-50/30">
-            <CardHeader className="pb-4 bg-gradient-to-r from-blue-50/50 to-transparent border-b border-blue-100/50 rounded-t-2xl">
-              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                Top Clients
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-600 mt-2 font-medium">5 clients avec le plus de CA</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="animate-pulse h-12 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              ) : topClients.length > 0 ? (
-                <div className="space-y-3">
-                  {topClients.map((client, index) => (
-                    <div key={client.name} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50/50 to-transparent rounded-xl border-2 border-transparent hover:border-blue-200 hover:shadow-md transition-all group">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md transition-transform group-hover:scale-110 ${
-                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white' :
-                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white' :
-                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-red-500 text-white' :
-                          'bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-700'
-                        }`}>
-                          <span className="text-sm font-bold">#{index + 1}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 text-sm truncate">{client.name}</p>
-                          <p className="text-xs text-gray-600 font-medium">{client.orders} commande{client.orders > 1 ? 's' : ''}</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p className="font-bold text-gray-900 text-base bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                          {formatCurrency(client.revenue)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-slate-400 text-sm py-8">Aucun client disponible</p>
-              )}
-            </CardContent>
-          </Card>
-          </div>
-        </div>
+        <DashboardTopPerformers
+          loading={loading}
+          topSources={topSources}
+          topClients={topClients}
+          formatCurrency={formatCurrency}
+        />
       </div>
     </>
   );

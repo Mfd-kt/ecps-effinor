@@ -13,8 +13,6 @@
 
 import React from 'react';
 import { useUser } from '@/contexts/UserContext';
-import AdminDashboard from '@/pages/admin/AdminDashboard';
-import CommercialDashboard from '@/pages/admin/CommercialDashboard';
 
 export default function RoleBasedRoute({ 
   adminComponent,
@@ -44,7 +42,7 @@ export default function RoleBasedRoute({
     return adminComponent;
   }
 
-  // Fallback vers le composant par défaut ou AdminDashboard
-  return defaultComponent || <AdminDashboard />;
+  // Fallback vers le composant par défaut (ne pas importer de pages ici pour garder le code-splitting)
+  return defaultComponent || null;
 }
 

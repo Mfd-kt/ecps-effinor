@@ -14,6 +14,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
 import { sanitizeFormData } from '@/utils/sanitize';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { megaCategories } from '@/data/megaCategories';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +76,7 @@ const AdminCategories = () => {
     images: [],
     ordre: 0,
     actif: true,
+    mega_categorie: '',
   });
 
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
@@ -359,6 +362,7 @@ const AdminCategories = () => {
       images: [],
       ordre: 0,
       actif: true,
+      mega_categorie: '',
     });
     setEditingCategory(null);
     setImageFile(null);
@@ -381,6 +385,7 @@ const AdminCategories = () => {
       images: images,
       ordre: category.ordre || 0,
       actif: category.actif !== undefined ? category.actif : true,
+      mega_categorie: category.mega_categorie || '',
     });
     setImagePreview(category.image ? getImageUrl(category.image) : null);
     setCategoryImages(images);
@@ -623,6 +628,40 @@ const AdminCategories = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Grande catégorie
+                  </label>
+                  <Select
+                    value={formData.mega_categorie || 'none'}
+                    onValueChange={(value) => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        mega_categorie: value === 'none' ? '' : value 
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionner une grande catégorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Aucune</SelectItem>
+                      {megaCategories && megaCategories.length > 0 ? (
+                        megaCategories.map((megaCat) => (
+                          <SelectItem key={megaCat.id} value={megaCat.id}>
+                            {megaCat.label}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>Aucune grande catégorie disponible</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Sélectionnez la grande catégorie parente pour organiser la navigation.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Description courte
                   </label>
                   <Textarea
@@ -811,6 +850,7 @@ const AdminCategories = () => {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nom</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Slug</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Description</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Grande catégorie</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Ordre</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Statut</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nb Produits</th>
@@ -820,7 +860,7 @@ const AdminCategories = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {categories.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                       <FolderOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                       <p>Aucune catégorie créée pour le moment.</p>
                       <p className="text-sm mt-2">Cliquez sur "Ajouter une catégorie" pour commencer.</p>
@@ -855,6 +895,18 @@ const AdminCategories = () => {
                         <p className="text-sm text-gray-600 max-w-xs truncate">
                           {category.description || '-'}
                         </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        {category.mega_categorie ? (
+                          <Badge 
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {megaCategories.find(mc => mc.id === category.mega_categorie)?.label || category.mega_categorie}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">

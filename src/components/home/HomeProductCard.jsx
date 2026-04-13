@@ -38,10 +38,19 @@ const HomeProductCard = ({ product }) => {
           </p>
         )}
         <div className="mt-auto pt-1.5 flex items-center justify-between">
-          <div className="text-sm md:text-base font-semibold text-secondary-600">
-            {product.sur_devis || !product.prix
-              ? 'Sur devis'
-              : `${parseFloat(product.prix).toFixed(2)} € HT`}
+          <div>
+            {product.sur_devis || !product.prix ? (
+              <div className="text-sm md:text-base font-semibold text-secondary-600">Sur devis</div>
+            ) : (
+              <div>
+                <div className="text-sm md:text-base font-semibold text-secondary-600">
+                  {parseFloat(product.prix).toFixed(2)} € HT
+                </div>
+                <div className="text-[10px] md:text-xs text-gray-500">
+                  soit {(parseFloat(product.prix) * 1.20).toFixed(2)} € TTC
+                </div>
+              </div>
+            )}
           </div>
           <span className="text-[11px] md:text-xs text-secondary-700 font-medium group-hover:underline">
             Voir le produit

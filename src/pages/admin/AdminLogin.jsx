@@ -257,7 +257,7 @@ const AdminLogin = () => {
           
           <div className="login-info">
             <h2>Bienvenue chez Effinor</h2>
-            <p>Gérez vos projets LED et vos devis en toute simplicité.</p>
+            <p>Gérez vos leads et vos dossiers CEE en toute simplicité.</p>
             <ul className="info-list">
               <li>✅ Gestion complète des projets</li>
               <li>✅ Suivi des devis en temps réel</li>

@@ -2,8 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { usePageSEO } from '@/hooks/usePageSEO';
 import SEOHead from '@/components/SEOHead';
-import { 
-  Factory, Building2, ShoppingBag, Building, Heart, ArrowRight 
+import {
+  Factory, Building2, ShoppingBag, Building, Heart, ArrowRight
 } from 'lucide-react';
 
 const SecteursActivite = () => {
@@ -14,36 +14,36 @@ const SecteursActivite = () => {
       slug: 'industrie-logistique',
       title: 'Industrie & logistique',
       icon: Factory,
-      description: 'Solutions d\'éclairage LED pour sites industriels, entrepôts et centres logistiques.',
-      features: ['Highbay LED', 'Haute performance', 'ROI rapide']
+      description: 'Entrepôts et halls : déstratification, chauffage et projets CEE pour réduire la facture énergétique.',
+      features: ['Déstratification industrielle', 'PAC & chauffage', 'Dossier CEE']
     },
     {
       slug: 'tertiaire-bureaux',
       title: 'Tertiaire / bureaux',
       icon: Building2,
-      description: 'Éclairage LED pour bureaux, espaces de travail et bâtiments tertiaires.',
-      features: ['Confort visuel', 'Design moderne', 'Économies d\'énergie']
+      description: 'Bureaux et ERP : pompe à chaleur, confort thermique et homogénéisation des grands volumes.',
+      features: ['PAC tertiaire', 'Déstratification', 'Pilotage énergie']
     },
     {
       slug: 'retail-grande-distribution',
       title: 'Retail & grande distribution',
       icon: ShoppingBag,
-      description: 'Éclairage LED pour magasins, supermarchés et grandes surfaces.',
-      features: ['Mise en valeur', 'Ambiance', 'Performance']
+      description: 'Magasins et surfaces de vente : maîtrise du chauffage, des halls et des projets financés par les CEE.',
+      features: ['Confort client', 'Chauffage & climatisation', 'Structuration CEE']
     },
     {
       slug: 'collectivites-ecoles-gymnases',
       title: 'Collectivités / écoles / gymnases',
       icon: Building,
-      description: 'Solutions d\'éclairage LED pour collectivités, établissements scolaires et sportifs.',
-      features: ['Conformité normes', 'Durabilité', 'Maintenance réduite']
+      description: 'Bâtiments publics et gymnases : grands volumes, chauffage et accompagnement pour les financements.',
+      features: ['Gymnases & halls', 'Chauffage performant', 'Projets publics']
     },
     {
       slug: 'sante-etablissements-sensibles',
       title: 'Santé / établissements sensibles',
       icon: Heart,
-      description: 'Éclairage LED pour hôpitaux, cliniques et établissements de santé.',
-      features: ['Normes strictes', 'Qualité lumière', 'Fiabilité']
+      description: 'Hôpitaux et cliniques : exigence sanitaire, confort et performance énergétique (chauffage, volumes).',
+      features: ['Contraintes fortes', 'Chauffage & climatisation', 'Suivi projet']
     }
   ];
 
@@ -71,7 +71,7 @@ const SecteursActivite = () => {
             )}
             {!seo.intro && (
               <p className="text-xl text-gray-600">
-                Découvrez nos solutions d'éclairage LED adaptées à chaque secteur d'activité.
+                Pompe à chaleur, déstratification d&apos;air et financement CEE : des réponses adaptées à votre secteur.
               </p>
             )}
           </div>
@@ -112,10 +112,10 @@ const SecteursActivite = () => {
 
           <div className="bg-gray-50 rounded-2xl p-12 text-center max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Votre secteur n'est pas listé ?
+              Votre secteur n&apos;est pas listé ?
             </h2>
             <p className="text-lg text-gray-600 mb-8">
-              Contactez-nous pour une solution sur mesure.
+              Contactez-nous pour une étude adaptée à votre bâtiment et à vos objectifs CEE.
             </p>
             <Link
               to="/contact"
@@ -132,4 +132,3 @@ const SecteursActivite = () => {
 };
 
 export default SecteursActivite;
-

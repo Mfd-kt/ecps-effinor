@@ -152,7 +152,7 @@ const NotificationsPage = () => {
       // Navigation selon le rôle
       const roleSlug = profile?.role?.slug || '';
       const isCommercial = roleSlug === 'commercial';
-      navigate(`/commandes/${notification.entity_id}`);
+      navigate('/dashboard');
     }
   };
 

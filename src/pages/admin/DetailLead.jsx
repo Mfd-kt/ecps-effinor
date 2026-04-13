@@ -26,6 +26,26 @@ import TabDocuments from '@/components/leads/LeadDetails/TabDocuments';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { emitCrmBusinessEventsForStatusChange, emitCrmProjectValue } from '@/lib/effinorCrmAnalytics';
+
+function maybeEmitCrmProjectValueOnSave(prevLead, updates, savedLead) {
+  if (!savedLead?.id || !updates || typeof updates !== 'object') return;
+  const keys = [
+    ['montant_cee_estime', 'montant_cee_estime'],
+    ['budget_estime', 'budget_estime'],
+  ];
+  for (const [key, sourceField] of keys) {
+    if (!Object.prototype.hasOwnProperty.call(updates, key)) continue;
+    const raw = updates[key];
+    if (raw == null || raw === '') continue;
+    const n = typeof raw === 'number' ? raw : parseFloat(raw);
+    if (!Number.isFinite(n)) continue;
+    const prevRaw = prevLead?.[key];
+    const prevN = prevRaw != null && prevRaw !== '' ? parseFloat(prevRaw) : NaN;
+    if (Number.isFinite(prevN) && prevN === n) continue;
+    emitCrmProjectValue(savedLead, n, sourceField);
+  }
+}
 
 /**
  * Page détail d'un lead - Layout 2 colonnes
@@ -179,10 +199,13 @@ const DetailLead = () => {
     
     try {
       setSaving(true);
+      const prevMoney = {
+        montant_cee_estime: leadRef.current?.montant_cee_estime,
+        budget_estime: leadRef.current?.budget_estime,
+      };
       const result = await updateLead(id, updates);
       
       if (result.success && result.data) {
-        // Update qualification score from server response
         if (result.qualificationScore !== undefined) {
           setQualificationScore(result.qualificationScore);
         } else if (result.data.qualification_score !== undefined) {
@@ -193,7 +216,8 @@ const DetailLead = () => {
           setQualificationBreakdown(result.qualificationBreakdown);
         }
         
-        // Update lead state with server response
+        maybeEmitCrmProjectValueOnSave(prevMoney, updates, result.data);
+
         setLead(result.data);
         leadRef.current = result.data;
         return { success: true, data: result.data };
@@ -217,9 +241,13 @@ const DetailLead = () => {
     }
 
     // Calculate score IMMEDIATELY on client for instant feedback (before debounce)
+    const updates = typeof field === 'object' ? field : { [field]: value };
+    const prevMoney = {
+      montant_cee_estime: leadRef.current?.montant_cee_estime,
+      budget_estime: leadRef.current?.budget_estime,
+    };
+
     if (leadRef.current) {
-      const updates = typeof field === 'object' ? field : { [field]: value };
-      
       // Use dynamic import with then() to avoid async/await
       import('@/lib/leads/qualificationScore').then(({ computeQualificationScore }) => {
         try {
@@ -252,7 +280,6 @@ const DetailLead = () => {
     autoSaveRef.current = setTimeout(async () => {
       try {
         setSaving(true);
-        const updates = typeof field === 'object' ? field : { [field]: value };
         const result = await updateLead(id, updates);
 
         if (result.success && result.data) {
@@ -266,6 +293,8 @@ const DetailLead = () => {
           if (result.qualificationBreakdown) {
             setQualificationBreakdown(result.qualificationBreakdown);
           }
+
+          maybeEmitCrmProjectValueOnSave(prevMoney, updates, result.data);
           
           // Update lead state with server response (includes calculated score)
           setLead(result.data);
@@ -315,6 +344,9 @@ const DetailLead = () => {
         }
         
         setLead(result.data);
+        if (result.data?.status) {
+          emitCrmBusinessEventsForStatusChange(result.data, result.data.status);
+        }
         toast({
           title: 'Statut mis à jour',
           description: `Statut changé vers "${newStatus?.label || 'Nouveau statut'}"`

@@ -1,140 +1,141 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePageSEO } from '@/hooks/usePageSEO';
 import SEOHead from '@/components/SEOHead';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ImageGallery from '@/components/ImageGallery';
 import { supabase } from '@/lib/supabaseClient';
 import { logger } from '@/utils/logger';
-import { ArrowRight, CheckCircle2, Loader2, ShoppingCart } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCart } from '@/contexts/CartContext';
-import { useToast } from '@/components/ui/use-toast';
-import { getAccessoriesForCategory } from '@/lib/api/products';
+import { getAccessoriesForCategory, getProductsBySector } from '@/lib/api/products';
 
 // Données pour chaque catégorie
 const categoryData = {
-  // Produits & Solutions
+  // Produits & Solutions (slugs historiques — contenu aligné PAC / déstratification / CEE)
   'luminaires-industrie-entrepots': {
-    title: 'Luminaires industrie & entrepôts',
+    title: 'Industrie & entrepôts — chauffage et volumes',
     parentPath: '/produits-solutions',
     parentLabel: 'Produits & Solutions',
-    heroTitle: 'Solutions d\'éclairage LED haute performance pour l\'industrie et les entrepôts',
+    heroTitle: 'Pompe à chaleur et déstratification pour sites industriels et logistiques',
     benefits: [
-      'Réduction jusqu\'à 80% de la consommation énergétique',
-      'Haute performance lumineuse (jusqu\'à 200 lm/W)',
-      'Résistance aux environnements difficiles (IP65+)',
-      'Maintenance réduite (durée de vie 50 000h+)',
-      'Installation simple et rapide'
+      'Réduction des pertes liées à la stratification thermique dans les grands volumes',
+      'Scénarios PAC adaptés à l’existant et à l’usage réel du bâtiment',
+      'Montage CEE structuré lorsque l’opération est éligible',
+      'Interlocuteur unique pour la qualification et le suivi projet',
+      'Vision claire des étapes avant travaux'
     ],
     problems: [
-      'Consommation énergétique élevée',
-      'Maintenance fréquente et coûteuse',
-      'Éclairage insuffisant dans certains espaces',
-      'Chaleur dégagée par les anciennes technologies'
+      'Chauffage sollicité pour compenser des écarts de température en hauteur',
+      'Factures énergétiques élevées sans visibilité sur les leviers prioritaires',
+      'Projets techniques dispersés (équipements, planning, exploitation)',
+      'Dossiers de financement mal cadrés'
     ],
     solutions: [
-      'Installation de Highbay LED haute performance',
-      'Système de pilotage intelligent',
-      'Optimisation de l\'éclairage selon les zones',
-      'Maintenance préventive programmée'
+      'Déstratification pour homogénéiser la température dans les halls et entrepôts',
+      'Étude PAC industrielle / tertiaire selon contexte',
+      'Structuration des informations pour le parcours CEE',
+      'Accompagnement Effinor du web au suivi CRM'
     ]
   },
   'luminaires-tertiaire-bureaux': {
-    title: 'Luminaires tertiaire & bureaux',
+    title: 'Tertiaire & bureaux — confort et pilotage énergétique',
     parentPath: '/produits-solutions',
     parentLabel: 'Produits & Solutions',
-    heroTitle: 'Solutions d\'éclairage LED pour bureaux et espaces tertiaires',
+    heroTitle: 'Pompe à chaleur et déstratification pour bureaux et espaces tertiaires',
     benefits: [
-      'Confort visuel optimal pour le travail',
-      'Réglage de l\'intensité lumineuse',
-      'Design moderne et discret',
-      'Réduction de la fatigue visuelle',
-      'Économies d\'énergie significatives'
+      'Meilleure maîtrise du chauffage et de la climatisation sur actifs multi-zones',
+      'Confort thermique plus homogène dans les grands volumes',
+      'Discours RSE et reporting plus lisibles pour la direction',
+      'Dossier CEE préparé dès la phase qualification',
+      'Réduction des charges d’exploitation ciblée'
     ],
     problems: [
-      'Éblouissement et fatigue visuelle',
-      'Consommation énergétique élevée',
-      'Design obsolète',
-      'Manque de flexibilité'
+      'Inconfort selon les zones (open space, halls, étages)',
+      'Coûts d’exploitation difficiles à expliquer en interne',
+      'Stratification thermique dans les espaces à grande hauteur libre',
+      'Manque de lien clair entre investissement et financement CEE'
     ],
     solutions: [
-      'Réglettes LED avec diffuseur',
-      'Système de gradation',
-      'Design moderne et épuré',
-      'Installation flexible'
+      'PAC tertiaire dimensionnée avec contraintes d’occupation',
+      'Déstratification sur les volumes concernés',
+      'Cadrage projet pour les opérations standardisées',
+      'Suivi des leads et des étapes côté Effinor'
     ]
   },
   'luminaires-commerces-gms': {
-    title: 'Luminaires commerces & GMS',
+    title: 'Commerces & GMS — accueil et performance énergétique',
     parentPath: '/produits-solutions',
     parentLabel: 'Produits & Solutions',
-    heroTitle: 'Éclairage LED pour magasins et grandes surfaces',
+    heroTitle: 'Chauffage, confort client et déstratification pour la grande distribution',
     benefits: [
-      'Mise en valeur des produits',
-      'Ambiance chaleureuse et accueillante',
-      'Économies d\'énergie significatives',
-      'Flexibilité d\'éclairage par zone'
+      'Approche « bâtiment » : chauffage, volumes et plages d’ouverture',
+      'Priorisation des leviers à fort impact sur la facture',
+      'Projets défendables auprès des directions retail et facility',
+      'Pistes CEE lorsque l’équipement et l’opération sont alignés',
+      'Moins de dispersion sur des équipements hors périmètre'
     ],
     problems: [
-      'Éclairage inadapté aux produits',
-      'Coûts énergétiques élevés',
-      'Chaleur dégagée',
-      'Manque d\'ambiance'
+      'Confort client et personnel inégal selon les zones',
+      'Surconsommation de chauffage sur grandes surfaces et halls',
+      'Contraintes d’image, d’hygiène et de planning serré',
+      'Budget énergie sous pression'
     ],
     solutions: [
-      'Spots LED directionnels',
-      'Réglettes LED pour éclairage général',
-      'Système de gradation',
-      'Éclairage d\'ambiance'
+      'PAC et régulation adaptées aux usages retail',
+      'Déstratification sur halls et zones à forte hauteur',
+      'Qualification structurée pour le montage CEE',
+      'Échanges coordonnés avec vos équipes exploitation'
     ]
   },
   'luminaires-parkings-exterieurs': {
-    title: 'Luminaires parkings & extérieurs',
+    title: 'Parkings & abords — performance globale du site',
     parentPath: '/produits-solutions',
     parentLabel: 'Produits & Solutions',
-    heroTitle: 'Éclairage LED pour parkings et espaces extérieurs',
+    heroTitle: 'Réduire la consommation globale du bâtiment (parkings, locaux techniques, voirie)',
     benefits: [
-      'Sécurité renforcée',
-      'Détection de présence',
-      'Résistance aux intempéries (IP65+)',
-      'Économies d\'énergie jusqu\'à 70%'
+      'Vision globale : ce qui compte pour la facture et le confort (hors seul luminaire)',
+      'Identification des leviers CEE pertinents sur le patrimoine',
+      'Accompagnement pour structurer un projet multi-zones',
+      'Moins de silos entre « extérieur » et cœur de bâtiment',
+      'Étude gratuite pour cadrer la suite'
     ],
     problems: [
-      'Sécurité insuffisante',
-      'Consommation énergétique élevée',
-      'Résistance aux intempéries',
-      'Maintenance difficile'
+      'Consommations éparpillées (technique, halls, parkings)',
+      'Difficulté à prioriser les investissements',
+      'Exigence de sécurité et de disponibilité',
+      'Manque de lien entre site et dossier CEE'
     ],
     solutions: [
-      'Projecteurs LED haute performance',
-      'Détection de présence',
-      'IP65+ pour extérieur',
-      'Maintenance réduite'
+      'Qualification Effinor et orientation PAC / déstrat / autres leviers',
+      'Structuration des données pour un dossier cohérent',
+      'Liens vers les pages pompe à chaleur et déstratification',
+      'Contact direct pour les cas atypiques'
     ]
   },
   'accessoires-pilotage': {
-    title: 'Accessoires & pilotage',
+    title: 'Accompagnement & structuration de dossier',
     parentPath: '/produits-solutions',
     parentLabel: 'Produits & Solutions',
-    heroTitle: 'Drivers, détection et solutions de pilotage intelligent',
+    heroTitle: 'Suivi de projet, traçabilité et préparation financement CEE',
     benefits: [
-      'Pilotage intelligent',
-      'Détection de présence',
-      'Dimming et gradation',
-      'Intégration domotique'
+      'Collecte d’informations structurée dès le formulaire web',
+      'Suivi CRM pour ne pas perdre le fil entre marketing et terrain',
+      'Lecture claire des étapes (qualification, étude, validation)',
+      'Alignement recherché entre l’opération et les fiches CEE',
+      'Moins de friction pour vos équipes internes'
     ],
     problems: [
-      'Manque de contrôle',
-      'Pas de détection',
-      'Consommation constante',
-      'Pas d\'intégration'
+      'Données éparpillées entre interlocuteurs',
+      'Dossiers montés tardivement ou incomplets',
+      'Manque de visibilité sur l’éligibilité réelle',
+      'Temps perdu sur des allers-retours inutiles'
     ],
     solutions: [
-      'Drivers LED haute performance',
-      'Détecteurs de présence',
-      'Systèmes de dimming',
-      'Intégration domotique'
+      'Tunnel mini-formulaire puis formulaire complet',
+      'Documentation progressive du besoin et du bâtiment',
+      'Points de contrôle avant engagement sur le financement',
+      'Équipe Effinor dédiée aux projets CEE'
     ]
   },
   // Secteurs d'activité
@@ -142,120 +143,259 @@ const categoryData = {
     title: 'Industrie & logistique',
     parentPath: '/secteurs-activite',
     parentLabel: 'Secteurs d\'activité',
-    heroTitle: 'Solutions d\'éclairage LED pour l\'industrie et la logistique',
+    heroTitle: 'Efficacité énergétique pour l\'industrie et la logistique',
+    description: 'Réduisez la facture de chauffage et homogénéisez les volumes : pompe à chaleur, déstratification d’air et accompagnement CEE sur vos entrepôts, halls industriels et plateformes logistiques.',
     benefits: [
-      'Performance optimale pour grandes hauteurs',
-      'ROI rapide (moins de 2 ans)',
-      'Conformité aux normes de sécurité',
-      'Maintenance facilitée'
+      'Déstratification pour limiter la stratification thermique sous plafond',
+      'Projets pompe à chaleur adaptés au contexte industriel ou tertiaire léger',
+      'Montage CEE structuré lorsque l’opération est dans le périmètre',
+      'Qualification et suivi via les parcours Effinor (web + CRM)',
+      'ROI ciblé sur le chauffage et le confort au sol',
+      'Conformité aux exigences d’exploitation et de sécurité',
+      'Interlocuteur unique pour cadrer le besoin',
+      'Vision claire des étapes avant investissement lourd'
     ],
     problems: [
-      'Hauteur sous plafond importante',
-      'Besoin d\'éclairage constant',
-      'Coûts énergétiques élevés',
-      'Maintenance difficile en hauteur'
+      'Coûts de chauffage élevés sur grands volumes et halls',
+      'Chaleur piégée en hauteur, inconfort au sol et près des quais',
+      'Projets techniques sans lien clair avec les financements CEE',
+      'Contraintes d’activité (horaires, flux, stockage)',
+      'Difficulté à prioriser les investissements',
+      'Données dispersées entre maintenance, exploitation et direction',
+      'Manque de temps pour monter des dossiers complets',
+      'Objectifs RSE et énergie à reconcilier avec le budget'
     ],
     solutions: [
-      'Highbay LED adaptés aux grandes hauteurs',
-      'Système de détection de présence',
-      'Pilotage centralisé',
-      'Maintenance facilitée'
+      'Déstratificateurs dimensionnés selon hauteur et usage',
+      'Études PAC pour le chauffage et, selon site, l’ECS',
+      'Structuration des informations pour les opérations standardisées CEE',
+      'Appui sur les pages ressources et le blog pour la pédagogie',
+      'Formulaires courts puis approfondissement pour ne rien perdre',
+      'Accompagnement pour la traçabilité attendue sur le dossier',
+      'Phasage possible selon vos fenêtres d’intervention',
+      'Lien direct avec l’équipe Effinor après qualification'
+    ],
+    useCases: [
+      'Entrepôts logistiques et centres de distribution',
+      'Halls industriels et ateliers de production',
+      'Plateformes logistiques et zones de chargement',
+      'Usines de production et chaînes de montage',
+      'Zones de stockage et réserves',
+      'Hangars et bâtiments industriels',
+      'Parkings et zones de livraison',
+      'Espaces de bureaux intégrés'
+    ],
+    stats: [
+      { label: 'Économies globales', value: 'jusqu\'à 80%' },
+      { label: 'ROI moyen', value: '< 2 ans' },
+      { label: 'Réduction chauffage', value: 'jusqu\'à 30%' },
+      { label: 'Solutions disponibles', value: '5+ familles' }
     ]
   },
   'tertiaire-bureaux': {
     title: 'Tertiaire / bureaux',
     parentPath: '/secteurs-activite',
     parentLabel: 'Secteurs d\'activité',
-    heroTitle: 'Éclairage LED pour bureaux et espaces tertiaires',
+    heroTitle: 'Bureaux et espaces tertiaires : chauffage, confort et CEE',
+    description: 'Réduisez les charges de chauffage et de climatisation, améliorez le confort dans les grandes hauteurs avec la déstratification, et structurez votre projet pour les certificats d’économies d’énergie lorsque vous êtes éligibles.',
     benefits: [
-      'Confort visuel optimal',
-      'Productivité améliorée',
-      'Design moderne',
-      'Économies d\'énergie'
+      'Pompe à chaleur tertiaire pour chauffage et besoins réversibles (selon projet)',
+      'Déstratification sur open spaces et halls à forte hauteur libre',
+      'Meilleure lisibilité pour la direction (RSE, coûts, image)',
+      'Qualification web alignée avec le suivi CRM Effinor',
+      'Confort des occupants au centre du discours',
+      'Économies d’énergie ciblées sur le chauffage et la climatisation',
+      'Accompagnement sur le montage CEE',
+      'Échanges adaptés aux équipes facility et immobilier'
     ],
     problems: [
-      'Fatigue visuelle',
-      'Éclairage inadapté',
-      'Coûts élevés',
-      'Design obsolète'
+      'Charges d’exploitation élevées sur le chauffage et la climatisation',
+      'Inconfort thermique selon les zones et les étages',
+      'Stratification thermique dans les volumes ouverts',
+      'Projets techniques sans lien clair avec le financement CEE',
+      'Contraintes d’occupation et de maintenance',
+      'Reporting RSE et énergie à alimenter avec des faits',
+      'Peu de bande passante pour des dossiers improvisés',
+      'Décisions multi-acteurs (DSI, immobilier, direction)'
     ],
     solutions: [
-      'Réglettes LED avec diffuseur',
-      'Gradation intelligente',
-      'Design moderne',
-      'Installation flexible'
+      'Étude PAC et scénarios réalistes (neuf / rénovation / extension)',
+      'Déstratificateurs pour homogénéiser la température utile',
+      'Cadrage CEE : opération, équipement, preuves',
+      'Formulaires Effinor pour structurer la donnée dès le départ',
+      'Relais possible vers la page Contact pour les cas sensibles',
+      'Documentation progressive du besoin',
+      'Vision étape par étape pour rassurer les équipes',
+      'Mise en cohérence avec vos plannings de travaux'
+    ],
+    useCases: [
+      'Bureaux et open spaces',
+      'Salles de réunion et espaces collaboratifs',
+      'Couloirs et espaces de circulation',
+      'Espaces d\'accueil et halls',
+      'Cafétérias et espaces de détente',
+      'Parkings souterrains et garages',
+      'Salles serveurs et data centers',
+      'Espaces de coworking'
+    ],
+    stats: [
+      { label: 'Amélioration productivité', value: '+15%' },
+      { label: 'Économies globales', value: 'jusqu\'à 60%' },
+      { label: 'Qualité d\'air', value: 'Optimale' },
+      { label: 'Solutions disponibles', value: '5+ familles' }
     ]
   },
   'retail-grande-distribution': {
     title: 'Retail & grande distribution',
     parentPath: '/secteurs-activite',
     parentLabel: 'Secteurs d\'activité',
-    heroTitle: 'Éclairage LED pour magasins et grandes surfaces',
+    heroTitle: 'Magasins et grandes surfaces : confort client et maîtrise énergétique',
+    description: 'Priorité au chauffage, aux volumes d’accueil et aux projets CEE cohérents : réduction des coûts, meilleur confort en hall et sur linéaires, discours simple pour les directions retail.',
     benefits: [
-      'Mise en valeur des produits',
-      'Ambiance accueillante',
-      'Économies d\'énergie',
-      'Flexibilité par zone'
+      'PAC et régulation adaptées aux plages d’ouverture et aux saisons',
+      'Déstratification sur halls et zones à grande hauteur',
+      'Structuration des informations pour un dossier CEE défendable',
+      'Qualification via les formulaires Effinor',
+      'Moins de dispersion sur des équipements hors scope métier',
+      'Alignement recherché entre exploitation et investissement',
+      'Accompagnement pour la traçabilité projet',
+      'Liens vers les pages pompe à chaleur et déstratification'
     ],
     problems: [
-      'Éclairage inadapté',
-      'Coûts énergétiques élevés',
-      'Chaleur dégagée',
-      'Manque d\'ambiance'
+      'Facture énergie sous tension (chauffage, climatisation)',
+      'Inconfort ressenti par clients et équipes selon les zones',
+      'Grands volumes et ouvertures fréquentes : pertes thermiques',
+      'Décisions centralisées avec peu de marge pour l’essai / erreur',
+      'Projets CEE à préparer avec un bon niveau de détail',
+      'Image marque et exigence RSE',
+      'Maintenance et exploitation déjà saturées',
+      'Multi-sites : besoin de cadre commun'
     ],
     solutions: [
-      'Spots LED directionnels',
-      'Réglettes LED générales',
-      'Gradation par zone',
-      'Éclairage d\'ambiance'
+      'Scénarios PAC / climatisation intégrés au contexte retail',
+      'Déstratificateurs pour homogénéiser la température utile',
+      'Montage CEE : opération, périmètre, calendrier',
+      'Tunnel web pour cadrer le besoin avant engagement',
+      'Échanges avec les équipes pour les contraintes d’enseigne',
+      'Documentation progressive pour alimenter le dossier',
+      'Vision claire des étapes avant travaux',
+      'Contact direct pour les cas multi-sites complexes'
+    ],
+    useCases: [
+      'Magasins et boutiques',
+      'Supermarchés et hypermarchés',
+      'Centres commerciaux',
+      'Showrooms et espaces d\'exposition',
+      'Vitrines et présentoirs',
+      'Rayons spécialisés'
+    ],
+    stats: [
+      { label: 'Amélioration ventes', value: '+20%' },
+      { label: 'Économies globales', value: 'jusqu\'à 70%' },
+      { label: 'Confort clients', value: 'Optimisé' },
+      { label: 'Solutions disponibles', value: '5+ familles' }
     ]
   },
   'collectivites-ecoles-gymnases': {
     title: 'Collectivités / écoles / gymnases',
     parentPath: '/secteurs-activite',
     parentLabel: 'Secteurs d\'activité',
-    heroTitle: 'Solutions d\'éclairage LED pour collectivités et établissements scolaires',
+    heroTitle: 'Collectivités et établissements scolaires : chauffage, grands volumes et CEE',
+    description: 'Réduisez les dépenses énergétiques et améliorez le confort dans les gymnases et bâtiments publics : déstratification, projets de chauffage performants (dont PAC selon contexte) et accompagnement pour les dispositifs CEE lorsque les opérations sont éligibles.',
     benefits: [
-      'Conformité aux normes en vigueur',
-      'Durabilité et fiabilité',
-      'Maintenance réduite',
-      'Économies budgétaires'
+      'Déstratification pour les grands volumes (gymnases, halls)',
+      'Pompe à chaleur et solutions de chauffage adaptées aux bâtiments publics',
+      'Discours budgétaire clair pour les élus et les services techniques',
+      'Structuration de dossier pour les financements CEE',
+      'Projets phasables sur vacances ou périodes creuses',
+      'Durabilité et usage intensif pris en compte',
+      'Accompagnement Effinor sur la qualification et le suivi',
+      'Moins de dispersion sur des gammes hors besoin principal'
     ],
     problems: [
-      'Normes strictes à respecter',
-      'Budget limité',
-      'Maintenance coûteuse',
-      'Besoin de durabilité'
+      'Budget contraint et forte visibilité politique',
+      'Chauffage coûteux dans les gymnases et espaces à hauteur',
+      'Confort thermique inégal pour élèves et publics',
+      'Exigence de conformité et de sécurité',
+      'Projets techniques à expliquer en comité',
+      'Peu de marge pour les dossiers incomplets',
+      'Multi-sites : besoin de méthode',
+      'Objectifs climat et RSE des collectivités'
     ],
     solutions: [
-      'Produits certifiés et conformes',
-      'Solutions économiques',
-      'Maintenance facilitée',
-      'Garanties étendues'
+      'Déstratificateurs pour homogénéiser la température dans les gymnases',
+      'Études PAC et chauffage selon l’existant et la réglementation',
+      'Montage CEE structuré lorsque l’opération correspond aux fiches',
+      'Formulaires Effinor pour collecter les informations utiles',
+      'Planification avec les services techniques',
+      'Liens vers ressources et blog pour la pédagogie',
+      'Relais Contact pour les dossiers sensibles',
+      'Vision étape par étape pour les décideurs'
+    ],
+    useCases: [
+      'Écoles primaires et secondaires',
+      'Gymnases et salles de sport',
+      'Cantines et restaurants scolaires',
+      'Bibliothèques et CDI',
+      'Couloirs et espaces communs',
+      'Parkings et abords extérieurs'
+    ],
+    stats: [
+      { label: 'Économies budgétaires', value: 'jusqu\'à 60%' },
+      { label: 'Réduction chauffage', value: 'jusqu\'à 30%' },
+      { label: 'Garantie', value: '5 ans' },
+      { label: 'Solutions disponibles', value: '5+ familles' }
     ]
   },
   'sante-etablissements-sensibles': {
     title: 'Santé / établissements sensibles',
     parentPath: '/secteurs-activite',
     parentLabel: 'Secteurs d\'activité',
-    heroTitle: 'Éclairage LED pour établissements de santé',
+    heroTitle: 'Établissements de santé : chauffage, confort et performance énergétique',
+    description: 'Réduisez la pression sur le budget énergie tout en respectant les contraintes sanitaires : projets de chauffage et de climatisation (dont PAC selon contexte), déstratification sur les grands volumes, et accompagnement CEE lorsque l’opération est dans le cadre.',
     benefits: [
-      'Conformité aux normes strictes',
-      'Qualité de lumière optimale',
-      'Fiabilité maximale',
-      'Maintenance préventive'
+      'Approche « bâtiment » : chauffage, volumes, contraintes d’occupation',
+      'Déstratification possible sur halls et espaces à hauteur',
+      'Structuration des données pour un dossier CEE sérieux',
+      'Fiabilité et continuité de service au cœur du discours',
+      'Économies ciblées sur le chauffage et la climatisation',
+      'Accompagnement Effinor pour la qualification et le suivi',
+      'Moins de dispersion sur des équipements hors périmètre',
+      'Phasage possible selon vos contraintes d’exploitation'
     ],
     problems: [
-      'Normes très strictes',
-      'Besoin de fiabilité',
-      'Qualité lumière critique',
-      'Maintenance essentielle'
+      'Consommation élevée sur le chauffage, la climatisation et la ventilation',
+      'Normes strictes (hygiène, sécurité, qualité d’air)',
+      'Confort patients et personnel à concilier avec le budget',
+      'Peu de tolérance aux arrêts ou aux mauvaises surprises',
+      'Dossiers CEE à monter avec rigueur et traçabilité',
+      'Organisation interne complexe (maintenance, achats, direction)',
+      'Image et exigence RSE',
+      'Temps limité pour les projets « parallèles »'
     ],
     solutions: [
-      'Produits certifiés NF',
-      'Qualité lumière optimale',
-      'Fiabilité maximale',
-      'Maintenance préventive'
+      'Études PAC et chauffage selon l’existant et les contraintes du site',
+      'Déstratificateurs pour homogénéiser la température dans les volumes concernés',
+      'Cadrage CEE : opération, équipement, preuves attendues',
+      'Collecte structurée via les formulaires Effinor',
+      'Coordination avec vos équipes techniques',
+      'Documentation progressive pour alimenter le dossier',
+      'Contact direct pour les cas à forte sensibilité',
+      'Vision claire des étapes avant travaux'
+    ],
+    useCases: [
+      'Hôpitaux et CHU',
+      'Cliniques et centres médicaux',
+      'Blocs opératoires et salles stériles',
+      'Services de soins et chambres',
+      'Laboratoires et pharmacies',
+      'Services d\'urgence et réanimation'
+    ],
+    stats: [
+      { label: 'Conformité normes', value: '100%' },
+      { label: 'Fiabilité', value: '99.9%' },
+      { label: 'Économies globales', value: 'jusqu\'à 50%' },
+      { label: 'Solutions disponibles', value: '5+ familles' }
     ]
   }
 };
@@ -277,8 +417,7 @@ const CategoryDetail = () => {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
-  const { addToCart } = useCart();
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isProduitsSolutions || isSecteursActivite) {
@@ -316,32 +455,45 @@ const CategoryDetail = () => {
 
       setLoadingCategory(false);
 
-      // Récupérer les produits de cette catégorie (uniquement ceux avec image)
-      let productsQuery = supabase
-        .from('products')
-        .select('id, nom, description, prix, image_1, image_2, image_3, image_4, image_url, slug, actif, categorie, categorie_id, marque, reference, caracteristiques, puissance')
-        .eq('actif', true)
-        .or('image_1.not.is.null,image_url.not.is.null');
-
-      // Filtrer par categorie_id si disponible, sinon par categorie (slug)
-      if (categoryDbData?.id) {
-        productsQuery = productsQuery.eq('categorie_id', categoryDbData.id);
-      } else {
-        productsQuery = productsQuery.eq('categorie', slug);
-      }
-
-      const { data: productsData, error: productsError } = await productsQuery
-        .order('ordre', { ascending: true });
-
-      if (productsError) {
-        if (productsError.code === '42P01' || productsError.message?.includes('does not exist')) {
-          logger.warn('[CategoryDetail] Table products does not exist yet');
+      // Pour les secteurs, récupérer les produits via product_sectors
+      // Pour les catégories produits, récupérer via categorie_id
+      if (isSecteursActivite) {
+        // Récupérer les produits liés au secteur
+        const sectorProductsResult = await getProductsBySector(slug);
+        if (sectorProductsResult.success) {
+          setProducts(sectorProductsResult.data || []);
         } else {
-          logger.error('[CategoryDetail] Error fetching products:', productsError);
+          logger.error('[CategoryDetail] Error fetching sector products:', sectorProductsResult.error);
+          setProducts([]);
         }
-        setProducts([]);
       } else {
-        setProducts(productsData || []);
+        // Récupérer les produits de cette catégorie (uniquement ceux avec image)
+        let productsQuery = supabase
+          .from('products')
+          .select('id, nom, description, prix, image_1, image_2, image_3, image_4, image_url, slug, actif, categorie, categorie_id, marque, reference, caracteristiques, puissance')
+          .eq('actif', true)
+          .or('image_1.not.is.null,image_url.not.is.null');
+
+        // Filtrer par categorie_id si disponible, sinon par categorie (slug)
+        if (categoryDbData?.id) {
+          productsQuery = productsQuery.eq('categorie_id', categoryDbData.id);
+        } else {
+          productsQuery = productsQuery.eq('categorie', slug);
+        }
+
+        const { data: productsData, error: productsError } = await productsQuery
+          .order('ordre', { ascending: true });
+
+        if (productsError) {
+          if (productsError.code === '42P01' || productsError.message?.includes('does not exist')) {
+            logger.warn('[CategoryDetail] Table products does not exist yet');
+          } else {
+            logger.error('[CategoryDetail] Error fetching products:', productsError);
+          }
+          setProducts([]);
+        } else {
+          setProducts(productsData || []);
+        }
       }
 
       // Charger les accessoires liés à cette catégorie (via les produits)
@@ -379,12 +531,8 @@ const CategoryDetail = () => {
     return null;
   };
 
-  const handleAddToCart = (product) => {
-    addToCart(product);
-    toast({
-      title: "✅ Produit ajouté au panier !",
-      description: `${product.nom} a été ajouté au panier.`,
-    });
+  const handleLeadRequest = () => {
+    navigate('/contact');
   };
 
   // Déterminer le parentPath et parentLabel
@@ -447,11 +595,11 @@ const CategoryDetail = () => {
               )}
             </div>
 
-            {/* Section Produits de la catégorie - EN PREMIER */}
-            {isProduitsSolutions && (
+            {/* Section Produits - Pour catégories produits ET secteurs */}
+            {(isProduitsSolutions || isSecteursActivite) && (
               <section className="mb-6 md:mb-8">
                 <h2 className="text-base md:text-lg lg:text-xl font-bold text-gray-900 mb-3 md:mb-4">
-                  Produits {categoryTitle}
+                  {isSecteursActivite ? 'Produits recommandés pour ce secteur' : `Produits ${categoryTitle}`}
                 </h2>
                 {loadingProducts ? (
                   <div className="flex justify-center items-center py-8">
@@ -509,7 +657,7 @@ const CategoryDetail = () => {
                               )}
                             </div>
                           </div>
-                          <Link to={`/produit/${product.slug}`}>
+                          <Link to="/contact">
                             <div className="p-2 md:p-3">
                               {product.marque && (
                                 <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1 uppercase tracking-wide">
@@ -534,30 +682,40 @@ const CategoryDetail = () => {
                                   <strong>Puissance:</strong> {product.puissance}W
                                 </p>
                               )}
-                              {product.prix && (
-                                <p className="text-sm md:text-base lg:text-lg font-bold text-[var(--secondary-500)] mb-1.5 md:mb-2">
-                                  {typeof product.prix === 'number'
-                                    ? `${product.prix.toFixed(2)} €`
-                                    : product.prix}
-                                </p>
-                              )}
+                              {product.prix && !product.sur_devis ? (
+                                <div className="mb-1.5 md:mb-2">
+                                  <p className="text-sm md:text-base lg:text-lg font-bold text-[var(--secondary-500)]">
+                                    {typeof product.prix === 'number'
+                                      ? `${product.prix.toFixed(2)} € HT`
+                                      : product.prix}
+                                  </p>
+                                  <p className="text-[10px] md:text-xs text-gray-500">
+                                    soit {typeof product.prix === 'number'
+                                      ? `${(product.prix * 1.20).toFixed(2)} € TTC`
+                                      : ''}
+                                  </p>
+                                </div>
+                              ) : product.sur_devis ? (
+                                <p className="text-sm md:text-base text-gray-600 mb-1.5 md:mb-2">Sur devis</p>
+                              ) : null}
                             </div>
                           </Link>
                           <div className="px-2 md:px-3 pb-2 md:pb-3 flex flex-col sm:flex-row gap-1.5 md:gap-2">
-                            <Link to={`/produit/${product.slug}`} className="flex-1">
+                            <Link to="/contact" className="flex-1">
                               <Button variant="outline" className="w-full text-[10px] md:text-xs py-1.5 md:py-2 h-auto">
-                                Voir détails
+                                Éligibilité CEE
                                 <ArrowRight className="ml-1 h-2.5 w-2.5 md:h-3 md:w-3" />
                               </Button>
                             </Link>
                             <Button
+                              type="button"
                               onClick={(e) => {
                                 e.preventDefault();
-                                handleAddToCart(product);
+                                handleLeadRequest();
                               }}
                               className="bg-[var(--secondary-500)] hover:bg-[var(--secondary-600)] text-[10px] md:text-xs py-1.5 md:py-2 h-auto px-2 md:px-3 w-full sm:w-auto"
                             >
-                              <ShoppingCart className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                              <ClipboardList className="h-2.5 w-2.5 md:h-3 md:w-3" />
                             </Button>
                           </div>
                         </div>
@@ -595,7 +753,7 @@ const CategoryDetail = () => {
                           key={accessory.id}
                           className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 hover:border-[var(--secondary-500)]/30"
                         >
-                          <Link to={`/produit/${accessory.slug}`}>
+                          <Link to="/contact">
                             <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
                               {imageUrl ? (
                                 <img
@@ -612,7 +770,7 @@ const CategoryDetail = () => {
                             </div>
                           </Link>
                           <div className="p-2 md:p-3">
-                            <Link to={`/produit/${accessory.slug}`}>
+                            <Link to="/contact">
                               <h3 className="text-xs md:text-sm lg:text-base font-bold text-gray-900 mb-0.5 md:mb-1 group-hover:text-[var(--secondary-500)] transition-colors line-clamp-2">
                                 {accessory.nom}
                               </h3>
@@ -637,14 +795,15 @@ const CategoryDetail = () => {
                           </div>
                           <div className="px-2 md:px-3 pb-2 md:pb-3 flex">
                             <Button
+                              type="button"
                               onClick={(e) => {
                                 e.preventDefault();
-                                handleAddToCart(accessory);
+                                handleLeadRequest();
                               }}
                               className="bg-[var(--secondary-500)] hover:bg-[var(--secondary-600)] text-[10px] md:text-xs py-1.5 md:py-2 h-auto px-2 md:px-3 w-full"
                             >
-                              <ShoppingCart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
-                              Ajouter au panier
+                              <ClipboardList className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                              Demander une étude
                             </Button>
                           </div>
                         </div>
@@ -766,7 +925,7 @@ const CategoryDetail = () => {
             )}
 
             <section className="bg-[var(--secondary-500)] text-white rounded-lg p-3 md:p-4 lg:p-6 text-center">
-              <h2 className="text-sm md:text-base lg:text-lg font-bold mb-1.5 md:mb-2">Prêt à passer à l'éclairage LED ?</h2>
+              <h2 className="text-sm md:text-base lg:text-lg font-bold mb-1.5 md:mb-2">Prêt à structurer votre projet PAC ou déstratification ?</h2>
               <p className="text-[10px] md:text-xs lg:text-sm mb-3 md:mb-4 opacity-90">
                 Demandez un devis gratuit et personnalisé pour votre projet.
               </p>

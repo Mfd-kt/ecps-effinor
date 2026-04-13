@@ -12,6 +12,7 @@ import { validateEmail, validateFrenchPhone } from '@/utils/formUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COMMANDE_STATUTS } from '@/constants/commandes';
 import { stripePromise } from '@/lib/stripeClient';
+import { EffinorButton } from '@/components/ds/EffinorButton';
 
 /**
  * Démarre le processus de paiement Stripe Checkout
@@ -558,7 +559,9 @@ const Cart = () => {
             <ShoppingBag className="h-24 w-24 text-gray-300 mx-auto mb-6" />
             <h1 className="text-3xl font-bold mb-4">Votre panier est vide</h1>
             <p className="text-gray-600 mb-8">Découvrez nos solutions LED professionnelles</p>
-            <Link to="/produits-solutions" className="btn-primary">Découvrir nos produits</Link>
+            <EffinorButton to="/produits-solutions" variant="primary">
+              Découvrir nos produits
+            </EffinorButton>
         </div>
       </>
     );
@@ -568,9 +571,9 @@ const Cart = () => {
     <>
       <Helmet><title>Mon Panier | EFFINOR</title></Helmet>
       {/* Hero Section - Full Width Background */}
-      <div className="w-full bg-primary-900 text-white py-12 pt-32">
+      <div className="w-full bg-primary-900 bg-dark-section py-12 pt-32">
         <div className="container mx-auto">
-          <h1 className="text-4xl sm:text-5xl md:text-5xl font-bold mb-4 text-white">Mon Panier</h1>
+          <h1 className="text-4xl sm:text-5xl md:text-5xl font-bold mb-4">Mon Panier</h1>
           <p className="text-xl text-white/90">Finalisez votre demande de devis</p>
         </div>
       </div>
@@ -838,11 +841,12 @@ const Cart = () => {
 
                 {/* Boutons d'action */}
                 <div className="form-field space-y-3">
-                  <button
+                  <EffinorButton
                     type="button"
+                    variant="primary"
+                    fullWidth
                     onClick={() => handleSubmit('stripe')}
                     disabled={isSubmitting}
-                    className="btn-primary w-full flex items-center justify-center gap-2"
                   >
                     {isSubmitting && submitMode === 'stripe' ? (
                       <>
@@ -855,13 +859,14 @@ const Cart = () => {
                         Payer maintenant par carte
                       </>
                     )}
-                  </button>
-                  
-                  <button
+                  </EffinorButton>
+
+                  <EffinorButton
                     type="button"
+                    variant="outline"
+                    fullWidth
                     onClick={() => handleSubmit('rappel')}
                     disabled={isSubmitting}
-                    className="btn-secondary w-full flex items-center justify-center gap-2 border-2 border-secondary-500 text-secondary-700 hover:bg-secondary-50"
                   >
                     {isSubmitting && submitMode === 'rappel' ? (
                       <>
@@ -874,7 +879,7 @@ const Cart = () => {
                         Être rappelé par un expert
                       </>
                     )}
-                  </button>
+                  </EffinorButton>
                 </div>
               </form>
             </div>

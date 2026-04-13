@@ -24,6 +24,18 @@ module.exports = {
 			},
 		},
 		extend: {
+			/* Design system Effinor — largeurs sémantiques (alias des usages récurrents) */
+			maxWidth: {
+				effinorReadable: '42rem',
+				effinorContent: '48rem',
+				effinorHero: '56rem',
+				effinorSite: '80rem',
+			},
+			spacing: {
+				'section-y': '2.5rem',
+				'section-y-md': '3.5rem',
+				'section-y-lg': '5rem',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

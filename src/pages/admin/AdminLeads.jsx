@@ -229,7 +229,7 @@ const AdminLeads = () => {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
-  const [sortBy, setSortBy] = useState('updated_at');
+  const [sortBy, setSortBy] = useState('date_creation');
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Load users
@@ -754,8 +754,15 @@ const AdminLeads = () => {
                             <div className="h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-semibold text-xs flex-shrink-0">
                               {initials}
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-slate-900 truncate">{nom}</p>
+                            <div className="min-w-0 flex-1">
+                              <Link 
+                                to={`/leads/${lead.id}`}
+                                className="block"
+                              >
+                                <p className="text-sm font-medium text-slate-900 truncate hover:text-emerald-600 transition-colors cursor-pointer">
+                                  {nom}
+                                </p>
+                              </Link>
                               {societe && (
                                 <p className="text-xs text-slate-500 truncate">{societe}</p>
                               )}

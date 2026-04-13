@@ -21,6 +21,8 @@ const WorkSiteSection = ({ lead, onUpdate, autoSave }) => {
 
   const handleSave = () => {
     if (editingField) {
+      // Le calcul de la région et zone climatique est fait automatiquement par un trigger SQL
+      // On envoie uniquement le code postal, la base de données calcule le reste
       autoSave?.(editingField, editingValue);
       setEditingField(null);
       setEditingValue('');

@@ -1,24 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Building, MapPin, Globe, Edit, Save, X, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Building, MapPin, Globe, Edit, Save, X, ExternalLink, CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
 import { getMissingFields } from '@/lib/utils/formDataParser';
 import { cn } from '@/lib/utils';
+import { fetchCompanyBySiren, mapSireneToLead } from '@/lib/api/sirene';
 
 /**
  * Section Société avec accordéon, validation SIRET et lien site web
  */
 const CompanySection = ({ lead, onUpdate, autoSave }) => {
+  const { toast } = useToast();
   const [editingField, setEditingField] = useState(null);
   const [editingValue, setEditingValue] = useState('');
   // State local pour adresse_siege avec mode édition
   const [isEditingAdresseSiege, setIsEditingAdresseSiege] = useState(false);
   const [adresseSiegeValue, setAdresseSiegeValue] = useState('');
+  // State pour le chargement des données Sirene
+  const [loadingSirene, setLoadingSirene] = useState(false);
 
   // Détecter les champs manquants
   const missingCompanyFields = React.useMemo(() => {
@@ -104,6 +109,53 @@ const CompanySection = ({ lead, onUpdate, autoSave }) => {
       return url;
     }
     return `https://${url}`;
+  };
+
+  // Handler pour récupérer les données depuis l'API Sirene
+  const handleFetchFromSirene = async () => {
+    // Récupérer le SIREN depuis le lead (priorité au champ siren, sinon extraire du siret)
+    const sirenValue = lead?.siren || (lead?.siret && lead.siret.replace(/\s/g, '').length >= 9 ? lead.siret.replace(/\s/g, '').slice(0, 9) : '');
+    
+    // Valider le SIREN
+    if (!sirenValue || sirenValue.replace(/\s/g, '').length !== 9) {
+      toast({ 
+        variant: 'destructive',
+        title: 'SIREN invalide',
+        description: 'Veuillez saisir un SIREN valide (9 chiffres) avant de récupérer les données.'
+      });
+      return;
+    }
+
+    setLoadingSirene(true);
+    try {
+      const cleanSiren = sirenValue.replace(/\s/g, '');
+      const result = await fetchCompanyBySiren(cleanSiren);
+      
+      if (result.success && result.data) {
+        // Mapper les données Sirene vers les champs du lead
+        // result.data contient { siren, denomination, denominationUsuelle, uniteLegale, etablissementSiege }
+        const updates = mapSireneToLead(result.data);
+        
+        // Sauvegarder toutes les mises à jour en une seule fois
+        autoSave?.(updates);
+        
+        const companyName = result.data.denomination || result.data.denominationUsuelle || 'l\'entreprise';
+        toast({
+          title: 'Données récupérées avec succès',
+          description: `Les informations de ${companyName} ont été récupérées et préremplies depuis le répertoire Sirene (INSEE).`
+        });
+      } else {
+        throw new Error(result.error || 'Entreprise non trouvée');
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: error.message || 'Impossible de récupérer les données depuis l\'API Sirene. Veuillez réessayer.'
+      });
+    } finally {
+      setLoadingSirene(false);
+    }
   };
 
   const EditableField = ({ field, label, value, icon: Icon, validator, formatter, type = 'text', rows, realValue, className = '' }) => {
@@ -296,21 +348,43 @@ const CompanySection = ({ lead, onUpdate, autoSave }) => {
                         validator={isValidSIRET}
                         formatter={formatSIRET}
                       />
-                      <EditableField
-                        field="siren"
-                        label="SIREN"
-                        value={lead.siren || (lead.siret && lead.siret.length >= 9 ? lead.siret.slice(0, 9) : '')}
-                        icon={Building}
-                        validator={(val) => !val || /^\d{9}$/.test(val.replace(/\s/g, ''))}
-                        formatter={(val) => {
-                          if (!val) return '';
-                          const cleaned = val.replace(/\s/g, '');
-                          if (cleaned.length === 9) {
-                            return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 9)}`;
-                          }
-                          return cleaned;
-                        }}
-                      />
+                      <div className="flex gap-2 items-start">
+                        <div className="flex-1">
+                          <EditableField
+                            field="siren"
+                            label="SIREN"
+                            value={lead.siren || (lead.siret && lead.siret.length >= 9 ? lead.siret.slice(0, 9) : '')}
+                            icon={Building}
+                            validator={(val) => !val || /^\d{9}$/.test(val.replace(/\s/g, ''))}
+                            formatter={(val) => {
+                              if (!val) return '';
+                              const cleaned = val.replace(/\s/g, '');
+                              if (cleaned.length === 9) {
+                                return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 9)}`;
+                              }
+                              return cleaned;
+                            }}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleFetchFromSirene}
+                          disabled={loadingSirene || (!lead?.siren && (!lead?.siret || lead.siret.replace(/\s/g, '').length < 9))}
+                          className="mt-7"
+                          title="Récupérer les données de l'entreprise depuis le répertoire Sirene (INSEE)"
+                        >
+                          {loadingSirene ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4 mr-2" />
+                              Récupérer
+                            </>
+                          )}
+                        </Button>
+                      </div>
                       <div className="md:col-span-2">
                         <EditableField
                           field="site_web"

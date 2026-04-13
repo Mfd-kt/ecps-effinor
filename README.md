@@ -110,10 +110,24 @@ yarn install
 cp .env.example .env
 ```
 
-Éditer `.env` avec vos credentials Supabase :
+Éditer `.env` avec vos credentials Supabase et Sirene :
 ```env
 VITE_SUPABASE_URL=https://votre-projet.supabase.co
 VITE_SUPABASE_ANON_KEY=votre_clé_anon
+
+# API Sirene INSEE (optionnel - pour auto-remplissage des données société)
+# Service gratuit et officiel (INSEE) : https://www.data.gouv.fr/dataservices/api-sirene-open-data
+# Documentation technique : https://www.sirene.fr/static-resources/documentation/sommaire_311.html
+# Documentation OpenAPI : https://api-apimanager.insee.fr/portal/environments/DEFAULT/apis/2ba0e549-5587-3ef1-9082-99cd865de66f/pages/6548510e-c3e1-3099-be96-6edf02870699/content
+# Note: Les appels sont faits via une fonction SQL (pas directement depuis le frontend)
+# Pour configurer la clé API :
+#   1. Créez un compte sur https://portail-api.insee.fr/
+#   2. Souscrivez à l'API Sirene dans le catalogue (bouton "SOUSCRIRE")
+#   3. Générez une clé d'intégration (API Key) dans votre espace
+#   4. Configurez la clé comme secret Supabase : app.sirene_api_key (pas de variable d'environnement frontend nécessaire)
+#   5. Limite : 30 requêtes par minute (usage open data gratuit)
+# La variable VITE_SIRENE_API_TOKEN ci-dessous n'est plus utilisée (gérée côté serveur)
+VITE_SIRENE_API_TOKEN=votre_cle_api_sirene
 ```
 
 4. **Lancer le serveur de développement**

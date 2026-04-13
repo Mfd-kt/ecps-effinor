@@ -19,7 +19,7 @@ const ProductCard = ({ product }) => {
     logger.log(`Requesting quote for product ID: ${product.id}`);
     localStorage.setItem('devis_product', JSON.stringify(product));
     localStorage.setItem('devis_product_id', product.id);
-    navigate(`/formulaire-complet?type=devis&product=${product.slug}`);
+    navigate('/contact');
   };
 
   const handleCardClick = () => {
@@ -54,12 +54,15 @@ const ProductCard = ({ product }) => {
               logger.log(`Product ${product.id} (${product.nom}) image URL:`, imageUrl || 'NO IMAGE');
             }
             
-            return imageUrl || "https://placehold.co/600x400/e2e8f0/e2e8f0?text=Image";
+            return imageUrl || "/images/product-placeholder.svg";
           })()} 
           alt={`Image pour ${product.nom}`}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
           onError={(e) => {
             logger.warn(`Failed to load image for product ${product.id}:`, product.image_url || product.image_1);
-            e.target.src = "https://placehold.co/600x400/e2e8f0/e2e8f0?text=Image";
+            e.target.src = "/images/product-placeholder.svg";
           }}
         />
       </div>
@@ -82,7 +85,10 @@ const ProductCard = ({ product }) => {
           {product.sur_devis || !product.prix ? (
             <p className="price-label">Sur devis</p>
           ) : (
-            <p className="price">{parseFloat(product.prix).toFixed(2)} € HT</p>
+            <div>
+              <p className="price">{parseFloat(product.prix).toFixed(2)} € HT</p>
+              <p className="text-xs text-gray-500 mt-0.5">soit {(parseFloat(product.prix) * 1.20).toFixed(2)} € TTC</p>
+            </div>
           )}
 
           <button onClick={handleRequestQuote} className="btn-devis">

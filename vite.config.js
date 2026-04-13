@@ -167,6 +167,12 @@ if (window.navigation && window.self !== window.top) {
 const addTransformIndexHtml = {
 	name: 'add-transform-index-html',
 	transformIndexHtml(html) {
+		// Ces handlers sont utiles en DEV (Hostinger Horizons), mais en PROD ils leakent
+		// des infos via postMessage('*') et ajoutent du JS inutile.
+		if (!isDev) {
+			return { html, tags: [] };
+		}
+
 		const tags = [
 			{
 				tag: 'script',
@@ -219,8 +225,6 @@ const addTransformIndexHtml = {
 		};
 	},
 };
-
-console.warn = () => {};
 
 const logger = createLogger()
 const loggerError = logger.error

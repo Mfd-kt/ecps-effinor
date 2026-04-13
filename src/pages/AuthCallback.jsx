@@ -17,7 +17,7 @@ function getParams() {
 
   return {
     type: allParams.type,
-    next: allParams.next || '/admin',
+    next: allParams.next || '/dashboard',
     accessToken: allParams.access_token,
     refreshToken: allParams.refresh_token,
   };
@@ -117,29 +117,49 @@ export default function AuthCallback() {
       return;
     }
     
-    // 2. Synchroniser les informations dans la table utilisateurs (si ce n'est pas déjà fait par un trigger)
-    // C'est une sécurité supplémentaire au cas où le trigger `handle_new_user` n'aurait pas pu insérer les métadonnées.
-    if(user && type === 'invite') {
-        const { data: profile, error: profileError } = await supabase
+    // 2. Lier l'utilisateur auth à la table `utilisateurs`
+    // En prod, le cas le plus fréquent est: une ligne `utilisateurs` existe déjà (créée par l'admin),
+    // mais `auth_user_id` n'est pas encore renseigné. Sans ce lien, RequireRole bloque /dashboard.
+    if (user && type === 'invite') {
+      const emailLower = (user.email || '').toLowerCase();
+      if (emailLower) {
+        try {
+          // Chercher un profil existant par email
+          const { data: existingProfile, error: findError } = await supabase
             .from('utilisateurs')
-            .select('id')
-            .eq('auth_user_id', user.id)
-            .single();
+            .select('id, auth_user_id, email')
+            .eq('email', emailLower)
+            .maybeSingle();
 
-        if (profileError && profileError.code === 'PGRST116') { // Si le profil n'existe pas
-             await supabase.from('utilisateurs').insert({
-                auth_user_id: user.id,
-                email: user.email,
-                prenom: user.user_metadata?.prenom || '',
-                nom: user.user_metadata?.nom || '',
-                role: user.user_metadata?.role || 'viewer',
-                statut: 'actif'
-            });
+          if (findError) {
+            logger.error('[AuthCallback] Erreur recherche profil utilisateurs:', findError);
+          } else if (existingProfile?.id) {
+            // Mettre à jour le lien auth_user_id si manquant/différent
+            if (!existingProfile.auth_user_id || existingProfile.auth_user_id !== user.id) {
+              const { error: linkError } = await supabase
+                .from('utilisateurs')
+                .update({ auth_user_id: user.id })
+                .eq('id', existingProfile.id);
+
+              if (linkError) {
+                logger.error('[AuthCallback] Erreur liaison auth_user_id:', linkError);
+              } else {
+                logger.log('✅ Liaison auth_user_id effectuée sur utilisateurs');
+              }
+            }
+          } else {
+            // Pas de profil existant: on ne force pas une insertion risquée (schéma variable).
+            // On affiche un message clair: l'admin doit créer le profil ou vérifier les triggers.
+            logger.warn('[AuthCallback] Aucun profil utilisateurs trouvé pour cet email. Création manuelle requise.');
+          }
+        } catch (e) {
+          logger.error('[AuthCallback] Erreur inattendue liaison utilisateurs:', e);
         }
+      }
     }
 
     // 3. Rediriger vers l'admin
-    window.location.replace(next || '/admin');
+    window.location.replace(next || '/dashboard');
   };
 
   if (phase === 'exchanging') {

@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "vite --host :: --port 3000",
-    "build": "vite build",
+    "dev:dashboard": "vite --host :: --port 3000 --open /dashboard",
+    "build": "node tools/generate-sitemap.mjs && vite build && node tools/create-spa-fallbacks.mjs",
     "preview": "vite preview --host :: --port 3000"
   },
   "dependencies": {
@@ -33,10 +34,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.16.0",
     "recharts": "^2.10.1",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^1.14.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.8.3",

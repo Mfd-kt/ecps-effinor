@@ -26,12 +26,11 @@ export const PRIORITIES = {
 
 // Project types
 export const PROJECT_TYPES = [
-  'LED Éclairage',
-  'Destratification',
-  'Déshumidificateur',
-  'Pompe à Chaleur',
+  'Pompe à chaleur',
+  'Déstratificateur d\'air',
   'Climatisation',
   'Isolation',
+  'Ventilation',
   'Autre'
 ];
 
@@ -1154,7 +1153,8 @@ export async function calculateCEE(leadData) {
     return {
       success: true,
       data: {
-        montant_cee_estime: ceeAmount
+        montant_cee_estime: ceeAmount?.totalPotential ?? ceeAmount,
+        ceeDetail: ceeAmount,
       }
     };
   } catch (error) {
