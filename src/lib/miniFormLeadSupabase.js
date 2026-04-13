@@ -31,6 +31,22 @@ function splitFullName(fullName) {
   return { first_name: parts[0], last_name: parts.slice(1).join(' ') };
 }
 
+/** UUID v4 côté navigateur — évite `.select()` après insert (RLS SELECT souvent fermée pour `anon`). */
+function newLeadId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  throw new Error('crypto indisponible pour générer un id de lead');
+}
+
 /**
  * Insert une ligne `public.leads` depuis les données déjà sanitizées du mini-formulaire.
  * La valeur `source` doit exister dans l’enum Postgres `lead_source` (ex. ajuster via migration).
@@ -73,7 +89,10 @@ export async function insertMiniFormLeadFromSanitized(sanitizedData) {
     },
   };
 
+  const id = newLeadId();
+
   const row = {
+    id,
     source: leadSource,
     campaign: attribution.cta || null,
     landing: attribution.page || null,
@@ -94,12 +113,108 @@ export async function insertMiniFormLeadFromSanitized(sanitizedData) {
     sim_payload_json: simPayload,
   };
 
-  const { data, error } = await supabase.from('leads').insert([row]).select('id').single();
+  const { error } = await supabase.from('leads').insert([row]);
 
   if (error) {
     logger.error('[miniFormLeadSupabase] insert error', error);
     return { success: false, error: error.message || String(error), id: null };
   }
 
-  return { success: true, error: null, id: data?.id ?? null };
+  return { success: true, error: null, id };
+}
+
+const CONTACT_SUJET_LABELS = {
+  etude_pac: 'Étude pompe à chaleur',
+  etude_destrat: 'Étude déstratification',
+  etude_equilibrage: 'Étude équilibrage hydraulique',
+  etude_accompagnement: 'Accompagnement projet / multi-leviers',
+  cee: 'Optimisation / financement CEE',
+  devis: 'Demande de devis',
+  rappel: 'Demande de rappel',
+  partenariat: 'Partenariat',
+  autre: 'Autre',
+};
+
+/**
+ * Page /contact — formulaire « Décrivez votre projet » → `public.leads`.
+ * Chantier non saisi : CP / ville placeholders documentés dans `recording_notes`.
+ */
+export async function insertContactPageLeadFromSanitized(payload) {
+  const supabase = getAnonClient();
+  if (!supabase) {
+    return { success: false, error: 'Supabase non configuré (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)', id: null };
+  }
+
+  const attr = payload.attribution ?? {};
+  const { first_name, last_name } = splitFullName(payload.nom);
+  const sujet = (payload.sujet || '').trim();
+  const sujetLabel = CONTACT_SUJET_LABELS[sujet] || sujet || null;
+  const societe = (payload.societe || '').trim();
+  const phone = (payload.telephone || '').trim() || null;
+
+  const leadSource =
+    import.meta.env.VITE_LEAD_SOURCE_CONTACT ||
+    import.meta.env.VITE_LEAD_SOURCE_MINI_FORM ||
+    import.meta.env.VITE_LEAD_SOURCE_DEFAULT ||
+    'website';
+
+  const linesAttr = [
+    payload.message || '',
+    '',
+    '--- Métadonnées (page contact) ---',
+    `source: ${attr.source || '—'}`,
+    `project: ${attr.project || '—'}`,
+    `cta: ${attr.cta || '—'}`,
+    `page: ${attr.page || '—'}`,
+    `slug: ${attr.slug || '—'}`,
+    `category: ${attr.category || '—'}`,
+    '',
+    'Chantier : non renseigné (formulaire contact — pas de CP saisi).',
+  ];
+  const recording_notes = linesAttr.join('\n');
+
+  const simPayload = {
+    contact_form: true,
+    sujet,
+    sujet_label: sujetLabel,
+    effinor_attr: {
+      source: attr.source || null,
+      project: attr.project || null,
+      cta: attr.cta || null,
+      page: attr.page || null,
+      slug: attr.slug || null,
+      category: attr.category || null,
+    },
+  };
+
+  const id = newLeadId();
+
+  const row = {
+    id,
+    source: leadSource,
+    campaign: attr.cta || null,
+    landing: attr.page || null,
+    product_interest: sujetLabel,
+    company_name: societe || 'Non renseigné',
+    first_name: first_name || null,
+    last_name: last_name || null,
+    contact_name: payload.nom || null,
+    phone,
+    email: payload.email,
+    worksite_address: '',
+    worksite_postal_code: '00000',
+    worksite_city: 'Non renseigné (page contact)',
+    lead_origin: 'contact_page',
+    recording_notes,
+    sim_payload_json: simPayload,
+  };
+
+  const { error } = await supabase.from('leads').insert([row]);
+
+  if (error) {
+    logger.error('[miniFormLeadSupabase] contact page insert error', error);
+    return { success: false, error: error.message || String(error), id: null };
+  }
+
+  return { success: true, error: null, id };
 }

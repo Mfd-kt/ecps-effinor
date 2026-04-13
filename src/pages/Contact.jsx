@@ -21,7 +21,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { logger } from '@/utils/logger';
 import { useToast } from '@/components/ui/use-toast';
 import { trackEmailClick, trackPhoneClick } from '@/lib/effinorAnalytics';
-import { sendContactToAirtable } from '@/lib/airtableService';
+import { sanitizeFormData } from '@/utils/sanitize';
+import {
+  isMiniFormSupabaseInsertEnabled,
+  insertContactPageLeadFromSanitized,
+} from '@/lib/miniFormLeadSupabase';
 import {
   PageContainer,
   EffinorButton,
@@ -113,20 +117,38 @@ export default function Contact() {
     setIsSubmitting(true);
     try {
       const attr = attributionRef.current || {};
-      await sendContactToAirtable({
-        nom:       formData.nom,
-        societe:   formData.societe,
-        email:     formData.email,
+
+      if (!isMiniFormSupabaseInsertEnabled()) {
+        toast({
+          title: 'Configuration manquante',
+          description:
+            'Supabase n’est pas configuré (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY dans .env).',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const payload = sanitizeFormData({
+        nom: formData.nom,
+        societe: formData.societe,
+        email: formData.email,
         telephone: formData.telephone,
-        sujet:     formData.sujet,
-        message:   formData.message,
-        effinor_source: attr.source || '',
-        effinor_project: attr.project || '',
-        effinor_cta: attr.cta || '',
-        effinor_landing_page: attr.page || '',
-        effinor_slug: attr.slug || '',
-        effinor_category: attr.category || '',
+        sujet: formData.sujet,
+        message: formData.message,
+        attribution: {
+          source: attr.source || '',
+          project: attr.project || '',
+          cta: attr.cta || '',
+          page: attr.page || '',
+          slug: attr.slug || '',
+          category: attr.category || '',
+        },
       });
+
+      const result = await insertContactPageLeadFromSanitized(payload);
+      if (!result.success || !result.id) {
+        throw new Error(result.error || 'Insertion refusée');
+      }
 
       navigate('/merci', {
         state: { nom: formData.nom, source: attr.source || 'contact', project: attr.project || '' },

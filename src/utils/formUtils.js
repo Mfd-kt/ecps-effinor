@@ -1,6 +1,5 @@
 import { logger } from '@/utils/logger';
 import { sanitizeFormData } from '@/utils/sanitize';
-import { sendLeadToAirtable } from '@/lib/airtableService';
 import {
   isMiniFormSupabaseInsertEnabled,
   insertMiniFormLeadFromSanitized,
@@ -172,42 +171,26 @@ export const getZoneClimatiqueFromPostalCode = (postalCode) => {
 };
 
 /**
- * Mini-formulaire contact : insert `public.leads` (client anon + RLS) si configuré,
- * puis envoi Airtable en complément.
+ * Mini-formulaire accueil : insert `public.leads` (client anon + RLS).
  */
 export const handleFormSubmission = async (formData) => {
   try {
     const sanitizedData = sanitizeFormData(formData);
 
-    let leadId = null;
-    if (isMiniFormSupabaseInsertEnabled()) {
-      const supResult = await insertMiniFormLeadFromSanitized(sanitizedData);
-      if (!supResult.success || !supResult.id) {
-        const msg = supResult.error || 'Insertion Supabase sans identifiant';
-        logger.error('handleFormSubmission Supabase:', msg);
-        return { success: false, error: msg };
-      }
-      leadId = supResult.id;
+    if (!isMiniFormSupabaseInsertEnabled()) {
+      const msg = 'Supabase non configuré (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)';
+      logger.error('handleFormSubmission:', msg);
+      return { success: false, error: msg };
     }
 
-    const fd = sanitizedData.formulaire_data ?? {};
-    await sendLeadToAirtable({
-      nom:                    sanitizedData.nom,
-      telephone:              sanitizedData.telephone,
-      email:                  sanitizedData.email,
-      type_batiment:          sanitizedData.type_batiment,
-      surface_m2:             sanitizedData.surface_m2,
-      besoin_principal_label: fd.besoin_principal_label ?? sanitizedData.type_projet ?? '',
-      contexte_pac:           fd.contexte_pac    ?? '',
-      contexte_destrat:       fd.contexte_destrat ?? '',
-      contexte_equil:         fd.contexte_equil  ?? '',
-      source:                 sanitizedData.source ?? '',
-      societe:                sanitizedData.societe ?? '',
-      worksite_postal_code:   sanitizedData.worksite_postal_code ?? '',
-      worksite_city:          sanitizedData.worksite_city ?? '',
-    });
+    const supResult = await insertMiniFormLeadFromSanitized(sanitizedData);
+    if (!supResult.success || !supResult.id) {
+      const msg = supResult.error || 'Insertion Supabase sans identifiant';
+      logger.error('handleFormSubmission Supabase:', msg);
+      return { success: false, error: msg };
+    }
 
-    return { success: true, data: { id: leadId || `local_${Date.now()}` } };
+    return { success: true, data: { id: supResult.id } };
   } catch (error) {
     logger.error('handleFormSubmission error:', error);
     return { success: false, error };

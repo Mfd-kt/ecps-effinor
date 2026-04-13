@@ -5,7 +5,7 @@
  * Les 55+ fichiers qui importent ce module continuent de fonctionner sans erreur,
  * mais aucune requête réseau n'est envoyée vers Supabase.
  *
- * Les données transitent désormais uniquement par Airtable (src/lib/airtableService.js).
+ * Les écritures leads (mini-form, page contact) passent par miniFormLeadSupabase.js + clé anon.
  */
 
 const noop = () => {};
